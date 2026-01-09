@@ -1,4 +1,4 @@
-name: Build and Deploy Single App Service (Backend Container)
+name: Build and Deploy Single App Service (Full Stack)
 
 on:
   push:
@@ -44,15 +44,17 @@ jobs:
             type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: Build and push Docker image (backend only)
+      - name: Build and push Docker image (full stack)
         uses: docker/build-push-action@v5
         with:
-          context: ./backend
-          file: ./backend/Dockerfile
+          context: .
+          file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VITE_API_BASE_URL=/api
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

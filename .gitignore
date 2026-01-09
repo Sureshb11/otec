@@ -41,3 +41,8 @@ coverage/
 *.pem
 .cache/
 
+# Secrets and credentials (DO NOT COMMIT)
+GITHUB_SECRETS_SETUP.md
+*SECRETS*.md
+*CREDENTIALS*.md
+
