@@ -7,6 +7,8 @@ export class AppController {
 
   @Get()
   getHello(): string {
+    // In production, this route won't be hit because SPA middleware serves index.html
+    // But we keep it for development and as a fallback
     return this.appService.getHello();
   }
 
