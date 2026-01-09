@@ -6,7 +6,7 @@ on:
 
 env:
   # Docker image name in Docker Hub
-  DOCKER_IMAGE: sureshb11/otec-backend
+  DOCKER_IMAGE: sureshb11/otec
 
   # Single Azure App Service that will run the container
   AZURE_WEBAPP_NAME: bsb
