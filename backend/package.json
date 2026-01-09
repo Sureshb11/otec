@@ -31,7 +31,6 @@
     "@nestjs/jwt": "^10.1.1",
     "@nestjs/passport": "^10.0.2",
     "@nestjs/platform-express": "^10.0.0",
-    "@nestjs/serve-static": "^5.0.4",
     "@nestjs/typeorm": "^10.0.0",
     "bcrypt": "^5.1.1",
     "class-transformer": "^0.5.1",

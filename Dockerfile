@@ -30,8 +30,8 @@ WORKDIR /app/backend
 # Copy backend package files
 COPY backend/package*.json ./
 
-# Install backend dependencies
-RUN npm ci
+# Install backend dependencies (use legacy-peer-deps to handle version conflicts)
+RUN npm ci --legacy-peer-deps
 
 # Copy backend source
 COPY backend/ .
@@ -47,8 +47,8 @@ WORKDIR /app
 # Copy backend package files
 COPY backend/package*.json ./
 
-# Install only production dependencies for backend
-RUN npm ci --only=production
+# Install only production dependencies for backend (use legacy-peer-deps)
+RUN npm ci --only=production --legacy-peer-deps
 
 # Copy built backend from builder
 COPY --from=backend-builder /app/backend/dist ./dist

@@ -16,8 +16,17 @@ async function bootstrap() {
   // Serve static files from frontend build (in production)
   // In development, frontend runs separately on port 3001
   if (process.env.NODE_ENV === 'production') {
-    app.useStaticAssets(join(__dirname, '..', 'public'), {
-      index: 'index.html',
+    // Serve static assets (JS, CSS, images, etc.)
+    app.useStaticAssets(join(__dirname, '..', 'public'));
+    
+    // Handle React Router (SPA) - serve index.html for all non-API routes
+    app.use((req, res, next) => {
+      // Don't interfere with API routes
+      if (req.path.startsWith('/api')) {
+        return next();
+      }
+      // For all other routes, serve index.html (React Router will handle routing)
+      res.sendFile(join(__dirname, '..', 'public', 'index.html'));
     });
   }
 
