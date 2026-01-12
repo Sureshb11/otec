@@ -24,15 +24,26 @@ export class RolesGuard implements CanActivate {
       ? user.roles.map((role: any) => (typeof role === 'string' ? role : role.name || role))
       : [];
     
+    // Debug logging (remove in production)
+    console.log('🔐 RolesGuard Debug:', {
+      userId: user.userId || user.id,
+      email: user.email,
+      userRoles: userRoles,
+      requiredRoles: requiredRoles,
+      hasRequiredRole: requiredRoles.some((role) => userRoles.includes(role)),
+    });
+    
     if (userRoles.length === 0) {
-      throw new ForbiddenException('Access denied. User has no roles assigned.');
+      throw new ForbiddenException(
+        `Access denied. User has no roles assigned. User ID: ${user.userId || user.id}, Email: ${user.email}`
+      );
     }
     
     const hasRequiredRole = requiredRoles.some((role) => userRoles.includes(role));
     
     if (!hasRequiredRole) {
       throw new ForbiddenException(
-        `Access denied. Required role(s): ${requiredRoles.join(', ')}. Your roles: ${userRoles.join(', ')}`
+        `Access denied. Required role(s): ${requiredRoles.join(', ')}. Your roles: ${userRoles.join(', ')}. User ID: ${user.userId || user.id}, Email: ${user.email}`
       );
     }
     

@@ -1,12 +1,10 @@
 import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../store/authStore';
-import { Link } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import UserAvatarMenu from '../components/UserAvatarMenu';
 
 const CustomerDetails = () => {
   const { customerId } = useParams<{ customerId: string }>();
   const navigate = useNavigate();
-  const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState<'details' | 'orders' | 'address'>('details');
   const [showOperationsMenu, setShowOperationsMenu] = useState(false);
   const [showClientsMenu, setShowClientsMenu] = useState(false);
@@ -58,17 +56,23 @@ const CustomerDetails = () => {
       <div className="flex">
         {/* Left Sidebar - Same as Dashboard */}
         <div className="w-64 bg-gradient-to-b from-primary-900 via-primary-800 to-primary-900 h-screen shadow-2xl flex flex-col">
-          <div className="p-4 flex flex-col h-full">
-            {/* OTEC Logo - Replace /logo.png with your actual logo file path */}
-            <div className="mb-6 flex-shrink-0">
-              <img 
-                src="/logo.png" 
-                alt="OTEC Logo" 
-                className="w-full h-auto object-contain bg-white rounded-lg p-2"
-              />
+          <div className="flex flex-col h-full">
+            {/* OTEC Logo */}
+            <div className="px-4 pt-6 pb-4 flex-shrink-0 border-b border-primary-700/50">
+              <div className="flex items-center space-x-3">
+                <img
+                  src="/logo.png"
+                  alt="OTEC Logo"
+                  className="h-10 w-auto object-contain flex-shrink-0"
+                />
+                <div className="flex flex-col justify-center">
+                  <h1 className="text-2xl font-bold text-white leading-tight">O T E C</h1>
+                  <p className="text-[9px] text-blue-200 font-medium leading-tight mt-0.5">OIL TECHNOLOGY</p>
+                </div>
+              </div>
             </div>
             
-            <nav className="space-y-1 flex-1 min-h-0 overflow-visible">
+            <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1 min-h-0">
               <Link
                 to="/dashboard"
                 className="flex items-center space-x-3 px-4 py-3 text-blue-100 hover:bg-primary-700 hover:shadow-md transition-all duration-200 rounded-lg"
@@ -235,11 +239,8 @@ const CustomerDetails = () => {
             </nav>
 
             {/* User Avatar - Fixed at bottom */}
-            <div className="w-12 h-12 bg-gradient-to-br from-primary-600 to-primary-700 rounded-full shadow-lg ring-2 ring-primary-500/50 flex items-center justify-center mt-4 flex-shrink-0">
-              <span className="text-white font-semibold text-lg">
-                {user?.firstName?.[0]}{user?.lastName?.[0]}
-              </span>
-            </div>
+            {/* User Avatar - Fixed at bottom */}
+            <UserAvatarMenu />
           </div>
         </div>
 

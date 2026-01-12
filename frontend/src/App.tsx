@@ -20,7 +20,7 @@ import Rigs from './pages/Rigs';
 import Reports from './pages/Reports';
 import RequestPasswordReset from './pages/RequestPasswordReset';
 import ResetPassword from './pages/ResetPassword';
-import Layout from './components/Layout';
+import MainLayout from './components/MainLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -124,9 +124,9 @@ function App() {
           path="/admin"
           element={
             <ProtectedRoute requiredRole="admin">
-              <Layout>
+              <MainLayout>
                 <AdminPanel />
-              </Layout>
+              </MainLayout>
             </ProtectedRoute>
           }
         />
@@ -134,9 +134,9 @@ function App() {
           path="/users"
           element={
             <ProtectedRoute requiredRole="admin">
-              <Layout>
+              <MainLayout>
                 <UserManagement />
-              </Layout>
+              </MainLayout>
             </ProtectedRoute>
           }
         />
@@ -144,9 +144,9 @@ function App() {
           path="/roles"
           element={
             <ProtectedRoute requiredRole="admin">
-              <Layout>
+              <MainLayout>
                 <RoleCRUD />
-              </Layout>
+              </MainLayout>
             </ProtectedRoute>
           }
         />
@@ -154,9 +154,9 @@ function App() {
           path="/roles/assign"
           element={
             <ProtectedRoute requiredRole="admin">
-              <Layout>
+              <MainLayout>
                 <RoleManagement />
-              </Layout>
+              </MainLayout>
             </ProtectedRoute>
           }
         />
@@ -164,9 +164,9 @@ function App() {
           path="/roles/:roleId/permissions"
           element={
             <ProtectedRoute requiredRole="admin">
-              <Layout>
+              <MainLayout>
                 <RolePermissions />
-              </Layout>
+              </MainLayout>
             </ProtectedRoute>
           }
         />
@@ -174,9 +174,9 @@ function App() {
           path="/users/create"
           element={
             <ProtectedRoute requiredRole="admin">
-              <Layout>
+              <MainLayout>
                 <CreateUser />
-              </Layout>
+              </MainLayout>
             </ProtectedRoute>
           }
         />
@@ -184,9 +184,9 @@ function App() {
           path="/settings"
           element={
             <ProtectedRoute>
-              <Layout>
+              <MainLayout>
                 <Settings />
-              </Layout>
+              </MainLayout>
             </ProtectedRoute>
           }
         />

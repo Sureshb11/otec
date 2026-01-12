@@ -2,37 +2,46 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-import api from '../api/axios';
+import { apiClient } from '../api/apiClient';
+import type { User } from '../api/apiClient';
 
-interface User {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  isActive: boolean;
-  roles: Array<{ name: string }>;
-}
+
 
 const UserManagement = () => {
   const navigate = useNavigate();
-  const { isAdmin } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
 
+  // Always try to fetch users - let the backend decide access
+  // The backend will return 403 if user doesn't have admin role
   const { data: users, isLoading, error } = useQuery<User[]>({
     queryKey: ['users'],
     queryFn: async () => {
       try {
-        const response = await api.get('/users');
-        return response.data;
+        const authState = useAuthStore.getState();
+        console.log('🔍 Fetching users - Token exists:', !!authState.token);
+        console.log('🔍 Auth state:', {
+          isAuthenticated: authState.isAuthenticated,
+          userEmail: authState.user?.email,
+          userRoles: authState.user?.roles,
+        });
+        // Use apiClient which handles mock/real switching automatically
+        return await apiClient.users.getAll();
       } catch (err: any) {
+        console.error('❌ Error fetching users:', {
+          status: err?.response?.status,
+          statusText: err?.response?.statusText,
+          data: err?.response?.data,
+          message: err?.message,
+        });
         // Re-throw with more context
         throw err;
       }
     },
     retry: false,
-    enabled: isAdmin(), // Only make the request if user is admin
+    enabled: isAuthenticated, // Only make the request if user is authenticated
   });
 
   // Filter and search users
@@ -75,13 +84,13 @@ const UserManagement = () => {
     return roleColors[roleName] || roleColors.user;
   };
 
-  // Check if user is admin before loading
-  if (!isAdmin()) {
+  // Check if user is authenticated and is admin before loading
+  if (!isAuthenticated) {
     return (
       <div className="px-4 py-6 sm:px-6 lg:px-8">
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 max-w-2xl mx-auto mt-8">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-2xl mx-auto mt-8">
           <div className="flex items-start space-x-3">
-            <svg className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -90,18 +99,9 @@ const UserManagement = () => {
               />
             </svg>
             <div className="flex-1">
-              <div className="text-yellow-800 font-semibold text-lg">Access Restricted</div>
-              <div className="text-yellow-700 text-sm mt-2">
-                You need administrator privileges to access the User Management page.
-              </div>
-              <div className="mt-4 p-3 bg-yellow-100 rounded-lg">
-                <p className="text-sm text-yellow-800">
-                  <strong>Your current roles:</strong>{' '}
-                  {useAuthStore.getState().user?.roles?.join(', ') || 'None'}
-                </p>
-                <p className="text-sm text-yellow-800 mt-2">
-                  Please contact your system administrator if you believe you should have access to this page.
-                </p>
+              <div className="text-red-800 font-semibold text-lg">Authentication Required</div>
+              <div className="text-red-700 text-sm mt-2">
+                You need to be logged in to access this page.
               </div>
             </div>
           </div>
@@ -122,13 +122,24 @@ const UserManagement = () => {
   }
 
   if (error) {
+    const errorStatus = (error as any)?.response?.status;
+    const errorData = (error as any)?.response?.data;
+
+    // Log full error details for debugging
+    console.error('UserManagement Error:', {
+      status: errorStatus,
+      errorData,
+      fullError: error,
+    });
+
     const errorMessage =
-      (error as any)?.response?.data?.message ||
-      (error as any)?.response?.status === 403
+      errorData?.message ||
+        errorData?.error ||
+        errorStatus === 403
         ? 'Access denied. You need admin privileges to view this page.'
-        : (error as any)?.response?.status === 401
-        ? 'Authentication required. Please log in again.'
-        : 'Error loading users. Please try again later.';
+        : errorStatus === 401
+          ? 'Authentication required. Please log in again.'
+          : 'Error loading users. Please try again later.';
 
     return (
       <div className="px-4 py-6 sm:px-6 lg:px-8">
@@ -145,10 +156,85 @@ const UserManagement = () => {
             <div className="flex-1">
               <div className="text-red-800 font-semibold text-lg">Error loading users</div>
               <div className="text-red-600 text-sm mt-2">{errorMessage}</div>
-              {(error as any)?.response?.status === 403 && (
-                <div className="mt-4 p-3 bg-red-100 rounded-lg">
+              {errorStatus === 403 && (
+                <div className="mt-4 p-3 bg-red-100 rounded-lg space-y-2">
                   <p className="text-sm text-red-800">
-                    <strong>Note:</strong> This page requires administrator access. If you believe you should have access, please contact your system administrator.
+                    <strong>Note:</strong> This page requires administrator access.
+                  </p>
+                  <div className="text-xs text-red-700 mt-2">
+                    <p><strong>Your current roles:</strong> {user?.roles?.map((r: any) => typeof r === 'string' ? r : r.name).join(', ') || 'None'}</p>
+                    <p className="mt-1"><strong>Your email:</strong> {user?.email || 'Not available'}</p>
+                  </div>
+                  <p className="text-sm text-red-800 mt-3">
+                    <strong>Solution:</strong> If you recently received admin access, please log out and log back in to refresh your authentication token.
+                  </p>
+                </div>
+              )}
+              {errorStatus === 401 && (
+                <div className="mt-4 p-3 bg-red-100 rounded-lg space-y-2">
+                  <p className="text-sm text-red-800">
+                    <strong>Authentication Error:</strong> Your session has expired or your token is invalid.
+                  </p>
+                  <p className="text-xs text-red-700">
+                    <strong>Error Details:</strong> {errorData?.message || errorData?.error || 'Token validation failed'}
+                  </p>
+                  {errorData && (
+                    <details className="text-xs text-gray-600 mt-2">
+                      <summary className="cursor-pointer text-red-700 font-medium">Show full error details</summary>
+                      <pre className="mt-2 p-2 bg-gray-100 rounded text-xs overflow-auto max-h-40">
+                        {JSON.stringify(errorData, null, 2)}
+                      </pre>
+                    </details>
+                  )}
+                  <div className="text-xs text-gray-600 mt-2">
+                    <strong>Common causes:</strong>
+                    <ul className="list-disc list-inside mt-1 space-y-1">
+                      <li>Your token has expired (tokens expire after 24 hours)</li>
+                      <li>The backend server was restarted with a different JWT_SECRET</li>
+                      <li>Your user account no longer exists in the database</li>
+                    </ul>
+                  </div>
+                  <div className="flex gap-2 mt-3">
+                    <button
+                      onClick={() => {
+                        useAuthStore.getState().logout();
+                        window.location.href = '/login';
+                      }}
+                      className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors duration-200 text-sm font-medium"
+                    >
+                      Log Out and Sign In Again
+                    </button>
+                    <button
+                      onClick={() => {
+                        const authState = useAuthStore.getState();
+                        const token = authState.token;
+                        if (token) {
+                          try {
+                            // Decode JWT token (without verification)
+                            const base64Url = token.split('.')[1];
+                            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                            const jsonPayload = decodeURIComponent(
+                              atob(base64)
+                                .split('')
+                                .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+                                .join('')
+                            );
+                            const payload = JSON.parse(jsonPayload);
+                            alert(`Token Info:\n\nUser ID: ${payload.sub}\nEmail: ${payload.email}\nExpires: ${new Date(payload.exp * 1000).toLocaleString()}\nCurrent Time: ${new Date().toLocaleString()}\n\nToken is ${payload.exp * 1000 > Date.now() ? 'VALID' : 'EXPIRED'}`);
+                          } catch (e) {
+                            alert('Could not decode token: ' + e);
+                          }
+                        } else {
+                          alert('No token found');
+                        }
+                      }}
+                      className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors duration-200 text-sm font-medium"
+                    >
+                      Debug Token
+                    </button>
+                  </div>
+                  <p className="text-xs text-red-700 mt-2">
+                    <strong>Note:</strong> After logging back in, you should have access to this page if you have admin privileges.
                   </p>
                 </div>
               )}
@@ -165,7 +251,7 @@ const UserManagement = () => {
       <div className="mb-8">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 via-primary-700 to-gray-900 bg-clip-text text-transparent">User Management</h1>
             <p className="mt-2 text-sm text-gray-600">Manage all users in the system (Admin Only)</p>
           </div>
           <button
@@ -343,11 +429,10 @@ const UserManagement = () => {
                   </div>
                 </div>
                 <span
-                  className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
-                    user.isActive
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-gray-100 text-gray-800'
-                  }`}
+                  className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${user.isActive
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-gray-100 text-gray-800'
+                    }`}
                 >
                   {user.isActive ? (
                     <>

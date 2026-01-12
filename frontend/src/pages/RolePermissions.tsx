@@ -133,7 +133,7 @@ const RolePermissions = () => {
         >
           <span className="mr-2">←</span> Back to Roles
         </button>
-        <h1 className="text-3xl font-bold text-gray-900 capitalize">
+        <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 via-primary-700 to-gray-900 bg-clip-text text-transparent capitalize">
           {role?.name} Permissions
         </h1>
         <p className="mt-2 text-sm text-gray-600">{role?.description}</p>
@@ -146,11 +146,10 @@ const RolePermissions = () => {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === tab
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === tab
                   ? 'border-primary-500 text-primary-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+                }`}
             >
               {tab}
             </button>

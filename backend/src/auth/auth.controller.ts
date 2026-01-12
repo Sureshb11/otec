@@ -33,5 +33,19 @@ export class AuthController {
   async resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto.token, dto.newPassword);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('me')
+  async getCurrentUser(@Request() req) {
+    // Get fresh user data from database
+    const user = await this.authService.getCurrentUser(req.user.userId);
+    return {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      roles: user.roles?.map((role) => role.name) || [],
+    };
+  }
 }
 

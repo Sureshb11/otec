@@ -7,7 +7,7 @@ const AdminPanel = () => {
     <div className="px-4 py-6 sm:px-0">
       <div className="border-4 border-dashed border-gray-200 rounded-lg p-8">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 via-primary-700 to-gray-900 bg-clip-text text-transparent mb-4">
             Admin Panel
           </h1>
           <p className="text-lg text-gray-600">

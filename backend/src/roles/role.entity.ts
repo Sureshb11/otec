@@ -9,22 +9,13 @@ import {
 import { User } from '../users/user.entity';
 import { Permission } from '../permissions/permission.entity';
 
-export enum RoleType {
-  ADMIN = 'admin',
-  USER = 'user',
-  MANAGER = 'manager',
-  EMPLOYEE = 'employee',
-  DRIVER = 'driver',
-  VENDOR = 'vendor',
-}
-
 @Entity('roles')
 export class Role {
-  @PrimaryGeneratedColumn('uuid')
+  @Column({ primary: true, type: 'uuid', default: () => 'gen_random_uuid()' })
   id: string;
 
-  @Column({ unique: true, type: 'enum', enum: RoleType })
-  name: RoleType;
+  @Column({ unique: true })
+  name: string;
 
   @Column({ nullable: true })
   description: string;

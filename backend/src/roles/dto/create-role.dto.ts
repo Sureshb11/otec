@@ -1,10 +1,12 @@
-import { IsString, IsNotEmpty, IsEnum, IsOptional } from 'class-validator';
-import { RoleType } from '../role.entity';
+import { IsString, IsNotEmpty, IsOptional, Matches } from 'class-validator';
 
 export class CreateRoleDto {
-  @IsEnum(RoleType)
+  @IsString()
   @IsNotEmpty()
-  name: RoleType;
+  @Matches(/^[a-zA-Z0-9_-]+$/, {
+    message: 'Role name can only contain letters, numbers, underscores and hyphens',
+  })
+  name: string;
 
   @IsString()
   @IsOptional()

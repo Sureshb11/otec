@@ -63,12 +63,12 @@ const RoleManagement = () => {
 
   const handleRoleToggle = (roleId: string) => {
     if (!selectedUser) return;
-    
+
     const currentRoleIds = selectedUser.roles.map(r => r.id);
     const newRoleIds = currentRoleIds.includes(roleId)
       ? currentRoleIds.filter(id => id !== roleId)
       : [...currentRoleIds, roleId];
-    
+
     updateUserRoles.mutate({ userId: selectedUser.id, roleIds: newRoleIds });
   };
 
@@ -84,7 +84,7 @@ const RoleManagement = () => {
     <div className="px-4 py-6 sm:px-0">
       <div className="mb-6 flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">User Role Assignment</h1>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 via-primary-700 to-gray-900 bg-clip-text text-transparent">User Role Assignment</h1>
           <p className="mt-2 text-sm text-gray-600">Assign roles to users (Admin Only)</p>
         </div>
         <button
@@ -129,13 +129,12 @@ const RoleManagement = () => {
                         {user.roles?.map((role) => (
                           <span
                             key={role.id}
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              role.name === 'admin'
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${role.name === 'admin'
                                 ? 'bg-red-100 text-red-800'
                                 : role.name === 'manager'
-                                ? 'bg-yellow-100 text-yellow-800'
-                                : 'bg-blue-100 text-blue-800'
-                            }`}
+                                  ? 'bg-yellow-100 text-yellow-800'
+                                  : 'bg-blue-100 text-blue-800'
+                              }`}
                           >
                             {role.name}
                           </span>
@@ -185,19 +184,18 @@ const RoleManagement = () => {
                             {role.name}
                           </span>
                           <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              role.name === 'admin'
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${role.name === 'admin'
                                 ? 'bg-red-100 text-red-800'
                                 : role.name === 'manager'
-                                ? 'bg-yellow-100 text-yellow-800'
-                                : role.name === 'employee'
-                                ? 'bg-green-100 text-green-800'
-                                : role.name === 'driver'
-                                ? 'bg-primary-100 text-primary-800'
-                                : role.name === 'vendor'
-                                ? 'bg-orange-100 text-orange-800'
-                                : 'bg-blue-100 text-blue-800'
-                            }`}
+                                  ? 'bg-yellow-100 text-yellow-800'
+                                  : role.name === 'employee'
+                                    ? 'bg-green-100 text-green-800'
+                                    : role.name === 'driver'
+                                      ? 'bg-primary-100 text-primary-800'
+                                      : role.name === 'vendor'
+                                        ? 'bg-orange-100 text-orange-800'
+                                        : 'bg-blue-100 text-blue-800'
+                              }`}
                           >
                             {hasRole ? 'Assigned' : 'Not Assigned'}
                           </span>
@@ -243,26 +241,25 @@ const RoleManagement = () => {
         <div className="px-4 py-5 sm:p-6">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             {roles?.map((role) => {
-              const usersWithRole = users?.filter(u => 
+              const usersWithRole = users?.filter(u =>
                 u.roles.some(r => r.id === role.id)
               ).length || 0;
               return (
                 <div key={role.id} className="border rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
                     <span
-                      className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium capitalize ${
-                        role.name === 'admin'
+                      className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium capitalize ${role.name === 'admin'
                           ? 'bg-red-100 text-red-800'
                           : role.name === 'manager'
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : role.name === 'employee'
-                          ? 'bg-green-100 text-green-800'
-                          : role.name === 'driver'
-                          ? 'bg-primary-100 text-primary-800'
-                          : role.name === 'vendor'
-                          ? 'bg-orange-100 text-orange-800'
-                          : 'bg-blue-100 text-blue-800'
-                      }`}
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : role.name === 'employee'
+                              ? 'bg-green-100 text-green-800'
+                              : role.name === 'driver'
+                                ? 'bg-primary-100 text-primary-800'
+                                : role.name === 'vendor'
+                                  ? 'bg-orange-100 text-orange-800'
+                                  : 'bg-blue-100 text-blue-800'
+                        }`}
                     >
                       {role.name}
                     </span>

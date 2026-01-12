@@ -1,14 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Role, RoleType } from './role.entity';
+import { Role } from './role.entity';
 
 @Injectable()
 export class RolesService {
   constructor(
     @InjectRepository(Role)
     private rolesRepository: Repository<Role>,
-  ) {}
+  ) { }
 
   async findAll(): Promise<Role[]> {
     return this.rolesRepository.find();
@@ -18,16 +18,22 @@ export class RolesService {
     return this.rolesRepository.findOne({ where: { id } });
   }
 
-  async findByName(name: RoleType): Promise<Role> {
+  async findByName(name: string): Promise<Role> {
     return this.rolesRepository.findOne({ where: { name } });
   }
 
   async create(roleData: Partial<Role>): Promise<Role> {
-    const role = this.rolesRepository.create(roleData);
+    const role = this.rolesRepository.create({
+      ...roleData,
+      name: roleData.name.toLowerCase()
+    });
     return this.rolesRepository.save(role);
   }
 
   async update(id: string, roleData: Partial<Role>): Promise<Role> {
+    if (roleData.name) {
+      roleData.name = roleData.name.toLowerCase();
+    }
     await this.rolesRepository.update(id, roleData);
     return this.findOne(id);
   }
@@ -38,18 +44,27 @@ export class RolesService {
 
   async seedRoles(): Promise<void> {
     const roles = [
-      { name: RoleType.ADMIN, description: 'Administrator with full access' },
-      { name: RoleType.USER, description: 'Regular user with limited access' },
-      { name: RoleType.MANAGER, description: 'Manager with elevated permissions' },
-      { name: RoleType.EMPLOYEE, description: 'Employee with standard access' },
-      { name: RoleType.DRIVER, description: 'Driver with delivery/transport access' },
-      { name: RoleType.VENDOR, description: 'Vendor with supplier access' },
+      { name: 'admin', description: 'Administrator with full access' },
+      { name: 'user', description: 'Regular user with limited access' },
+      { name: 'manager', description: 'Manager with elevated permissions' },
+      { name: 'employee', description: 'Employee with standard access' },
+      { name: 'driver', description: 'Driver with delivery/transport access' },
+      { name: 'vendor', description: 'Vendor with supplier access' },
     ];
 
     for (const roleData of roles) {
       const existingRole = await this.findByName(roleData.name);
       if (!existingRole) {
-        await this.create(roleData);
+        try {
+          await this.create(roleData);
+          console.log(`Seeded role: ${roleData.name}`);
+        } catch (error) {
+          if (error.code === '23505') { // Unique constraint violation
+            console.log(`Role ${roleData.name} already exists (caught duplicate error)`);
+          } else {
+            throw error;
+          }
+        }
       }
     }
   }

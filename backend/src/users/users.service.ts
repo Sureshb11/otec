@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, MoreThan } from 'typeorm';
 import { User } from './user.entity';
-import { Role, RoleType } from '../roles/role.entity';
+import { Role } from '../roles/role.entity';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -12,21 +12,21 @@ export class UsersService {
     private usersRepository: Repository<User>,
     @InjectRepository(Role)
     private rolesRepository: Repository<Role>,
-  ) {}
+  ) { }
 
-  async create(userData: Partial<User>, roleName: RoleType = RoleType.USER): Promise<User> {
+  async create(userData: Partial<User>, roleName: string = 'user'): Promise<User> {
     const hashedPassword = await bcrypt.hash(userData.password, 10);
     const user = this.usersRepository.create({
       ...userData,
       password: hashedPassword,
     });
-    
+
     // Assign default role if not admin
     const role = await this.rolesRepository.findOne({ where: { name: roleName } });
     if (role) {
       user.roles = [role];
     }
-    
+
     return this.usersRepository.save(user);
   }
 
@@ -36,19 +36,19 @@ export class UsersService {
       ...userData,
       password: hashedPassword,
     });
-    
+
     // Assign specified roles
     const roles = await this.rolesRepository.findBy({ id: In(roleIds) });
     user.roles = roles.length > 0 ? roles : [];
-    
+
     // If no valid roles found, assign default 'user' role
     if (user.roles.length === 0) {
-      const defaultRole = await this.rolesRepository.findOne({ where: { name: RoleType.USER } });
+      const defaultRole = await this.rolesRepository.findOne({ where: { name: 'user' } });
       if (defaultRole) {
         user.roles = [defaultRole];
       }
     }
-    
+
     return this.usersRepository.save(user);
   }
 
@@ -57,14 +57,14 @@ export class UsersService {
   }
 
   async findOne(id: string): Promise<User> {
-    return this.usersRepository.findOne({ 
+    return this.usersRepository.findOne({
       where: { id },
       relations: ['roles'],
     });
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    return this.usersRepository.findOne({ 
+    return this.usersRepository.findOne({
       where: { email },
       relations: ['roles'],
     });
@@ -83,7 +83,7 @@ export class UsersService {
   }
 
   async updateUserRoles(userId: string, roleIds: string[]): Promise<User> {
-    const user = await this.usersRepository.findOne({ 
+    const user = await this.usersRepository.findOne({
       where: { id: userId },
       relations: ['roles'],
     });
@@ -126,5 +126,29 @@ export class UsersService {
         resetPasswordExpires: null,
       },
     );
+  }
+
+  async seedAdminUser(): Promise<void> {
+    const adminEmail = 'admin@otec.com';
+    const existingAdmin = await this.findByEmail(adminEmail);
+
+    if (!existingAdmin) {
+      console.log('Seeding admin user...');
+      try {
+        await this.create(
+          {
+            email: adminEmail,
+            password: 'admin123!', // Helper method will hash this
+            firstName: 'System',
+            lastName: 'Admin',
+            isActive: true,
+          },
+          'admin'
+        );
+        console.log('Admin user seeded successfully');
+      } catch (error) {
+        console.error('Failed to seed admin user:', error);
+      }
+    }
   }
 }

@@ -3,10 +3,12 @@ import { ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { AppModule } from './app.module';
+import { RolesService } from './roles/roles.service';
+import { UsersService } from './users/users.service';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
-  
+
   // Enable CORS
   app.enableCors({
     origin: process.env.CORS_ORIGIN || '*', // Allow all origins in production
@@ -22,17 +24,25 @@ async function bootstrap() {
     }),
   );
 
+  // Seed roles
+  const rolesService = app.get(RolesService);
+  await rolesService.seedRoles();
+
+  // Seed admin user
+  const usersService = app.get(UsersService);
+  await usersService.seedAdminUser();
+
   // Serve static files from frontend build (in production)
   // In development, frontend runs separately on port 3001
   if (process.env.NODE_ENV === 'production') {
     const publicPath = join(__dirname, '..', 'public');
-    
+
     // Serve static assets (JS, CSS, images, etc.)
     app.useStaticAssets(publicPath, {
       prefix: '/',
       index: false, // Don't serve index.html automatically
     });
-    
+
     // Handle React Router (SPA) - serve index.html for all non-API routes
     // This runs after NestJS routes, so API routes are handled first
     app.use((req, res, next) => {

@@ -1,43 +1,159 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { useAuthStore } from '../store/authStore';
+import MainLayout from '../components/MainLayout';
 
 type ToolGroupKey = 'TRS' | 'DHT';
+
+interface ToolSize {
+  size: string;
+  quantity: number;
+}
 
 interface Tool {
   id: string;
   name: string;
   group: ToolGroupKey;
-  available: number;
+  available: number; // Total available across all sizes
+  sizes: ToolSize[]; // Array of sizes with quantities
+  type?: string;
 }
 
 const Inventory = () => {
-  const { user } = useAuthStore();
   const [selectedGroup, setSelectedGroup] = useState<ToolGroupKey | 'ALL'>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showOperationsMenu, setShowOperationsMenu] = useState(true);
-  const [showClientsMenu, setShowClientsMenu] = useState(false);
   const [editingTool, setEditingTool] = useState<Tool | null>(null);
+  const [editSizeIndex, setEditSizeIndex] = useState<number>(-1);
   const [editQuantity, setEditQuantity] = useState(0);
   const [newTool, setNewTool] = useState({
     name: '',
     group: 'TRS' as ToolGroupKey,
-    available: 10,
+    type: '',
+    sizes: [{ size: '', quantity: 0 }] as ToolSize[],
   });
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [, setImportFile] = useState<File | null>(null);
 
   const [tools, setTools] = useState<Tool[]>([
-    { id: 'trs-crt', name: 'CRT', group: 'TRS', available: 10 },
-    { id: 'trs-power-tong', name: 'POWER TONG', group: 'TRS', available: 10 },
-    { id: 'trs-jam-unit', name: 'JAM UNIT', group: 'TRS', available: 10 },
-    { id: 'trs-filup-tool', name: 'FILUP TOOL', group: 'TRS', available: 10 },
-    { id: 'trs-handling-tools', name: 'HANDLING TOOLS', group: 'TRS', available: 10 },
-    { id: 'dht-reamers', name: 'REAMERS', group: 'DHT', available: 10 },
-    { id: 'dht-anti-stick-slip', name: 'ANTI STICK SLIP', group: 'DHT', available: 10 },
-    { id: 'dht-scrapper', name: 'SCRAPPER', group: 'DHT', available: 10 },
-    { id: 'dht-jars', name: 'JARS', group: 'DHT', available: 10 },
-    { id: 'dht-control-valve', name: 'CONTROL VALVE', group: 'DHT', available: 10 },
-    { id: 'dht-torque-reducer', name: 'TORQUE REDUCER', group: 'DHT', available: 10 },
+    {
+      id: 'trs-crt',
+      name: 'CRT',
+      group: 'TRS',
+      available: 25,
+      sizes: [
+        { size: '4 1/2"', quantity: 10 },
+        { size: '5"', quantity: 8 },
+        { size: '6 5/8"', quantity: 7 }
+      ],
+      type: 'Standard'
+    },
+    {
+      id: 'trs-power-tong',
+      name: 'POWER TONG',
+      group: 'TRS',
+      available: 15,
+      sizes: [
+        { size: '5"', quantity: 10 },
+        { size: '6 5/8"', quantity: 5 }
+      ],
+      type: 'Standard'
+    },
+    {
+      id: 'trs-jam-unit',
+      name: 'JAM UNIT',
+      group: 'TRS',
+      available: 12,
+      sizes: [
+        { size: '6 5/8"', quantity: 7 },
+        { size: '7"', quantity: 5 }
+      ],
+      type: 'Standard'
+    },
+    {
+      id: 'trs-filup-tool',
+      name: 'FILUP TOOL',
+      group: 'TRS',
+      available: 18,
+      sizes: [
+        { size: '4 1/2"', quantity: 10 },
+        { size: '5"', quantity: 8 }
+      ],
+      type: 'Standard'
+    },
+    {
+      id: 'trs-handling-tools',
+      name: 'HANDLING TOOLS',
+      group: 'TRS',
+      available: 20,
+      sizes: [
+        { size: '5"', quantity: 12 },
+        { size: '6 5/8"', quantity: 8 }
+      ],
+      type: 'Standard'
+    },
+    {
+      id: 'dht-reamers',
+      name: 'REAMERS',
+      group: 'DHT',
+      available: 15,
+      sizes: [
+        { size: '7"', quantity: 10 },
+        { size: '8 5/8"', quantity: 5 }
+      ],
+      type: 'Standard'
+    },
+    {
+      id: 'dht-anti-stick-slip',
+      name: 'ANTI STICK SLIP',
+      group: 'DHT',
+      available: 22,
+      sizes: [
+        { size: '4 1/2"', quantity: 12 },
+        { size: '5"', quantity: 10 }
+      ],
+      type: 'Standard'
+    },
+    {
+      id: 'dht-scrapper',
+      name: 'SCRAPPER',
+      group: 'DHT',
+      available: 10,
+      sizes: [
+        { size: '6 5/8"', quantity: 10 }
+      ],
+      type: 'Standard'
+    },
+    {
+      id: 'dht-jars',
+      name: 'JARS',
+      group: 'DHT',
+      available: 18,
+      sizes: [
+        { size: '5"', quantity: 10 },
+        { size: '6 5/8"', quantity: 8 }
+      ],
+      type: 'Standard'
+    },
+    {
+      id: 'dht-control-valve',
+      name: 'CONTROL VALVE',
+      group: 'DHT',
+      available: 15,
+      sizes: [
+        { size: '4 1/2"', quantity: 8 },
+        { size: '5"', quantity: 7 }
+      ],
+      type: 'Standard'
+    },
+    {
+      id: 'dht-torque-reducer',
+      name: 'TORQUE REDUCER',
+      group: 'DHT',
+      available: 12,
+      sizes: [
+        { size: '7"', quantity: 12 }
+      ],
+      type: 'Standard'
+    },
   ]);
 
   const filteredTools = tools.filter(t => {
@@ -49,388 +165,281 @@ const Inventory = () => {
 
   const totalCount = tools.reduce((sum, t) => sum + t.available, 0);
 
+  const handleAddSize = () => {
+    setNewTool({
+      ...newTool,
+      sizes: [...newTool.sizes, { size: '', quantity: 0 }],
+    });
+  };
+
+  const handleRemoveSize = (index: number) => {
+    setNewTool({
+      ...newTool,
+      sizes: newTool.sizes.filter((_, i) => i !== index),
+    });
+  };
+
+  const handleUpdateSize = (index: number, field: 'size' | 'quantity', value: string | number) => {
+    const updatedSizes = [...newTool.sizes];
+    updatedSizes[index] = {
+      ...updatedSizes[index],
+      [field]: field === 'quantity' ? Number(value) : value,
+    };
+    setNewTool({
+      ...newTool,
+      sizes: updatedSizes,
+    });
+  };
+
   const handleAddTool = () => {
     if (!newTool.name.trim()) {
       alert('Please enter a tool name');
       return;
     }
 
+    // Validate sizes
+    const validSizes = newTool.sizes.filter(s => s.size.trim() && s.quantity > 0);
+    if (validSizes.length === 0) {
+      alert('Please add at least one size with quantity');
+      return;
+    }
+
     const toolId = `${newTool.group.toLowerCase()}-${newTool.name.toLowerCase().replace(/\s+/g, '-')}`;
+    const totalAvailable = validSizes.reduce((sum, s) => sum + s.quantity, 0);
+
     const tool: Tool = {
       id: toolId,
       name: newTool.name.toUpperCase(),
       group: newTool.group,
-      available: newTool.available || 0,
+      available: totalAvailable,
+      sizes: validSizes,
+      type: newTool.type || undefined,
     };
 
     setTools([...tools, tool]);
-    setNewTool({ name: '', group: 'TRS', available: 10 });
+    setNewTool({
+      name: '',
+      group: 'TRS',
+      type: '',
+      sizes: [{ size: '', quantity: 0 }]
+    });
     setShowAddModal(false);
   };
 
-  const handleEditQuantity = (tool: Tool) => {
+  const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setImportFile(file);
+
+    try {
+      // For CSV files (simple text parsing)
+      if (file.name.endsWith('.csv')) {
+        const text = await file.text();
+        const lines = text.split('\n').filter(line => line.trim());
+
+        if (lines.length < 2) {
+          alert('CSV file must have at least a header row and one data row');
+          return;
+        }
+
+        // Parse CSV header
+        const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+        const nameIdx = headers.findIndex(h => h.includes('name') || h.includes('tool'));
+        const groupIdx = headers.findIndex(h => h.includes('group') || h.includes('type'));
+        const sizeIdx = headers.findIndex(h => h.includes('size'));
+        const typeIdx = headers.findIndex(h => h.includes('type') && !h.includes('group'));
+        const qtyIdx = headers.findIndex(h => h.includes('quantity') || h.includes('qty') || h.includes('available'));
+
+        if (nameIdx === -1) {
+          alert('CSV file must have a "Name" or "Tool" column');
+          return;
+        }
+
+        // Group by tool name to collect all sizes
+        const toolMap = new Map<string, Tool>();
+
+        // Parse data rows
+        for (let i = 1; i < lines.length; i++) {
+          const values = lines[i].split(',').map(v => v.trim());
+          if (!values[nameIdx]) continue; // Skip empty rows
+
+          const toolName = values[nameIdx].toUpperCase();
+          const group = (values[groupIdx]?.toUpperCase() === 'DHT' ? 'DHT' : 'TRS') as ToolGroupKey;
+          const size = sizeIdx >= 0 && values[sizeIdx] ? values[sizeIdx].trim() : undefined;
+          const type = typeIdx >= 0 ? values[typeIdx] : undefined;
+          const quantity = qtyIdx >= 0 ? parseInt(values[qtyIdx]) || 0 : 1;
+
+          const toolId = `${group.toLowerCase()}-${toolName.toLowerCase().replace(/\s+/g, '-')}`;
+
+          if (toolMap.has(toolId)) {
+            // Tool exists, add size to existing tool
+            const existingTool = toolMap.get(toolId)!;
+            if (size && quantity > 0) {
+              // Check if size already exists
+              const sizeIndex = existingTool.sizes.findIndex(s => s.size === size);
+              if (sizeIndex >= 0) {
+                // Update quantity for existing size
+                existingTool.sizes[sizeIndex].quantity += quantity;
+              } else {
+                // Add new size
+                existingTool.sizes.push({ size, quantity });
+              }
+              // Recalculate total available
+              existingTool.available = existingTool.sizes.reduce((sum, s) => sum + s.quantity, 0);
+            }
+          } else {
+            // New tool
+            const sizes: ToolSize[] = size && quantity > 0 ? [{ size, quantity }] : [];
+            toolMap.set(toolId, {
+              id: toolId,
+              name: toolName,
+              group,
+              available: quantity,
+              sizes,
+              type,
+            });
+          }
+        }
+
+        const importedTools = Array.from(toolMap.values());
+
+        if (importedTools.length > 0) {
+          setTools(prev => {
+            // Merge with existing tools, update if exists, add if new
+            const existingMap = new Map(prev.map(t => [t.id, t]));
+
+            importedTools.forEach(imported => {
+              if (existingMap.has(imported.id)) {
+                // Merge sizes for existing tool
+                const existing = existingMap.get(imported.id)!;
+                const sizeMap = new Map(existing.sizes.map(s => [s.size, s.quantity]));
+
+                // Add/update sizes from imported tool
+                imported.sizes.forEach(s => {
+                  if (sizeMap.has(s.size)) {
+                    sizeMap.set(s.size, sizeMap.get(s.size)! + s.quantity);
+                  } else {
+                    sizeMap.set(s.size, s.quantity);
+                  }
+                });
+
+                // Update existing tool
+                existing.sizes = Array.from(sizeMap.entries()).map(([size, quantity]) => ({
+                  size,
+                  quantity,
+                }));
+                existing.available = existing.sizes.reduce((sum, s) => sum + s.quantity, 0);
+                if (imported.type) existing.type = imported.type;
+              } else {
+                // Add new tool
+                existingMap.set(imported.id, imported);
+              }
+            });
+
+            return Array.from(existingMap.values());
+          });
+          alert(`Successfully imported ${importedTools.length} tool(s) with their sizes`);
+          setShowImportModal(false);
+          setImportFile(null);
+        } else {
+          alert('No valid tools found in the file');
+        }
+      } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+        // For Excel files, xlsx library is required
+        // Show helpful message and instructions
+        const installMessage = `Excel file import requires the xlsx library to be installed.
+
+To enable Excel import, please run:
+
+cd frontend
+npm install xlsx
+
+Then restart your development server.
+
+Alternatively, you can save your Excel file as CSV format (.csv) and import it directly - CSV import works immediately without any installation.`;
+
+        alert(installMessage);
+        setImportFile(null);
+        // NOTE: Excel import code removed to prevent Vite build errors
+        // After installing xlsx: npm install xlsx
+        // Re-enable Excel import functionality in a separate commit
+      } else {
+        alert('Please select a CSV or Excel file (.csv, .xlsx, .xls)');
+        setImportFile(null);
+      }
+    } catch (error) {
+      console.error('Error importing file:', error);
+      alert('Error importing file. Please check the file format.');
+      setImportFile(null);
+    }
+  };
+
+  const handleEditQuantity = (tool: Tool, sizeIndex: number) => {
     setEditingTool(tool);
-    setEditQuantity(tool.available);
+    setEditSizeIndex(sizeIndex);
+    setEditQuantity(tool.sizes[sizeIndex]?.quantity || 0);
   };
 
   const handleUpdateQuantity = () => {
-    if (editingTool && editQuantity >= 0) {
+    if (editingTool && editSizeIndex >= 0 && editQuantity >= 0) {
       setTools(
-        tools.map(tool =>
-          tool.id === editingTool.id ? { ...tool, available: editQuantity } : tool
-        )
+        tools.map(tool => {
+          if (tool.id === editingTool.id) {
+            const updatedSizes = [...tool.sizes];
+            updatedSizes[editSizeIndex] = {
+              ...updatedSizes[editSizeIndex],
+              quantity: editQuantity,
+            };
+            const totalAvailable = updatedSizes.reduce((sum, s) => sum + s.quantity, 0);
+            return {
+              ...tool,
+              sizes: updatedSizes,
+              available: totalAvailable,
+            };
+          }
+          return tool;
+        })
       );
       setEditingTool(null);
+      setEditSizeIndex(-1);
       setEditQuantity(0);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="flex">
-        {/* Left Sidebar - same navigation */}
-        <div className="w-64 bg-gradient-to-b from-primary-900 via-primary-800 to-primary-900 h-screen shadow-2xl flex flex-col">
-          <div className="p-4 flex flex-col h-full">
-            {/* OTEC Logo - Replace /logo.png with your actual logo file path */}
-            <div className="mb-6 flex-shrink-0">
-              <img 
-                src="/logo.png" 
-                alt="OTEC Logo" 
-                className="w-full h-auto object-contain bg-white rounded-lg p-2"
-              />
-            </div>
-            
-            <nav className="space-y-1 flex-1 min-h-0 overflow-visible">
-              {/* Dashboard */}
-              <Link
-                to="/dashboard"
-                className="flex items-center space-x-3 px-4 py-3 text-blue-100 hover:bg-primary-700 hover:shadow-md transition-all duration-200 rounded-lg"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
-                  />
-                </svg>
-                <span>Dashboard</span>
-              </Link>
-
-              {/* Operations */}
-              <div className="relative">
-                <button
-                  onClick={() => setShowOperationsMenu(!showOperationsMenu)}
-                  className="w-full flex items-center justify-between px-4 py-3 text-blue-100 hover:bg-primary-700 hover:shadow-md transition-all duration-200 rounded-lg"
-                >
-                  <div className="flex items-center space-x-3">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M3 7h18M3 12h18M3 17h18"
-                      />
-                    </svg>
-                    <span>Operations</span>
-                  </div>
-                  <svg
-                    className={`w-4 h-4 transform transition-transform ${
-                      showOperationsMenu ? 'rotate-180' : ''
-                    }`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-                {showOperationsMenu && (
-                  <div className="mt-1 ml-4 space-y-1 max-h-48 overflow-y-auto">
-                    <Link
-                      to="/operations/tools"
-                      className="flex items-center space-x-3 px-4 py-2 text-sm text-blue-50 hover:bg-primary-700 hover:shadow-md transition-all duration-200 rounded-lg"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M7 7h.01M7 3h5a2 2 0 011.414.586l5 5a2 2 0 010 2.828l-7.586 7.586a2 2 0 01-2.828 0l-5-5A2 2 0 013 13V8a5 5 0 015-5z"
-                        />
-                      </svg>
-                      <span>Tools</span>
-                    </Link>
-                    <Link
-                      to="/operations/inventory"
-                      className="flex items-center space-x-3 px-4 py-2 text-sm bg-primary-700 text-white rounded-lg"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M3 7l9-4 9 4-9 4-9-4z"
-                        />
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M3 7v10l9 4 9-4V7"
-                        />
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 10l6 3"
-                        />
-                      </svg>
-                      <span>Inventory</span>
-                    </Link>
-                  </div>
-                )}
-              </div>
-
-              {/* Orders */}
-              <Link
-                to="/orders"
-                className="flex items-center space-x-3 px-4 py-3 text-blue-100 hover:bg-primary-700 hover:shadow-md transition-all duration-200 rounded-lg"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                  />
-                </svg>
-                <span>Orders</span>
-              </Link>
-
-              {/* Clients with submenu */}
-              <div className="relative">
-                <button
-                  onClick={() => setShowClientsMenu(!showClientsMenu)}
-                  className="w-full flex items-center justify-between px-4 py-3 text-blue-100 hover:bg-primary-700 hover:shadow-md transition-all duration-200 rounded-lg"
-                >
-                  <div className="flex items-center space-x-3">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                      />
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                      />
-                    </svg>
-                    <span>Clients</span>
-                  </div>
-                  <svg
-                    className={`w-4 h-4 transform transition-transform ${
-                      showClientsMenu ? 'rotate-180' : ''
-                    }`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-                {showClientsMenu && (
-                  <div className="mt-1 ml-4 space-y-1 max-h-48 overflow-y-auto">
-                    <Link
-                      to="/clients/customers"
-                      className="flex items-center space-x-3 px-4 py-2 text-sm text-blue-50 hover:bg-primary-700 hover:shadow-md transition-all duration-200 rounded-lg"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                      </svg>
-                      <span>Customers</span>
-                    </Link>
-                    <Link
-                      to="/clients/locations"
-                      className="flex items-center space-x-3 px-4 py-2 text-sm text-blue-50 hover:bg-primary-700 hover:shadow-md transition-all duration-200 rounded-lg"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                      <span>Locations</span>
-                    </Link>
-                    <Link
-                      to="/clients/rigs"
-                      className="flex items-center space-x-3 px-4 py-2 text-sm text-blue-50 hover:bg-primary-700 hover:shadow-md transition-all duration-200 rounded-lg"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                      </svg>
-                      <span>Rigs</span>
-                    </Link>
-                  </div>
-                )}
-              </div>
-
-              {/* Reports */}
-              <Link
-                to="/reports"
-                className="flex items-center space-x-3 px-4 py-3 text-blue-100 hover:bg-primary-700 hover:shadow-md transition-all duration-200 rounded-lg"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                  />
-                </svg>
-                <span>Reports</span>
-              </Link>
-
-              {/* Users */}
-              <Link
-                to="/users"
-                className="flex items-center space-x-3 px-4 py-3 text-blue-100 hover:bg-primary-700 hover:shadow-md transition-all duration-200 rounded-lg"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
-                  />
-                </svg>
-                <span>Users</span>
-              </Link>
-            </nav>
-
-            {/* User Avatar - Fixed at bottom */}
-            <div className="w-12 h-12 bg-gradient-to-br from-primary-600 to-primary-700 rounded-full shadow-lg ring-2 ring-primary-500/50 flex items-center justify-center mt-4 flex-shrink-0">
-              <span className="text-white font-semibold text-lg">
-                {user?.firstName?.[0]}
-                {user?.lastName?.[0]}
-              </span>
-            </div>
+    <MainLayout
+      headerContent={
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 via-primary-700 to-gray-900 bg-clip-text text-transparent">Inventory</h1>
+            <p className="text-sm text-gray-500 mt-1">
+              Overview of TRS and DHT tools with available quantities.
+            </p>
           </div>
-        </div>
-
-        {/* Main content */}
-        <div className="flex-1 p-6 space-y-6">
-          {/* Header + summary */}
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Inventory</h1>
-              <p className="text-sm text-gray-500 mt-1">
-                Overview of TRS and DHT tools with available quantities.
-              </p>
-            </div>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-              <button
-                onClick={() => setShowAddModal(true)}
-                className="px-4 py-2 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-lg text-sm font-medium hover:from-primary-500 hover:to-primary-600 hover:shadow-md transition-all duration-200 flex items-center space-x-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                <span>Add Tool</span>
-              </button>
-              <div className="bg-white rounded-lg shadow px-4 py-3 flex items-center space-x-3">
-                <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center">
-                  <svg
-                    className="w-4 h-4 text-primary-700"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M3 7l9-4 9 4-9 4-9-4z"
-                    />
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M3 7v10l9 4 9-4V7"
-                    />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-gray-500">
-                    Total Quantity
-                  </p>
-                  <p className="text-xl font-semibold text-gray-900">{totalCount}</p>
-                </div>
-              </div>
-              <div className="bg-white rounded-lg shadow px-4 py-3 flex items-center space-x-6">
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-gray-500">TRS Tools</p>
-                  <p className="text-base font-semibold text-gray-900">
-                    {tools.filter(t => t.group === 'TRS').length}
-                  </p>
-                </div>
-                <div className="w-px h-8 bg-gray-200" />
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-gray-500">DHT Tools</p>
-                  <p className="text-base font-semibold text-gray-900">
-                    {tools.filter(t => t.group === 'DHT').length}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Filters + search */}
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-            <div className="flex items-center flex-wrap gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <button
-              onClick={() => setSelectedGroup('ALL')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                selectedGroup === 'ALL'
-                  ? 'bg-primary-700 text-white'
-                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-              }`}
+              onClick={() => setShowImportModal(true)}
+              className="px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg text-sm font-medium hover:from-green-500 hover:to-green-600 hover:shadow-md transition-all duration-200 flex items-center space-x-2"
             >
-              All Tools
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              <span>Import Tools</span>
             </button>
             <button
-              onClick={() => setSelectedGroup('TRS')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                selectedGroup === 'TRS'
-                  ? 'bg-primary-700 text-white'
-                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-              }`}
+              onClick={() => setShowAddModal(true)}
+              className="px-4 py-2 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-lg text-sm font-medium hover:from-primary-500 hover:to-primary-600 hover:shadow-md transition-all duration-200 flex items-center space-x-2"
             >
-              TRS
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <span>Add Tool</span>
             </button>
-            <button
-              onClick={() => setSelectedGroup('DHT')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                selectedGroup === 'DHT'
-                  ? 'bg-primary-700 text-white'
-                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-              }`}
-            >
-              DHT
-            </button>
-            </div>
-
-            <div className="relative w-full md:w-64">
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search tools"
-                className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
-              <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+            <div className="bg-white rounded-lg shadow px-4 py-3 flex items-center space-x-3">
+              <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center">
                 <svg
-                  className="h-4 w-4 text-gray-400"
+                  className="w-4 h-4 text-primary-700"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -439,282 +448,428 @@ const Inventory = () => {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    d="M3 7l9-4 9 4-9 4-9-4z"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 7v10l9 4 9-4V7"
                   />
                 </svg>
               </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-gray-500">
+                  Total Quantity
+                </p>
+                <p className="text-xl font-semibold text-gray-900">{totalCount}</p>
+              </div>
             </div>
           </div>
-
-          {/* TRS section */}
-          {(selectedGroup === 'ALL' || selectedGroup === 'TRS') && (
-            <div className="mb-6 bg-white rounded-lg shadow p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900">TRS</h2>
-                <span className="text-sm text-gray-500">
-                  Tools: {filteredTools.filter(t => t.group === 'TRS').length}
-                </span>
-              </div>
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Tool Name
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Available Qty
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredTools
-                    .filter(t => t.group === 'TRS')
-                    .map(tool => (
-                      <tr key={tool.id}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          <div className="flex items-center space-x-2">
-                            <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-primary-100 text-primary-700 text-xs font-semibold">
-                              {tool.name.charAt(0)}
-                            </span>
-                            <span>{tool.name}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                          {tool.available}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <button
-                            onClick={() => handleEditQuantity(tool)}
-                            className="text-primary-600 hover:text-primary-900 flex items-center space-x-1"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                            <span>Edit</span>
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* DHT section */}
-          {(selectedGroup === 'ALL' || selectedGroup === 'DHT') && (
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900">DHT</h2>
-                <span className="text-sm text-gray-500">
-                  Tools: {filteredTools.filter(t => t.group === 'DHT').length}
-                </span>
-              </div>
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Tool Name
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Available Qty
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredTools
-                    .filter(t => t.group === 'DHT')
-                    .map(tool => (
-                      <tr key={tool.id}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          <div className="flex items-center space-x-2">
-                            <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold">
-                              {tool.name.charAt(0)}
-                            </span>
-                            <span>{tool.name}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                          {tool.available}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <button
-                            onClick={() => handleEditQuantity(tool)}
-                            className="text-primary-600 hover:text-primary-900 flex items-center space-x-1"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                            <span>Edit</span>
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-            </div>
-          )}
         </div>
+      }
+    >
+      <div className="space-y-6">
+        {/* Filters + search */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div className="flex items-center flex-wrap gap-2">
+            <button
+              onClick={() => setSelectedGroup('ALL')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium ${selectedGroup === 'ALL'
+                ? 'bg-primary-700 text-white'
+                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                }`}
+            >
+              All Tools
+            </button>
+            <button
+              onClick={() => setSelectedGroup('TRS')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium ${selectedGroup === 'TRS'
+                ? 'bg-primary-700 text-white'
+                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                }`}
+            >
+              TRS
+            </button>
+            <button
+              onClick={() => setSelectedGroup('DHT')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium ${selectedGroup === 'DHT'
+                ? 'bg-primary-700 text-white'
+                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                }`}
+            >
+              DHT
+            </button>
+          </div>
+
+          <div className="relative w-full md:w-64">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search tools"
+              className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
+            <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+              <svg
+                className="h-4 w-4 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        {/* TRS section */}
+        {(selectedGroup === 'ALL' || selectedGroup === 'TRS') && (
+          <div className="mb-6 bg-white rounded-lg shadow p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">TRS</h2>
+              <span className="text-sm text-gray-500">
+                Tools: {filteredTools.filter(t => t.group === 'TRS').length}
+              </span>
+            </div>
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Tool Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Sizes & Quantities
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Type
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Total Qty
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredTools.filter(t => t.group === 'TRS').map((tool) => (
+                  <tr key={tool.id}>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">{tool.name}</div>
+                      <div className="text-xs text-gray-500">{tool.id}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-wrap gap-2">
+                        {tool.sizes.map((size, idx) => (
+                          <span
+                            key={idx}
+                            onClick={() => handleEditQuantity(tool, idx)}
+                            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 cursor-pointer hover:bg-blue-200"
+                            title="Click to edit quantity"
+                          >
+                            {size.size}: {size.quantity}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {tool.type || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-gray-900">
+                      {tool.available}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* DHT section */}
+        {(selectedGroup === 'ALL' || selectedGroup === 'DHT') && (
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">DHT</h2>
+              <span className="text-sm text-gray-500">
+                Tools: {filteredTools.filter(t => t.group === 'DHT').length}
+              </span>
+            </div>
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Tool Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Sizes & Quantities
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Type
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Total Qty
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredTools.filter(t => t.group === 'DHT').map((tool) => (
+                  <tr key={tool.id}>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">{tool.name}</div>
+                      <div className="text-xs text-gray-500">{tool.id}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-wrap gap-2">
+                        {tool.sizes.map((size, idx) => (
+                          <span
+                            key={idx}
+                            onClick={() => handleEditQuantity(tool, idx)}
+                            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 cursor-pointer hover:bg-blue-200"
+                            title="Click to edit quantity"
+                          >
+                            {size.size}: {size.quantity}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {tool.type || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-gray-900">
+                      {tool.available}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Add Tool Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex justify-center items-center">
-          <div className="relative p-5 border w-96 shadow-lg rounded-lg bg-white">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-medium text-gray-900">Add New Tool</h3>
-              <button
-                onClick={() => {
-                  setShowAddModal(false);
-                  setNewTool({ name: '', group: 'TRS', available: 10 });
-                }}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 transition-opacity" aria-hidden="true">
+              <div className="absolute inset-0 bg-gray-500 opacity-75" onClick={() => setShowAddModal(false)}></div>
             </div>
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="toolName" className="block text-sm font-medium text-gray-700 mb-1">
-                  Tool Name
-                </label>
-                <input
-                  type="text"
-                  id="toolName"
-                  value={newTool.name}
-                  onChange={(e) => setNewTool({ ...newTool, name: e.target.value })}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="Enter tool name"
-                />
+
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Add New Tool</h3>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Tool Name</label>
+                    <input
+                      type="text"
+                      value={newTool.name}
+                      onChange={(e) => setNewTool({ ...newTool, name: e.target.value })}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                      placeholder="e.g. CRT"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Group</label>
+                    <select
+                      value={newTool.group}
+                      onChange={(e) => setNewTool({ ...newTool, group: e.target.value as ToolGroupKey })}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                    >
+                      <option value="TRS">TRS</option>
+                      <option value="DHT">DHT</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Sizes & Quantities</label>
+                    {newTool.sizes.map((size, index) => (
+                      <div key={index} className="flex gap-2 mt-2">
+                        <input
+                          type="text"
+                          value={size.size}
+                          onChange={(e) => handleUpdateSize(index, 'size', e.target.value)}
+                          className="block w-1/2 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                          placeholder="Size (e.g. 5&quot;)"
+                        />
+                        <input
+                          type="number"
+                          value={size.quantity}
+                          onChange={(e) => handleUpdateSize(index, 'quantity', Number(e.target.value))}
+                          className="block w-1/3 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                          placeholder="Qty"
+                          min="0"
+                        />
+                        {newTool.sizes.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveSize(index)}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={handleAddSize}
+                      className="mt-2 text-sm text-primary-600 hover:text-primary-800 font-medium flex items-center"
+                    >
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                      </svg>
+                      Add Another Size
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-5 sm:mt-6 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={handleAddTool}
+                    className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary-600 text-base font-medium text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 sm:text-sm"
+                  >
+                    Add Tool
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddModal(false)}
+                    className="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 sm:text-sm"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
-              <div>
-                <label htmlFor="toolGroup" className="block text-sm font-medium text-gray-700 mb-1">
-                  Group
-                </label>
-                <select
-                  id="toolGroup"
-                  value={newTool.group}
-                  onChange={(e) => setNewTool({ ...newTool, group: e.target.value as ToolGroupKey })}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                >
-                  <option value="TRS">TRS</option>
-                  <option value="DHT">DHT</option>
-                </select>
-              </div>
-              <div>
-                <label htmlFor="toolQuantity" className="block text-sm font-medium text-gray-700 mb-1">
-                  Available Quantity
-                </label>
-                <input
-                  type="number"
-                  id="toolQuantity"
-                  value={newTool.available}
-                  onChange={(e) => setNewTool({ ...newTool, available: parseInt(e.target.value) || 0 })}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="Enter quantity"
-                  min="0"
-                />
-              </div>
-            </div>
-            <div className="mt-6 flex justify-end space-x-3">
-              <button
-                onClick={() => {
-                  setShowAddModal(false);
-                  setNewTool({ name: '', group: 'TRS', available: 10 });
-                }}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAddTool}
-                className="px-4 py-2 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-lg text-sm font-medium hover:from-primary-500 hover:to-primary-600 hover:shadow-md transition-all duration-200"
-              >
-                Add Tool
-              </button>
             </div>
           </div>
         </div>
       )}
 
       {/* Edit Quantity Modal */}
-      {editingTool && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex justify-center items-center">
-          <div className="relative p-5 border w-96 shadow-lg rounded-lg bg-white">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-medium text-gray-900">Adjust Quantity</h3>
-              <button
-                onClick={() => {
-                  setEditingTool(null);
-                  setEditQuantity(0);
-                }}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+      {editingTool && editSizeIndex >= 0 && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 transition-opacity" aria-hidden="true">
+              <div className="absolute inset-0 bg-gray-500 opacity-75" onClick={() => setEditingTool(null)}></div>
             </div>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tool Name
-                </label>
-                <p className="text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-lg border border-gray-200">
-                  {editingTool.name}
+
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-sm sm:w-full">
+              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Edit Quantity</h3>
+                <p className="text-sm text-gray-500 mb-4">
+                  {editingTool.name} - Size: {editingTool.sizes[editSizeIndex].size}
                 </p>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Quantity</label>
+                  <input
+                    type="number"
+                    value={editQuantity}
+                    onChange={(e) => setEditQuantity(Number(e.target.value))}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                    min="0"
+                  />
+                </div>
+
+                <div className="mt-5 sm:mt-6 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={handleUpdateQuantity}
+                    className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary-600 text-base font-medium text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 sm:text-sm"
+                  >
+                    Update
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingTool(null);
+                      setEditSizeIndex(-1);
+                    }}
+                    className="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 sm:text-sm"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Group
-                </label>
-                <p className="text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-lg border border-gray-200">
-                  {editingTool.group}
-                </p>
-              </div>
-              <div>
-                <label htmlFor="editQuantity" className="block text-sm font-medium text-gray-700 mb-1">
-                  Available Quantity
-                </label>
-                <input
-                  type="number"
-                  id="editQuantity"
-                  value={editQuantity}
-                  onChange={(e) => setEditQuantity(parseInt(e.target.value) || 0)}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="Enter quantity"
-                  min="0"
-                />
-              </div>
-            </div>
-            <div className="mt-6 flex justify-end space-x-3">
-              <button
-                onClick={() => {
-                  setEditingTool(null);
-                  setEditQuantity(0);
-                }}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleUpdateQuantity}
-                className="px-4 py-2 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-lg text-sm font-medium hover:from-primary-500 hover:to-primary-600 hover:shadow-md transition-all duration-200"
-              >
-                Update Quantity
-              </button>
             </div>
           </div>
         </div>
       )}
-    </div>
+
+      {/* Import Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 transition-opacity" aria-hidden="true">
+              <div className="absolute inset-0 bg-gray-500 opacity-75" onClick={() => setShowImportModal(false)}></div>
+            </div>
+
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Import Tools</h3>
+
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-600">
+                    Upload a CSV file with columns for Name, Group (TRS/DHT), Size, and Quantity.
+                  </p>
+
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-primary-500 transition-colors">
+                    <input
+                      type="file"
+                      accept=".csv,.xlsx,.xls"
+                      onChange={handleFileImport}
+                      className="hidden"
+                      id="file-upload"
+                    />
+                    <label htmlFor="file-upload" className="cursor-pointer">
+                      <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                      </svg>
+                      <span className="mt-2 block text-sm font-medium text-gray-900">
+                        Click to upload file
+                      </span>
+                      <span className="mt-1 block text-xs text-gray-500">
+                        CSV, Excel
+                      </span>
+                    </label>
+                  </div>
+
+                  <div className="bg-gray-50 p-3 rounded text-xs text-gray-600">
+                    <p className="font-semibold mb-1">Expected Format:</p>
+                    <p>Name, Group, Size, Quantity</p>
+                    <p className="text-gray-400 mt-1">Example: CRT, TRS, 5&quot;, 10</p>
+                  </div>
+                </div>
+
+                <div className="mt-5 sm:mt-6">
+                  <button
+                    type="button"
+                    onClick={() => setShowImportModal(false)}
+                    className="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 sm:text-sm"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </MainLayout>
   );
 };
 
 export default Inventory;
-
-

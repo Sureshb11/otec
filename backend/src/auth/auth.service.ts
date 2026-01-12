@@ -94,4 +94,8 @@ export class AuthService {
       throw new BadRequestException('Invalid or expired reset token');
     }
   }
+
+  async getCurrentUser(userId: string) {
+    return this.usersService.findOne(userId);
+  }
 }

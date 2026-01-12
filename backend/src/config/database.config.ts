@@ -4,12 +4,12 @@ import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class DatabaseConfig implements TypeOrmOptionsFactory {
-  constructor(private configService: ConfigService) {}
+  constructor(private configService: ConfigService) { }
 
   createTypeOrmOptions(): TypeOrmModuleOptions {
     const host = this.configService.get<string>('DB_HOST', 'localhost');
     const isAzure = host.includes('database.azure.com');
-    
+
     return {
       type: 'postgres',
       host: host,

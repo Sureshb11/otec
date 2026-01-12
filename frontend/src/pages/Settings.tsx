@@ -6,7 +6,7 @@ const Settings = () => {
   return (
     <div className="px-4 py-6 sm:px-0">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
+        <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 via-primary-700 to-gray-900 bg-clip-text text-transparent">Settings</h1>
         <p className="mt-2 text-sm text-gray-600">Manage your account settings</p>
       </div>
 
@@ -32,26 +32,28 @@ const Settings = () => {
               <dt className="text-sm font-medium text-gray-500">Roles</dt>
               <dd className="mt-1">
                 <div className="flex space-x-2">
-                  {user?.roles?.map((role) => (
-                    <span
-                      key={role}
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        role === 'admin'
+                  {user?.roles?.map((role: any) => {
+                    const roleName = typeof role === 'string' ? role : role.name;
+                    return (
+                      <span
+                        key={roleName}
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${roleName === 'admin'
                           ? 'bg-red-100 text-red-800'
-                          : role === 'manager'
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : role === 'employee'
-                          ? 'bg-green-100 text-green-800'
-                          : role === 'driver'
-                          ? 'bg-primary-100 text-primary-800'
-                          : role === 'vendor'
-                          ? 'bg-orange-100 text-orange-800'
-                          : 'bg-blue-100 text-blue-800'
-                      }`}
-                    >
-                      {role}
-                    </span>
-                  ))}
+                          : roleName === 'manager'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : roleName === 'employee'
+                              ? 'bg-green-100 text-green-800'
+                              : roleName === 'driver'
+                                ? 'bg-primary-100 text-primary-800'
+                                : roleName === 'vendor'
+                                  ? 'bg-orange-100 text-orange-800'
+                                  : 'bg-blue-100 text-blue-800'
+                          }`}
+                      >
+                        {roleName}
+                      </span>
+                    );
+                  })}
                 </div>
               </dd>
             </div>
@@ -71,14 +73,14 @@ const Settings = () => {
             </div>
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
               <span className="text-sm font-medium text-gray-700">Admin Panel Access</span>
-              <span className={`text-sm ${user?.roles?.includes('admin') ? 'text-green-600' : 'text-red-600'}`}>
-                {user?.roles?.includes('admin') ? '✓ Allowed' : '✗ Restricted'}
+              <span className={`text-sm ${useAuthStore.getState().isAdmin() ? 'text-green-600' : 'text-red-600'}`}>
+                {useAuthStore.getState().isAdmin() ? '✓ Allowed' : '✗ Restricted'}
               </span>
             </div>
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
               <span className="text-sm font-medium text-gray-700">User Management</span>
-              <span className={`text-sm ${user?.roles?.includes('admin') ? 'text-green-600' : 'text-red-600'}`}>
-                {user?.roles?.includes('admin') ? '✓ Allowed' : '✗ Restricted'}
+              <span className={`text-sm ${useAuthStore.getState().isAdmin() ? 'text-green-600' : 'text-red-600'}`}>
+                {useAuthStore.getState().isAdmin() ? '✓ Allowed' : '✗ Restricted'}
               </span>
             </div>
           </div>
