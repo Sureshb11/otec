@@ -129,26 +129,26 @@ const RolePermissions = () => {
       <div className="mb-6">
         <button
           onClick={() => navigate('/roles')}
-          className="text-primary-600 hover:text-primary-700 mb-2 flex items-center"
+          className="text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 mb-2 flex items-center"
         >
           <span className="mr-2">←</span> Back to Roles
         </button>
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 via-primary-700 to-gray-900 bg-clip-text text-transparent capitalize">
+        <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 via-primary-700 to-gray-900 bg-clip-text text-transparent dark:text-white dark:bg-none capitalize">
           {role?.name} Permissions
         </h1>
-        <p className="mt-2 text-sm text-gray-600">{role?.description}</p>
+        <p className="mt-2 text-sm text-gray-600 dark:text-bodydark2">{role?.description}</p>
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-gray-200 mb-4">
+      <div className="border-b border-gray-200 dark:border-strokedark mb-4">
         <nav className="-mb-px flex space-x-8">
           {(['AI', 'Candidate Data', 'Feature', 'Module'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === tab
-                  ? 'border-primary-500 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                : 'border-transparent text-gray-500 dark:text-bodydark2 hover:text-gray-700 dark:hover:text-white hover:border-gray-300 dark:hover:border-strokedark'
                 }`}
             >
               {tab}
@@ -165,11 +165,11 @@ const RolePermissions = () => {
             placeholder="Search permissions..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+            className="pl-10 pr-4 py-2 border border-gray-300 dark:border-strokedark rounded-lg focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm bg-transparent dark:text-white"
           />
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <svg
-              className="h-5 w-5 text-gray-400"
+              className="h-5 w-5 text-gray-400 dark:text-bodydark2"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -186,44 +186,44 @@ const RolePermissions = () => {
       </div>
 
       {/* Permissions Table */}
-      <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+      <div className="bg-white dark:bg-boxdark shadow overflow-hidden sm:rounded-lg">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-strokedark">
+            <thead className="bg-gray-50 dark:bg-meta-4">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-bodydark2 uppercase tracking-wider">
                   Module Name
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-bodydark2 uppercase tracking-wider">
                   Feature
                 </th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-bodydark2 uppercase tracking-wider">
                   View
                 </th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-bodydark2 uppercase tracking-wider">
                   Add
                 </th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-bodydark2 uppercase tracking-wider">
                   Edit
                 </th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-bodydark2 uppercase tracking-wider">
                   Delete
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-boxdark divide-y divide-gray-200 dark:divide-strokedark">
               {Object.entries(groupedPermissions).map(([moduleName, modulePermissions]) =>
                 modulePermissions.map((permission, index) => (
-                  <tr key={permission.id} className="hover:bg-gray-50">
+                  <tr key={permission.id} className="hover:bg-gray-50 dark:hover:bg-meta-4">
                     {index === 0 && (
                       <td
                         rowSpan={modulePermissions.length}
-                        className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 align-top"
+                        className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white align-top"
                       >
                         {moduleName}
                       </td>
                     )}
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                       {permission.feature}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -235,7 +235,7 @@ const RolePermissions = () => {
                           className="sr-only peer"
                           disabled={updatePermissionsMutation.isLoading}
                         />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+                        <div className="w-11 h-6 bg-gray-200 dark:bg-meta-9 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-900 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
                       </label>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -247,7 +247,7 @@ const RolePermissions = () => {
                           className="sr-only peer"
                           disabled={updatePermissionsMutation.isLoading}
                         />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+                        <div className="w-11 h-6 bg-gray-200 dark:bg-meta-9 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-900 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
                       </label>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -259,7 +259,7 @@ const RolePermissions = () => {
                           className="sr-only peer"
                           disabled={updatePermissionsMutation.isLoading}
                         />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+                        <div className="w-11 h-6 bg-gray-200 dark:bg-meta-9 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-900 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
                       </label>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -271,7 +271,7 @@ const RolePermissions = () => {
                           className="sr-only peer"
                           disabled={updatePermissionsMutation.isLoading}
                         />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+                        <div className="w-11 h-6 bg-gray-200 dark:bg-meta-9 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-900 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
                       </label>
                     </td>
                   </tr>

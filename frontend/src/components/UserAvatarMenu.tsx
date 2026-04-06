@@ -31,17 +31,17 @@ const UserAvatarMenu = () => {
   };
 
   return (
-    <div className="px-4 py-4 border-t border-primary-700/50 flex-shrink-0 relative" ref={userMenuRef}>
+    <div className="relative" ref={userMenuRef}>
       <button
         onClick={() => setShowUserMenu(!showUserMenu)}
-        className="w-12 h-12 bg-gradient-to-br from-primary-600 to-primary-700 rounded-full flex items-center justify-center mx-auto shadow-lg ring-2 ring-primary-500/50 hover:ring-primary-400 transition-all duration-200 cursor-pointer"
+        className="w-12 h-12 bg-primary rounded-full flex items-center justify-center mx-auto shadow-lg ring-2 ring-primary/50 hover:ring-primary transition-all duration-200 cursor-pointer"
       >
         <span className="text-white font-semibold text-lg">
           {user?.firstName?.[0]}
           {user?.lastName?.[0]}
         </span>
       </button>
-      
+
       {/* Dropdown Menu */}
       {showUserMenu && (
         <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-50">

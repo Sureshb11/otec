@@ -12,29 +12,29 @@ export class Permission {
   @Column({ primary: true, type: 'uuid', default: () => 'gen_random_uuid()' })
   id: string;
 
-  @Column()
+  @Column({ name: 'moduleName' })
   moduleName: string;
 
   @Column()
   feature: string;
 
-  @Column({ default: false })
+  @Column({ name: 'canView', default: false })
   canView: boolean;
 
-  @Column({ default: false })
+  @Column({ name: 'canAdd', default: false })
   canAdd: boolean;
 
-  @Column({ default: false })
+  @Column({ name: 'canEdit', default: false })
   canEdit: boolean;
 
-  @Column({ default: false })
+  @Column({ name: 'canDelete', default: false })
   canDelete: boolean;
 
   @ManyToOne(() => Role, (role) => role.permissions, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'roleId' })
   role: Role;
 
-  @Column()
+  @Column({ name: 'roleId' })
   roleId: string;
 }
 

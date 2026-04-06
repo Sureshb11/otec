@@ -1,0 +1,59 @@
+name: Deploy to Vercel
+
+# Vercel handles deployment automatically via its Git Integration.
+# This workflow is just a status check — no extra steps needed.
+#
+# How it works:
+#   • Every push to `main`  → Vercel auto-deploys PRODUCTION
+#   • Every push to a branch → Vercel auto-deploys a PREVIEW URL
+#
+# Vercel Dashboard:  https://vercel.com/bsbsuresh11-6165
+# Frontend project:  frontend/
+# Backend project:   backend/
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  verify:
+    name: Pre-deploy checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: TypeScript check (frontend)
+        run: npx tsc --noEmit
+        working-directory: frontend
+
+      - name: Build check (frontend)
+        run: npm run build
+        working-directory: frontend
+        env:
+          VITE_USE_MOCK_API: false
+          VITE_API_BASE_URL: /api
+
+      - name: Install backend dependencies
+        run: npm ci
+        working-directory: backend
+
+      - name: Build check (backend)
+        run: npm run build
+        working-directory: backend
+
+      - name: All checks passed
+        run: echo "✅ Build verified — Vercel will deploy automatically"

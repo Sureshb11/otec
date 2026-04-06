@@ -7,7 +7,7 @@ const client = new Client({
   user: process.env.DB_USERNAME,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_DATABASE,
-  ssl: process.env.DB_HOST.includes('database.azure.com') ? {
+  ssl: process.env.DB_HOST.includes('database.azure.com') || process.env.DB_HOST.includes('neon.tech') ? {
     rejectUnauthorized: false,
   } : false,
 });
@@ -18,13 +18,13 @@ async function testConnection() {
     console.log('Host:', process.env.DB_HOST);
     console.log('Database:', process.env.DB_DATABASE);
     console.log('Username:', process.env.DB_USERNAME);
-    
+
     await client.connect();
     console.log('✅ Successfully connected to database!');
-    
+
     const result = await client.query('SELECT version()');
     console.log('PostgreSQL version:', result.rows[0].version);
-    
+
     await client.end();
     process.exit(0);
   } catch (error) {

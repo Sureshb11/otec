@@ -1,14 +1,18 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Role } from './role.entity';
 
 @Injectable()
-export class RolesService {
+export class RolesService implements OnApplicationBootstrap {
   constructor(
     @InjectRepository(Role)
     private rolesRepository: Repository<Role>,
   ) { }
+
+  async onApplicationBootstrap() {
+    await this.seedRoles();
+  }
 
   async findAll(): Promise<Role[]> {
     return this.rolesRepository.find();

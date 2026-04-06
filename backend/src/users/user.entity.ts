@@ -20,19 +20,19 @@ export class User {
   @Column()
   password: string;
 
-  @Column()
+  @Column({ name: 'firstName' })
   firstName: string;
 
-  @Column()
+  @Column({ name: 'lastName' })
   lastName: string;
 
   @Column({ default: true })
   isActive: boolean;
 
-  @Column({ nullable: true })
+  @Column({ name: 'resetPasswordToken', nullable: true })
   resetPasswordToken: string;
 
-  @Column({ nullable: true })
+  @Column({ name: 'resetPasswordExpires', nullable: true })
   resetPasswordExpires: Date;
 
   @ManyToMany(() => Role, (role) => role.users, { eager: true })
@@ -43,10 +43,10 @@ export class User {
   })
   roles: Role[];
 
-  @CreateDateColumn()
+  @CreateDateColumn({ name: 'createdAt' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ name: 'updatedAt' })
   updatedAt: Date;
 
   // Helper method to check if user has a specific role

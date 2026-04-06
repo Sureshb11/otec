@@ -3,119 +3,152 @@
 @tailwind utilities;
 
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
   color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  -webkit-text-size-adjust: 100%;
 }
 
 body {
   margin: 0;
   min-width: 320px;
   height: 100vh;
-  background-color: #f9fafb;
-  /* gray-50 equivalent */
+  background-color: #F3F4F6;
+  color: #637381;
+}
+
+.dark body {
+  background-color: #1A222C;
+  color: #DEE4EE;
 }
 
 #root {
   height: 100%;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
+/* Functional Animations for Dashboard & UI Enhancements */
+
+/* Premium Background Gradients */
+@keyframes gradient-x {
+  0%, 100% {
+    background-size: 200% 200%;
+    background-position: left center;
   }
-}
-
-/* Custom Animations */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes pulse-slow {
-
-  0%,
-  100% {
-    opacity: 1;
-  }
-
   50% {
-    opacity: 0.8;
+    background-size: 200% 200%;
+    background-position: right center;
   }
 }
 
-.animate-fadeIn {
-  animation: fadeIn 0.3s ease-in-out;
+.animate-gradient-x {
+  animation: gradient-x 15s ease infinite;
 }
 
-.animate-slideUp {
-  animation: slideUp 0.4s ease-out;
+/* Premium Shimmer Effect for Cards/Text */
+@keyframes shimmer {
+  from {
+    background-position: 200% center;
+  }
+  to {
+    background-position: -200% center;
+  }
 }
 
-.animate-pulse-slow {
-  animation: pulse-slow 3s ease-in-out infinite;
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 3s infinite linear;
 }
 
-/* Custom Scrollbar */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 8px;
+/* Enhanced Floating Animation for Dashboard Elements */
+@keyframes float {
+  0%, 100% { 
+    transform: translateY(0px) scale(1);
+    filter: drop-shadow(0 5px 15px rgba(0,0,0,0.05));
+  }
+  50% { 
+    transform: translateY(-5px) scale(1.01);
+    filter: drop-shadow(0 15px 25px rgba(0,0,0,0.1));
+  }
 }
 
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 10px;
+.animate-float {
+  animation: float 4s ease-in-out infinite;
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: linear-gradient(to bottom, #193cb8, #1e40af);
-  border-radius: 10px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(to bottom, #1e40af, #1e3a8a);
-}
-
-
+/* Refined Drilling Animation */
 @keyframes drilling {
-
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-
-  50% {
-    transform: translateY(3px);
-  }
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(4px); }
 }
 
 .animate-drilling {
-  animation: drilling 0.5s ease-in-out infinite;
+  animation: drilling 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin-slow {
+  animation: spin 8s linear infinite;
+}
+
+/* Premium Glassmorphism Utilities */
+.glass-premium {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+}
+
+.dark .glass-premium {
+  background: rgba(26, 34, 44, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+}
+
+.glass-panel {
+  background: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.7) 100%);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.5);
+}
+
+.dark .glass-panel {
+  background: linear-gradient(135deg, rgba(36,48,63,0.8) 0%, rgba(26,34,44,0.9) 100%);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: inset 0 1px 0 0 rgba(255,255,255,0.05);
+}
+
+/* Custom Scrollbar (Refined) */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0,0,0,0.02);
+  border-radius: 8px;
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.02);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(203, 213, 225, 0.8);
+  border-radius: 20px;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(100, 116, 139, 0.6);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(148, 163, 184, 0.9);
 }

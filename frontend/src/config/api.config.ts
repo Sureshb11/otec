@@ -6,7 +6,7 @@ export const API_CONFIG = {
   // Set to false to use real API (when backend is ready)
   // Defaults to false to use real backend API
   USE_MOCK_API: import.meta.env.VITE_USE_MOCK_API === 'true',
-  
+
   // API Base URL
   BASE_URL: import.meta.env.VITE_API_BASE_URL || '/api',
 };

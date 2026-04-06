@@ -18,180 +18,192 @@ import Customers from './pages/Customers';
 import Locations from './pages/Locations';
 import Rigs from './pages/Rigs';
 import Reports from './pages/Reports';
+import OrdersPipeline from './pages/OrdersPipeline';
 import RequestPasswordReset from './pages/RequestPasswordReset';
 import ResetPassword from './pages/ResetPassword';
 import MainLayout from './components/MainLayout';
 import ProtectedRoute from './components/ProtectedRoute';
+import ErrorBoundary from './components/ErrorBoundary';
 
 function App() {
   const { isAuthenticated } = useAuthStore();
 
   return (
     <Router>
-      <Routes>
-        <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Login />} />
-        <Route
-          path="/request-password-reset"
-          element={isAuthenticated ? <Navigate to="/dashboard" /> : <RequestPasswordReset />}
-        />
-        <Route
-          path="/reset-password"
-          element={isAuthenticated ? <Navigate to="/dashboard" /> : <ResetPassword />}
-        />
-        {/* Public registration disabled - only admins can create users */}
-        {/* <Route path="/register" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Register />} /> */}
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/operations/tools"
-          element={
-            <ProtectedRoute>
-              <Tools />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/orders"
-          element={
-            <ProtectedRoute>
-              <Orders />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/customers/:customerId"
-          element={
-            <ProtectedRoute>
-              <CustomerDetails />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/orders/:orderId"
-          element={
-            <ProtectedRoute>
-              <OrderDetails />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/operations/inventory"
-          element={
-            <ProtectedRoute>
-              <Inventory />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/clients/customers"
-          element={
-            <ProtectedRoute>
-              <Customers />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/clients/locations"
-          element={
-            <ProtectedRoute>
-              <Locations />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/clients/rigs"
-          element={
-            <ProtectedRoute>
-              <Rigs />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/reports"
-          element={
-            <ProtectedRoute>
-              <Reports />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin"
-          element={
-            <ProtectedRoute requiredRole="admin">
-              <MainLayout>
-                <AdminPanel />
-              </MainLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/users"
-          element={
-            <ProtectedRoute requiredRole="admin">
-              <MainLayout>
-                <UserManagement />
-              </MainLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/roles"
-          element={
-            <ProtectedRoute requiredRole="admin">
-              <MainLayout>
-                <RoleCRUD />
-              </MainLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/roles/assign"
-          element={
-            <ProtectedRoute requiredRole="admin">
-              <MainLayout>
-                <RoleManagement />
-              </MainLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/roles/:roleId/permissions"
-          element={
-            <ProtectedRoute requiredRole="admin">
-              <MainLayout>
-                <RolePermissions />
-              </MainLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/users/create"
-          element={
-            <ProtectedRoute requiredRole="admin">
-              <MainLayout>
-                <CreateUser />
-              </MainLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/settings"
-          element={
-            <ProtectedRoute>
-              <MainLayout>
-                <Settings />
-              </MainLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route path="/" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} />} />
-      </Routes>
+      <ErrorBoundary>
+        <Routes>
+          <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Login />} />
+          <Route
+            path="/request-password-reset"
+            element={isAuthenticated ? <Navigate to="/dashboard" /> : <RequestPasswordReset />}
+          />
+          <Route
+            path="/reset-password"
+            element={isAuthenticated ? <Navigate to="/dashboard" /> : <ResetPassword />}
+          />
+          {/* Public registration disabled - only admins can create users */}
+          {/* <Route path="/register" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Register />} /> */}
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/operations/tools"
+            element={
+              <ProtectedRoute>
+                <Tools />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/orders"
+            element={
+              <ProtectedRoute>
+                <Orders />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/customers/:customerId"
+            element={
+              <ProtectedRoute>
+                <CustomerDetails />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/orders/pipeline"
+            element={
+              <ProtectedRoute>
+                <OrdersPipeline />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/orders/:orderId"
+            element={
+              <ProtectedRoute>
+                <OrderDetails />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/operations/inventory"
+            element={
+              <ProtectedRoute>
+                <Inventory />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/clients/customers"
+            element={
+              <ProtectedRoute>
+                <Customers />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/clients/locations"
+            element={
+              <ProtectedRoute>
+                <Locations />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/clients/rigs"
+            element={
+              <ProtectedRoute>
+                <Rigs />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/reports"
+            element={
+              <ProtectedRoute>
+                <Reports />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <MainLayout>
+                  <AdminPanel />
+                </MainLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/users"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <MainLayout>
+                  <UserManagement />
+                </MainLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/roles"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <MainLayout>
+                  <RoleCRUD />
+                </MainLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/roles/assign"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <MainLayout>
+                  <RoleManagement />
+                </MainLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/roles/:roleId/permissions"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <MainLayout>
+                  <RolePermissions />
+                </MainLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/users/create"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <MainLayout>
+                  <CreateUser />
+                </MainLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <Settings />
+                </MainLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} />} />
+        </Routes>
+      </ErrorBoundary>
     </Router>
   );
 }

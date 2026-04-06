@@ -84,8 +84,8 @@ const RoleManagement = () => {
     <div className="px-4 py-6 sm:px-0">
       <div className="mb-6 flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 via-primary-700 to-gray-900 bg-clip-text text-transparent">User Role Assignment</h1>
-          <p className="mt-2 text-sm text-gray-600">Assign roles to users (Admin Only)</p>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 via-primary-700 to-gray-900 bg-clip-text text-transparent dark:text-white dark:bg-none">User Role Assignment</h1>
+          <p className="mt-2 text-sm text-gray-600 dark:text-bodydark2">Assign roles to users (Admin Only)</p>
         </div>
         <button
           onClick={() => navigate('/roles')}
@@ -96,11 +96,11 @@ const RoleManagement = () => {
       </div>
 
       {/* Users List */}
-      <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
-        <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">All Users</h3>
+      <div className="bg-white dark:bg-boxdark shadow overflow-hidden sm:rounded-lg mb-6">
+        <div className="px-4 py-5 sm:px-6 border-b border-gray-200 dark:border-strokedark">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white">All Users</h3>
         </div>
-        <ul className="divide-y divide-gray-200">
+        <ul className="divide-y divide-gray-200 dark:divide-strokedark">
           {users?.map((user) => (
             <li key={user.id}>
               <div className="px-4 py-4 sm:px-6">
@@ -113,7 +113,7 @@ const RoleManagement = () => {
                     </div>
                     <div className="ml-4 flex-1">
                       <div className="flex items-center">
-                        <div className="text-sm font-medium text-gray-900">
+                        <div className="text-sm font-medium text-gray-900 dark:text-white">
                           {user.firstName} {user.lastName}
                         </div>
                         {user.id === currentUser?.id && (
@@ -122,7 +122,7 @@ const RoleManagement = () => {
                           </span>
                         )}
                       </div>
-                      <div className="text-sm text-gray-500">{user.email}</div>
+                      <div className="text-sm text-gray-500 dark:text-bodydark2">{user.email}</div>
                     </div>
                     <div className="flex items-center space-x-3">
                       <div className="flex space-x-2">
@@ -130,10 +130,10 @@ const RoleManagement = () => {
                           <span
                             key={role.id}
                             className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${role.name === 'admin'
-                                ? 'bg-red-100 text-red-800'
-                                : role.name === 'manager'
-                                  ? 'bg-yellow-100 text-yellow-800'
-                                  : 'bg-blue-100 text-blue-800'
+                              ? 'bg-red-100 text-red-800'
+                              : role.name === 'manager'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-blue-100 text-blue-800'
                               }`}
                           >
                             {role.name}
@@ -142,7 +142,7 @@ const RoleManagement = () => {
                       </div>
                       <button
                         onClick={() => handleAssignRole(user)}
-                        className="ml-4 inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                        className="ml-4 inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-strokedark shadow-sm text-sm font-medium rounded-lg text-gray-700 dark:text-bodydark1 bg-white dark:bg-boxdark hover:bg-gray-50 dark:hover:bg-meta-4 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
                       >
                         Manage Roles
                       </button>
@@ -158,9 +158,9 @@ const RoleManagement = () => {
       {/* Role Assignment Modal */}
       {showRoleModal && selectedUser && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-lg bg-white">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-lg bg-white dark:bg-boxdark">
             <div className="mt-3">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
                 Manage Roles for {selectedUser.firstName} {selectedUser.lastName}
               </h3>
               <div className="space-y-3">
@@ -169,7 +169,7 @@ const RoleManagement = () => {
                   return (
                     <label
                       key={role.id}
-                      className="flex items-center p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                      className="flex items-center p-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-meta-4 cursor-pointer border-gray-200 dark:border-strokedark"
                     >
                       <input
                         type="checkbox"
@@ -180,27 +180,27 @@ const RoleManagement = () => {
                       />
                       <div className="ml-3 flex-1">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-gray-900 capitalize">
+                          <span className="text-sm font-medium text-gray-900 dark:text-white capitalize">
                             {role.name}
                           </span>
                           <span
                             className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${role.name === 'admin'
-                                ? 'bg-red-100 text-red-800'
-                                : role.name === 'manager'
-                                  ? 'bg-yellow-100 text-yellow-800'
-                                  : role.name === 'employee'
-                                    ? 'bg-green-100 text-green-800'
-                                    : role.name === 'driver'
-                                      ? 'bg-primary-100 text-primary-800'
-                                      : role.name === 'vendor'
-                                        ? 'bg-orange-100 text-orange-800'
-                                        : 'bg-blue-100 text-blue-800'
+                              ? 'bg-red-100 text-red-800'
+                              : role.name === 'manager'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : role.name === 'employee'
+                                  ? 'bg-green-100 text-green-800'
+                                  : role.name === 'driver'
+                                    ? 'bg-primary-100 text-primary-800'
+                                    : role.name === 'vendor'
+                                      ? 'bg-orange-100 text-orange-800'
+                                      : 'bg-blue-100 text-blue-800'
                               }`}
                           >
                             {hasRole ? 'Assigned' : 'Not Assigned'}
                           </span>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">{role.description}</p>
+                        <p className="text-xs text-gray-500 dark:text-bodydark2 mt-1">{role.description}</p>
                       </div>
                     </label>
                   );
@@ -212,12 +212,12 @@ const RoleManagement = () => {
                     setShowRoleModal(false);
                     setSelectedUser(null);
                   }}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-bodydark1 bg-white dark:bg-boxdark border border-gray-300 dark:border-strokedark rounded-lg hover:bg-gray-50 dark:hover:bg-meta-4"
                 >
                   Cancel
                 </button>
                 {updateUserRoles.isLoading && (
-                  <span className="text-sm text-gray-500">Saving...</span>
+                  <span className="text-sm text-gray-500 dark:text-bodydark2">Saving...</span>
                 )}
               </div>
             </div>
@@ -226,9 +226,9 @@ const RoleManagement = () => {
       )}
 
       {/* Roles Overview with CRUD */}
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-4 py-5 sm:px-6 border-b border-gray-200 flex justify-between items-center">
-          <h3 className="text-lg leading-6 font-medium text-gray-900">
+      <div className="bg-white dark:bg-boxdark shadow rounded-lg">
+        <div className="px-4 py-5 sm:px-6 border-b border-gray-200 dark:border-strokedark flex justify-between items-center">
+          <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">
             Available Roles
           </h3>
           <button
@@ -245,29 +245,29 @@ const RoleManagement = () => {
                 u.roles.some(r => r.id === role.id)
               ).length || 0;
               return (
-                <div key={role.id} className="border rounded-lg p-4">
+                <div key={role.id} className="border border-gray-200 dark:border-strokedark rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
                     <span
                       className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium capitalize ${role.name === 'admin'
-                          ? 'bg-red-100 text-red-800'
-                          : role.name === 'manager'
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : role.name === 'employee'
-                              ? 'bg-green-100 text-green-800'
-                              : role.name === 'driver'
-                                ? 'bg-primary-100 text-primary-800'
-                                : role.name === 'vendor'
-                                  ? 'bg-orange-100 text-orange-800'
-                                  : 'bg-blue-100 text-blue-800'
+                        ? 'bg-red-100 text-red-800'
+                        : role.name === 'manager'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : role.name === 'employee'
+                            ? 'bg-green-100 text-green-800'
+                            : role.name === 'driver'
+                              ? 'bg-primary-100 text-primary-800'
+                              : role.name === 'vendor'
+                                ? 'bg-orange-100 text-orange-800'
+                                : 'bg-blue-100 text-blue-800'
                         }`}
                     >
                       {role.name}
                     </span>
-                    <span className="text-sm font-medium text-gray-900">
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">
                       {usersWithRole} user{usersWithRole !== 1 ? 's' : ''}
                     </span>
                   </div>
-                  <p className="text-sm text-gray-600">{role.description}</p>
+                  <p className="text-sm text-gray-600 dark:text-bodydark2">{role.description}</p>
                 </div>
               );
             })}

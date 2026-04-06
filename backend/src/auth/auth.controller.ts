@@ -20,7 +20,16 @@ export class AuthController {
 
   @UseGuards(LocalAuthGuard)
   @Post('login')
-  async login(@Request() req) {
+  async login(@Request() req, @Body() body) {
+    console.log('📩 Login request diagnostic:', {
+      host: req.headers.host,
+      origin: req.headers.origin,
+      referer: req.headers.referer,
+      contentType: req.headers['content-type'],
+      hasBody: !!body,
+      bodyKeys: body ? Object.keys(body) : [],
+      email: body?.email
+    });
     return this.authService.login(req.user);
   }
 

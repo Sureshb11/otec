@@ -52,10 +52,10 @@ const CustomerDetails = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-boxdark-2">
       <div className="flex">
         {/* Left Sidebar - Same as Dashboard */}
-        <div className="w-64 bg-gradient-to-b from-primary-900 via-primary-800 to-primary-900 h-screen shadow-2xl flex flex-col">
+        <div className="w-64 bg-gradient-to-b from-primary-900 via-primary-800 to-primary-900 dark:from-boxdark dark:to-boxdark h-screen shadow-2xl flex flex-col border-r border-transparent dark:border-strokedark">
           <div className="flex flex-col h-full">
             {/* OTEC Logo */}
             <div className="px-4 pt-6 pb-4 flex-shrink-0 border-b border-primary-700/50">
@@ -71,7 +71,7 @@ const CustomerDetails = () => {
                 </div>
               </div>
             </div>
-            
+
             <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1 min-h-0">
               <Link
                 to="/dashboard"
@@ -100,9 +100,8 @@ const CustomerDetails = () => {
                     <span>Operations</span>
                   </div>
                   <svg
-                    className={`w-4 h-4 transform transition-transform ${
-                      showOperationsMenu ? 'rotate-180' : ''
-                    }`}
+                    className={`w-4 h-4 transform transition-transform ${showOperationsMenu ? 'rotate-180' : ''
+                      }`}
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -178,9 +177,8 @@ const CustomerDetails = () => {
                     <span>Clients</span>
                   </div>
                   <svg
-                    className={`w-4 h-4 transform transition-transform ${
-                      showClientsMenu ? 'rotate-180' : ''
-                    }`}
+                    className={`w-4 h-4 transform transition-transform ${showClientsMenu ? 'rotate-180' : ''
+                      }`}
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -247,32 +245,32 @@ const CustomerDetails = () => {
         {/* Main Content */}
         <div className="flex-1">
           {/* Breadcrumb */}
-          <div className="bg-white border-b border-gray-200 px-6 py-3">
+          <div className="bg-white dark:bg-boxdark border-b border-gray-200 dark:border-strokedark px-6 py-3">
             <button
               onClick={() => navigate('/orders')}
-              className="text-primary-600 hover:text-primary-700 text-sm"
+              className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 text-sm"
             >
               ← Back to Orders
             </button>
           </div>
 
           {/* Customer Header Section */}
-          <div className="bg-primary-50 border-b border-gray-200 px-6 py-6">
+          <div className="bg-primary-50 dark:bg-boxdark border-b border-gray-200 dark:border-strokedark px-6 py-6">
             <div className="flex items-start space-x-6">
               {/* Profile Picture */}
-              <div className="w-32 h-32 bg-gray-300 rounded-lg flex items-center justify-center border-2 border-gray-400">
-                <span className="text-gray-500 text-sm text-center px-2">NO IMAGE AVAILABLE</span>
+              <div className="w-32 h-32 bg-gray-300 dark:bg-meta-4 rounded-lg flex items-center justify-center border-2 border-gray-400 dark:border-strokedark">
+                <span className="text-gray-500 dark:text-bodydark2 text-sm text-center px-2">NO IMAGE AVAILABLE</span>
               </div>
 
               {/* Customer Info */}
               <div className="flex-1">
                 <div className="flex items-start justify-between">
                   <div>
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
                       {customer.firstName} {customer.lastName}
                     </h1>
                     {!customer.canReceiveEmails && (
-                      <div className="flex items-center space-x-2 text-sm text-gray-600 mb-4">
+                      <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-bodydark2 mb-4">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
@@ -280,13 +278,13 @@ const CustomerDetails = () => {
                       </div>
                     )}
                     <div className="flex items-center space-x-3">
-                      <button className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 flex items-center space-x-2">
+                      <button className="px-4 py-2 border border-gray-300 dark:border-strokedark rounded-lg text-sm font-medium text-gray-700 dark:text-bodydark1 bg-white dark:bg-boxdark hover:bg-gray-50 dark:hover:bg-meta-4 flex items-center space-x-2">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                         </svg>
                         <span>EDIT</span>
                       </button>
-                      <button className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 flex items-center space-x-2">
+                      <button className="px-4 py-2 border border-gray-300 dark:border-strokedark rounded-lg text-sm font-medium text-gray-700 dark:text-bodydark1 bg-white dark:bg-boxdark hover:bg-gray-50 dark:hover:bg-meta-4 flex items-center space-x-2">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
                         </svg>
@@ -317,35 +315,32 @@ const CustomerDetails = () => {
           </div>
 
           {/* Tabs */}
-          <div className="bg-white border-b border-gray-200 px-6">
+          <div className="bg-white dark:bg-boxdark border-b border-gray-200 dark:border-strokedark px-6">
             <div className="flex space-x-8">
               <button
                 onClick={() => setActiveTab('details')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'details'
-                    ? 'border-primary-500 text-primary-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'details'
+                    ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                    : 'border-transparent text-gray-500 dark:text-bodydark2 hover:text-gray-700 dark:hover:text-white hover:border-gray-300 dark:hover:border-strokedark'
+                  }`}
               >
                 Details
               </button>
               <button
                 onClick={() => setActiveTab('orders')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'orders'
-                    ? 'border-primary-500 text-primary-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'orders'
+                    ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                    : 'border-transparent text-gray-500 dark:text-bodydark2 hover:text-gray-700 dark:hover:text-white hover:border-gray-300 dark:hover:border-strokedark'
+                  }`}
               >
                 Orders ({customer.ordersCount})
               </button>
               <button
                 onClick={() => setActiveTab('address')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'address'
-                    ? 'border-primary-500 text-primary-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'address'
+                    ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                    : 'border-transparent text-gray-500 dark:text-bodydark2 hover:text-gray-700 dark:hover:text-white hover:border-gray-300 dark:hover:border-strokedark'
+                  }`}
               >
                 Address Book ({customer.addressBookCount})
               </button>
@@ -357,94 +352,94 @@ const CustomerDetails = () => {
             {activeTab === 'details' && (
               <div className="space-y-6">
                 {/* Customer Details */}
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h2 className="text-lg font-semibold text-gray-900 mb-4">Customer Details</h2>
+                <div className="bg-white dark:bg-boxdark rounded-lg shadow p-6">
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Customer Details</h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Left Column */}
                     <div className="space-y-4">
                       <div>
-                        <dt className="text-sm font-medium text-gray-500">Customer#</dt>
-                        <dd className="mt-1 text-sm text-gray-900">{customer.customerNumber}</dd>
+                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Customer#</dt>
+                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.customerNumber}</dd>
                       </div>
                       <div>
-                        <dt className="text-sm font-medium text-gray-500">Rented Out Orders</dt>
-                        <dd className="mt-1 text-sm text-gray-900">{customer.rentedOutOrders}</dd>
+                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Rented Out Orders</dt>
+                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.rentedOutOrders}</dd>
                       </div>
                       <div>
-                        <dt className="text-sm font-medium text-gray-500">Subscribed to Alerts</dt>
-                        <dd className="mt-1 text-sm text-gray-900">{customer.subscribedToAlerts ? 'Yes' : 'No'}</dd>
+                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Subscribed to Alerts</dt>
+                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.subscribedToAlerts ? 'Yes' : 'No'}</dd>
                       </div>
                       <div>
-                        <dt className="text-sm font-medium text-gray-500">Email</dt>
-                        <dd className="mt-1 text-sm text-gray-900">{customer.email}</dd>
+                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Email</dt>
+                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.email}</dd>
                       </div>
                       <div>
-                        <dt className="text-sm font-medium text-gray-500 flex items-center space-x-1">
+                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1 flex items-center space-x-1">
                           <span>Customer Revenue (Excluding Tax)</span>
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
                         </dt>
-                        <dd className="mt-1 text-sm text-gray-900">${customer.customerRevenue.toFixed(2)}</dd>
+                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">${customer.customerRevenue.toFixed(2)}</dd>
                       </div>
                       <div>
-                        <dt className="text-sm font-medium text-gray-500">Identification Number</dt>
-                        <dd className="mt-1 text-sm text-gray-900">{customer.identificationNumber}</dd>
+                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Identification Number</dt>
+                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.identificationNumber}</dd>
                       </div>
                       <div>
-                        <dt className="text-sm font-medium text-gray-500">Category</dt>
-                        <dd className="mt-1 text-sm text-gray-900">{customer.category}</dd>
+                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Category</dt>
+                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.category}</dd>
                       </div>
                       <div>
-                        <dt className="text-sm font-medium text-gray-500">Status</dt>
-                        <dd className="mt-1 text-sm text-gray-900">{customer.status}</dd>
+                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Status</dt>
+                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.status}</dd>
                       </div>
                       <div>
-                        <dt className="text-sm font-medium text-gray-500">Last Login At</dt>
-                        <dd className="mt-1 text-sm text-gray-900">{customer.lastLoginAt}</dd>
+                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Last Login At</dt>
+                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.lastLoginAt}</dd>
                       </div>
                       <div>
-                        <dt className="text-sm font-medium text-gray-500">Webstore sign up</dt>
-                        <dd className="mt-1 text-sm text-gray-900">{customer.webstoreSignUp ? 'Yes' : 'No'}</dd>
+                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Webstore sign up</dt>
+                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.webstoreSignUp ? 'Yes' : 'No'}</dd>
                       </div>
                       <div>
-                        <dt className="text-sm font-medium text-gray-500">Description</dt>
-                        <dd className="mt-1 text-sm text-gray-900">{customer.description}</dd>
+                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Description</dt>
+                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.description}</dd>
                       </div>
                     </div>
 
                     {/* Right Column */}
                     <div className="space-y-4">
                       <div>
-                        <dt className="text-sm font-medium text-gray-500">Completed Orders</dt>
-                        <dd className="mt-1 text-sm text-gray-900">{customer.completedOrders}</dd>
+                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Completed Orders</dt>
+                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.completedOrders}</dd>
                       </div>
                       <div>
-                        <dt className="text-sm font-medium text-gray-500">Taxed</dt>
-                        <dd className="mt-1 text-sm text-gray-900">{customer.taxed ? 'Yes' : 'No'}</dd>
+                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Taxed</dt>
+                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.taxed ? 'Yes' : 'No'}</dd>
                       </div>
                       <div>
-                        <dt className="text-sm font-medium text-gray-500">Department</dt>
-                        <dd className="mt-1 text-sm text-gray-900">{customer.department}</dd>
+                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Department</dt>
+                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.department}</dd>
                       </div>
                       <div>
-                        <dt className="text-sm font-medium text-gray-500">Phone</dt>
-                        <dd className="mt-1 text-sm text-gray-900">{customer.phone}</dd>
+                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Phone</dt>
+                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.phone}</dd>
                       </div>
                       <div>
-                        <dt className="text-sm font-medium text-gray-500">Fax</dt>
-                        <dd className="mt-1 text-sm text-gray-900">{customer.fax}</dd>
+                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Fax</dt>
+                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.fax}</dd>
                       </div>
                       <div>
-                        <dt className="text-sm font-medium text-gray-500">Assigned to</dt>
-                        <dd className="mt-1 text-sm text-gray-900">{customer.assignedTo}</dd>
+                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Assigned to</dt>
+                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.assignedTo}</dd>
                       </div>
                       <div>
-                        <dt className="text-sm font-medium text-gray-500">Login Enabled</dt>
-                        <dd className="mt-1 text-sm text-gray-900">{customer.loginEnabled ? 'Yes' : 'No'}</dd>
+                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Login Enabled</dt>
+                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.loginEnabled ? 'Yes' : 'No'}</dd>
                       </div>
                       <div>
-                        <dt className="text-sm font-medium text-gray-500 flex items-center space-x-1">
+                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1 flex items-center space-x-1">
                           <span>Created At</span>
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -453,15 +448,15 @@ const CustomerDetails = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
                         </dt>
-                        <dd className="mt-1 text-sm text-gray-900">{customer.createdAt}</dd>
+                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.createdAt}</dd>
                       </div>
                       <div>
-                        <dt className="text-sm font-medium text-gray-500">Secondary Emails</dt>
-                        <dd className="mt-1 text-sm text-gray-900">{customer.secondaryEmails}</dd>
+                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Secondary Emails</dt>
+                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.secondaryEmails}</dd>
                       </div>
                       <div>
-                        <dt className="text-sm font-medium text-gray-500">Marked as Engaged</dt>
-                        <dd className="mt-1 text-sm text-gray-900">{customer.markedAsEngaged ? 'Yes' : 'No'}</dd>
+                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Marked as Engaged</dt>
+                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.markedAsEngaged ? 'Yes' : 'No'}</dd>
                       </div>
                     </div>
                   </div>
@@ -470,9 +465,9 @@ const CustomerDetails = () => {
                 {/* Files and Comments Section */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Files Section */}
-                  <div className="bg-white rounded-lg shadow p-6">
+                  <div className="bg-white dark:bg-boxdark rounded-lg shadow p-6">
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center space-x-2">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                         </svg>
@@ -482,9 +477,9 @@ const CustomerDetails = () => {
                         + ATTACH FILE
                       </button>
                     </div>
-                    <div className="border-t border-gray-200 pt-4">
-                      <h4 className="text-sm font-medium text-gray-700 mb-4">CUSTOMER DOCUMENTS</h4>
-                      <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                    <div className="border-t border-gray-200 dark:border-strokedark pt-4">
+                      <h4 className="text-sm font-medium text-gray-700 dark:text-bodydark1 mb-4">CUSTOMER DOCUMENTS</h4>
+                      <div className="flex flex-col items-center justify-center py-12 text-gray-400 dark:text-bodydark2">
                         <svg className="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
@@ -494,21 +489,21 @@ const CustomerDetails = () => {
                   </div>
 
                   {/* Comments Section */}
-                  <div className="bg-white rounded-lg shadow p-6">
+                  <div className="bg-white dark:bg-boxdark rounded-lg shadow p-6">
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center space-x-2">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                         </svg>
                         <span>Comments 0</span>
                       </h3>
-                      <select className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white">
+                      <select className="px-3 py-1.5 border border-gray-300 dark:border-strokedark rounded-lg text-sm bg-white dark:bg-boxdark-2 dark:text-white">
                         <option>All Comments</option>
                         <option>Recent</option>
                         <option>Oldest</option>
                       </select>
                     </div>
-                    <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                    <div className="flex flex-col items-center justify-center py-12 text-gray-400 dark:text-bodydark2">
                       <svg className="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                       </svg>
@@ -523,32 +518,32 @@ const CustomerDetails = () => {
             )}
 
             {activeTab === 'orders' && (
-              <div className="bg-white rounded-lg shadow p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Customer Orders</h2>
+              <div className="bg-white dark:bg-boxdark rounded-lg shadow p-6">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Customer Orders</h2>
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-strokedark">
+                    <thead className="bg-gray-50 dark:bg-meta-4">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ORDER #</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">PRICE</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">RENT OUT DATE</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">RETURN DATE</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">STATUS</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-bodydark2 uppercase">ORDER #</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-bodydark2 uppercase">PRICE</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-bodydark2 uppercase">RENT OUT DATE</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-bodydark2 uppercase">RETURN DATE</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-bodydark2 uppercase">STATUS</th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="bg-white dark:bg-boxdark divide-y divide-gray-200 dark:divide-strokedark">
                       {customerOrders.map((order) => (
-                        <tr key={order.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        <tr key={order.id} className="hover:bg-gray-50 dark:hover:bg-meta-4">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                             {order.orderNumber}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                             ${order.price.toFixed(2)}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                             {order.rentOutDate}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                             {order.returnDate}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -565,9 +560,9 @@ const CustomerDetails = () => {
             )}
 
             {activeTab === 'address' && (
-              <div className="bg-white rounded-lg shadow p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Address Book</h2>
-                <p className="text-gray-600">No addresses found</p>
+              <div className="bg-white dark:bg-boxdark rounded-lg shadow p-6">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Address Book</h2>
+                <p className="text-gray-600 dark:text-bodydark2">No addresses found</p>
               </div>
             )}
           </div>

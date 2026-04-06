@@ -15,8 +15,17 @@ api.interceptors.request.use(
     const token = useAuthStore.getState().token;
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      console.log('🔵 Request Interceptor:', {
+        url: config.url,
+        tokenPrefix: token.substring(0, 10) + '...',
+        header: config.headers.Authorization
+      });
     } else {
-      console.warn('⚠️ No token found in auth store for request to:', config.url);
+      // Don't warn for login requests as they are the way to get a token
+      const isLoginRequest = config.url?.includes('/auth/login');
+      if (!isLoginRequest) {
+        console.warn('⚠️ No token found in auth store for request to:', config.url);
+      }
     }
     return config;
   },
@@ -62,7 +71,13 @@ api.interceptors.response.use(
       const isProtectedResource =
         requestUrl.includes('/users') ||
         requestUrl.includes('/roles') ||
-        requestUrl.includes('/permissions');
+        requestUrl.includes('/permissions') ||
+        requestUrl.includes('/tools') ||
+        requestUrl.includes('/inventory') ||
+        requestUrl.includes('/orders') ||
+        requestUrl.includes('/customers') ||
+        requestUrl.includes('/locations') ||
+        requestUrl.includes('/rigs');
 
       // Let protected resources handle their own errors (show error UI, don't auto-redirect)
       if (isProtectedResource) {

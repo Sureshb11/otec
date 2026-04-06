@@ -64,12 +64,12 @@ const CreateUser = () => {
 
   const getRoleColor = (roleName: string) => {
     switch (roleName.toLowerCase()) {
-      case 'admin': return 'bg-red-50 text-red-700 border-red-200 peer-checked:bg-red-100 peer-checked:border-red-400';
-      case 'manager': return 'bg-blue-50 text-blue-700 border-blue-200 peer-checked:bg-blue-100 peer-checked:border-blue-400';
-      case 'employee': return 'bg-green-50 text-green-700 border-green-200 peer-checked:bg-green-100 peer-checked:border-green-400';
-      case 'driver': return 'bg-purple-50 text-purple-700 border-purple-200 peer-checked:bg-purple-100 peer-checked:border-purple-400';
-      case 'vendor': return 'bg-orange-50 text-orange-700 border-orange-200 peer-checked:bg-orange-100 peer-checked:border-orange-400';
-      default: return 'bg-gray-50 text-gray-700 border-gray-200 peer-checked:bg-gray-100 peer-checked:border-gray-400';
+      case 'admin': return 'bg-red-50 text-red-700 border-red-200 peer-checked:bg-red-100 peer-checked:border-red-400 dark:bg-boxdark dark:text-red-400 dark:border-strokedark dark:peer-checked:bg-red-900/30 dark:peer-checked:border-red-500';
+      case 'manager': return 'bg-blue-50 text-blue-700 border-blue-200 peer-checked:bg-blue-100 peer-checked:border-blue-400 dark:bg-boxdark dark:text-blue-400 dark:border-strokedark dark:peer-checked:bg-blue-900/30 dark:peer-checked:border-blue-500';
+      case 'employee': return 'bg-green-50 text-green-700 border-green-200 peer-checked:bg-green-100 peer-checked:border-green-400 dark:bg-boxdark dark:text-green-400 dark:border-strokedark dark:peer-checked:bg-green-900/30 dark:peer-checked:border-green-500';
+      case 'driver': return 'bg-purple-50 text-purple-700 border-purple-200 peer-checked:bg-purple-100 peer-checked:border-purple-400 dark:bg-boxdark dark:text-purple-400 dark:border-strokedark dark:peer-checked:bg-purple-900/30 dark:peer-checked:border-purple-500';
+      case 'vendor': return 'bg-orange-50 text-orange-700 border-orange-200 peer-checked:bg-orange-100 peer-checked:border-orange-400 dark:bg-boxdark dark:text-orange-400 dark:border-strokedark dark:peer-checked:bg-orange-900/30 dark:peer-checked:border-orange-500';
+      default: return 'bg-gray-50 text-gray-700 border-gray-200 peer-checked:bg-gray-100 peer-checked:border-gray-400 dark:bg-boxdark dark:text-bodydark2 dark:border-strokedark dark:peer-checked:bg-meta-4 dark:peer-checked:border-strokedark';
     }
   };
 
@@ -89,14 +89,14 @@ const CreateUser = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent dark:text-white dark:bg-none">
             Create User
           </h1>
-          <p className="mt-1 text-gray-500">Add a new user to the organization</p>
+          <p className="mt-1 text-gray-500 dark:text-bodydark2">Add a new user to the organization</p>
         </div>
         <Link
           to="/users"
-          className="flex items-center px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 hover:text-gray-900 transition-all duration-200 shadow-sm"
+          className="flex items-center px-4 py-2 text-sm font-medium text-gray-600 dark:text-bodydark2 bg-white dark:bg-boxdark border border-gray-200 dark:border-strokedark rounded-xl hover:bg-gray-50 dark:hover:bg-meta-4 hover:text-gray-900 dark:hover:text-white transition-all duration-200 shadow-sm"
         >
           <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -117,11 +117,11 @@ const CreateUser = () => {
           )}
 
           {/* User Details Card */}
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 border border-gray-100 shadow-xl relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-primary-50 to-transparent rounded-full -mr-32 -mt-32 opacity-50 group-hover:opacity-100 transition-opacity duration-500" />
+          <div className="bg-white/80 dark:bg-boxdark/80 backdrop-blur-sm rounded-2xl p-8 border border-gray-100 dark:border-strokedark shadow-xl relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-primary-50 to-transparent dark:from-primary/10 rounded-full -mr-32 -mt-32 opacity-50 group-hover:opacity-100 transition-opacity duration-500" />
 
-            <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
-              <span className="w-8 h-8 rounded-lg bg-primary-100 text-primary-600 flex items-center justify-center mr-3">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center">
+              <span className="w-8 h-8 rounded-lg bg-primary-100 dark:bg-primary/20 text-primary-600 dark:text-primary-400 flex items-center justify-center mr-3">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                 </svg>
@@ -137,7 +137,7 @@ const CreateUser = () => {
                 { id: 'password', label: 'Password', type: 'password' },
               ].map((field) => (
                 <div key={field.id} className="relative">
-                  <label htmlFor={field.id} className="block text-sm font-semibold text-gray-700 mb-1.5 ml-1">
+                  <label htmlFor={field.id} className="block text-sm font-semibold text-gray-700 dark:text-bodydark1 mb-1.5 ml-1">
                     {field.label} <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -160,11 +160,11 @@ const CreateUser = () => {
                       type={field.type}
                       onFocus={() => setFocusedField(field.id)}
                       onBlur={() => setFocusedField(null)}
-                      className={`block w-full px-4 py-3 rounded-xl border-2 transition-all duration-300 bg-gray-50/50 ${errors[field.id as keyof CreateUserData]
-                          ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
-                          : focusedField === field.id
-                            ? 'border-primary-500 ring-4 ring-primary-100 bg-white'
-                            : 'border-gray-200 hover:border-gray-300 focus:border-primary-500 focus:ring-primary-200'
+                      className={`block w-full px-4 py-3 rounded-xl border-2 transition-all duration-300 bg-gray-50/50 dark:bg-boxdark-2 text-gray-900 dark:text-white ${errors[field.id as keyof CreateUserData]
+                        ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
+                        : focusedField === field.id
+                          ? 'border-primary-500 ring-4 ring-primary-100 dark:ring-primary/20 bg-white dark:bg-boxdark'
+                          : 'border-gray-200 dark:border-strokedark hover:border-gray-300 dark:hover:border-form-strokedark focus:border-primary-500 focus:ring-primary-200'
                         } focus:outline-none`}
                     />
                     {focusedField === field.id && !errors[field.id as keyof CreateUserData] && (
@@ -189,11 +189,11 @@ const CreateUser = () => {
           </div>
 
           {/* Role Selection Card */}
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 border border-gray-100 shadow-xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-purple-50 to-transparent rounded-full -mr-32 -mt-32 opacity-50" />
+          <div className="bg-white/80 dark:bg-boxdark/80 backdrop-blur-sm rounded-2xl p-8 border border-gray-100 dark:border-strokedark shadow-xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-purple-50 to-transparent dark:from-purple-900/10 rounded-full -mr-32 -mt-32 opacity-50" />
 
-            <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
-              <span className="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center mr-3">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center">
+              <span className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 flex items-center justify-center mr-3">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                 </svg>
@@ -223,7 +223,7 @@ const CreateUser = () => {
                       {getRoleIcon(role.name)}
                     </div>
                     <div className="flex items-center mb-2">
-                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mr-3 ${selectedRoles.includes(role.id) ? 'border-current bg-current' : 'border-gray-300 bg-white'
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mr-3 ${selectedRoles.includes(role.id) ? 'border-current bg-current' : 'border-gray-300 dark:border-strokedark bg-white dark:bg-boxdark'
                         }`}>
                         {selectedRoles.includes(role.id) && (
                           <div className="w-2 h-2 rounded-full bg-white" />
@@ -247,7 +247,7 @@ const CreateUser = () => {
             <button
               type="button"
               onClick={() => navigate('/users')}
-              className="px-6 py-3 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 shadow-sm"
+              className="px-6 py-3 text-sm font-semibold text-gray-700 dark:text-bodydark1 bg-white dark:bg-boxdark border border-gray-300 dark:border-strokedark rounded-xl hover:bg-gray-50 dark:hover:bg-meta-4 hover:border-gray-400 transition-all duration-200 shadow-sm"
             >
               Cancel
             </button>
