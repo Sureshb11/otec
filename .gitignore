@@ -57,7 +57,10 @@ logs3.zip
 tmp_parser/
 backend/backend-source.zip
 backend/backend/
-"~$*"
+~$*
 *.xlsx~
-"Operation tool list.csv"
+Operation tool list.csv
+
+# Claude Code worktrees & internal files
+.claude/
 
