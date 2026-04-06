@@ -6,7 +6,7 @@ try {
 }
 
 const { Client } = require('pg');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 
 // Default admin user credentials (change these as needed)
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@otec.com';
@@ -24,10 +24,10 @@ async function createAdminUser() {
     user: process.env.DB_USERNAME || 'clouduser',
     password: process.env.DB_PASSWORD || 'Newnalam26',
     database: process.env.DB_DATABASE || 'otec_db',
-    ssl: isAzure ? {
+    ssl: {
       rejectUnauthorized: false,
       require: true,
-    } : false,
+    },
   });
 
   try {

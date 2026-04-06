@@ -1,456 +1,343 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import MainLayout from '../components/MainLayout';
+import { apiClient } from '../api/apiClient';
 
-interface ToolSize {
-  size: string;
-  quantity: number;
-}
+const CATEGORY_DISPLAY_MAP: Record<string, string> = {
+  'CRT': 'CRT',
+  'Power Tong': 'POWER TONG',
+  'Jam Unit': 'JAM UNIT',
+  'Filup Tool': 'FILUP TOOL',
+  'Safety Clamp': 'SAFETY CLAMP',
+  'Elevators': 'ELEVATORS',
+  'Slips': 'SLIPS',
+  'Spider Elevators': 'SPIDER ELEVATORS',
+  'Reamers': 'REAMERS',
+  'Anti Stick Slip': 'ANTI STICK SLIP',
+  'Scrapper': 'SCRAPPER',
+  'Jars': 'JARS',
+  'Handling Tools DHT': 'HANDLING TOOLS'
+};
+
+const TRS_CATEGORIES = ['CRT', 'Power Tong', 'Jam Unit', 'Filup Tool', 'Safety Clamp', 'Elevators', 'Slips', 'Spider Elevators'];
+const DHT_CATEGORIES = ['Reamers', 'Anti Stick Slip', 'Scrapper', 'Jars', 'Handling Tools DHT'];
+
+// Status mapping from backend ToolStatus to display labels
+type DisplayStatus = 'onsite' | 'yard' | 'service';
+const STATUS_MAP: Record<string, DisplayStatus> = {
+  'available': 'yard',
+  'onsite': 'onsite',
+  'maintenance': 'service',
+};
 
 interface ToolItem {
   id: string;
   name: string;
-  group: 'TRS' | 'DHT';
-  sizes: ToolSize[];
+  groupType: 'TRS' | 'DHT';
+  category: string;
+  size: string;
+  serialNumber: string;
+  status: DisplayStatus;
+  operationalHours: number;
+  rigName?: string;
+  locationName?: string;
 }
 
-interface ToolInstance {
-  id: string;
-  toolId: string;
-  status: 'onsite' | 'yard' | 'service';
-  dateTime?: string;
-  jobSize?: string;
-  location?: string;
-  rig?: string;
-}
-
-const toolItems: ToolItem[] = [
-  {
-    id: 'trs-crt',
-    name: 'CRT',
-    group: 'TRS',
-    sizes: [
-      { size: '4 1/2"', quantity: 10 },
-      { size: '5"', quantity: 8 },
-      { size: '6 5/8"', quantity: 7 }
-    ]
+const STATUS_CONFIG = {
+  onsite: {
+    label: 'Onsite',
+    dotColor: 'bg-emerald-500',
+    badgeBg: 'bg-emerald-50 dark:bg-emerald-500/10',
+    badgeText: 'text-emerald-700 dark:text-emerald-400',
+    borderColor: 'border-emerald-200 dark:border-emerald-500/30',
+    tabBg: 'bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-900/20 dark:to-emerald-800/10',
+    tabBorder: 'border-emerald-300 dark:border-emerald-500/40',
+    tabText: 'text-emerald-700 dark:text-emerald-400',
+    icon: '🟢',
   },
-  {
-    id: 'trs-power-tong',
-    name: 'POWER TONG',
-    group: 'TRS',
-    sizes: [
-      { size: '5"', quantity: 10 },
-      { size: '6 5/8"', quantity: 5 }
-    ]
+  yard: {
+    label: 'Yard',
+    dotColor: 'bg-amber-500',
+    badgeBg: 'bg-amber-50 dark:bg-amber-500/10',
+    badgeText: 'text-amber-700 dark:text-amber-400',
+    borderColor: 'border-amber-200 dark:border-amber-500/30',
+    tabBg: 'bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-900/20 dark:to-amber-800/10',
+    tabBorder: 'border-amber-300 dark:border-amber-500/40',
+    tabText: 'text-amber-700 dark:text-amber-400',
+    icon: '🟡',
   },
-  {
-    id: 'trs-jam-unit',
-    name: 'JAM UNIT',
-    group: 'TRS',
-    sizes: [
-      { size: '6 5/8"', quantity: 7 },
-      { size: '7"', quantity: 5 }
-    ]
+  service: {
+    label: 'Service',
+    dotColor: 'bg-rose-500',
+    badgeBg: 'bg-rose-50 dark:bg-rose-500/10',
+    badgeText: 'text-rose-700 dark:text-rose-400',
+    borderColor: 'border-rose-200 dark:border-rose-500/30',
+    tabBg: 'bg-gradient-to-br from-rose-50 to-rose-100/50 dark:from-rose-900/20 dark:to-rose-800/10',
+    tabBorder: 'border-rose-300 dark:border-rose-500/40',
+    tabText: 'text-rose-700 dark:text-rose-400',
+    icon: '🔴',
   },
-  {
-    id: 'trs-filup-tool',
-    name: 'FILUP TOOL',
-    group: 'TRS',
-    sizes: [
-      { size: '4 1/2"', quantity: 10 },
-      { size: '5"', quantity: 8 }
-    ]
-  },
-  {
-    id: 'trs-handling-tools',
-    name: 'HANDLING TOOLS',
-    group: 'TRS',
-    sizes: [
-      { size: '5"', quantity: 12 },
-      { size: '6 5/8"', quantity: 8 }
-    ]
-  },
-  {
-    id: 'dht-reamers',
-    name: 'REAMERS',
-    group: 'DHT',
-    sizes: [
-      { size: '7"', quantity: 10 },
-      { size: '8 5/8"', quantity: 5 }
-    ]
-  },
-  {
-    id: 'dht-anti-stick-slip',
-    name: 'ANTI STICK SLIP',
-    group: 'DHT',
-    sizes: [
-      { size: '4 1/2"', quantity: 12 },
-      { size: '5"', quantity: 10 }
-    ]
-  },
-  {
-    id: 'dht-scrapper',
-    name: 'SCRAPPER',
-    group: 'DHT',
-    sizes: [
-      { size: '6 5/8"', quantity: 10 }
-    ]
-  },
-  {
-    id: 'dht-jars',
-    name: 'JARS',
-    group: 'DHT',
-    sizes: [
-      { size: '5"', quantity: 10 },
-      { size: '6 5/8"', quantity: 8 }
-    ]
-  },
-  {
-    id: 'dht-control-valve',
-    name: 'CONTROL VALVE',
-    group: 'DHT',
-    sizes: [
-      { size: '4 1/2"', quantity: 8 },
-      { size: '5"', quantity: 7 }
-    ]
-  },
-  {
-    id: 'dht-torque-reducer',
-    name: 'TORQUE REDUCER',
-    group: 'DHT',
-    sizes: [
-      { size: '7"', quantity: 12 }
-    ]
-  },
-];
-
-// Sample tool instances data - generates instances based on tool sizes
-const generateToolInstances = (toolId: string, tool: ToolItem): ToolInstance[] => {
-  const instances: ToolInstance[] = [];
-
-  if (!tool || !tool.sizes || tool.sizes.length === 0) {
-    // Fallback if no sizes defined
-    return [];
-  }
-
-  const locations = ['North Kuwait', 'West Kuwait', 'South East Kuwait', 'Gas Field', 'North Kuwait'];
-  const rigs = ['Rig 15', 'Rig 8', 'Rig 22', 'Rig 5', 'Rig 18'];
-
-  let instanceCounter = 1;
-
-  // Generate instances for each size proportionally
-  tool.sizes.forEach((sizeItem) => {
-    const sizeOnsiteCount = Math.max(1, Math.ceil(sizeItem.quantity * 0.5)); // 50% onsite
-    const sizeYardCount = Math.max(1, Math.ceil(sizeItem.quantity * 0.3));   // 30% yard
-    const sizeServiceCount = Math.max(1, Math.ceil(sizeItem.quantity * 0.2)); // 20% service
-
-    // Generate onsite instances for this size
-    for (let i = 0; i < sizeOnsiteCount && i < sizeItem.quantity; i++) {
-      instances.push({
-        id: `${toolId}-onsite-${instanceCounter++}`,
-        toolId,
-        status: 'onsite',
-        dateTime: new Date().toLocaleString('en-GB'),
-        jobSize: sizeItem.size,
-        location: locations[(instances.length) % locations.length],
-        rig: rigs[(instances.length) % rigs.length],
-      });
-    }
-
-    // Generate yard instances for this size
-    for (let i = 0; i < sizeYardCount && (sizeOnsiteCount + i) < sizeItem.quantity; i++) {
-      instances.push({
-        id: `${toolId}-yard-${instanceCounter++}`,
-        toolId,
-        status: 'yard',
-        dateTime: undefined,
-        jobSize: sizeItem.size,
-        location: undefined,
-        rig: undefined,
-      });
-    }
-
-    // Generate service instances for this size
-    for (let i = 0; i < sizeServiceCount && (sizeOnsiteCount + sizeYardCount + i) < sizeItem.quantity; i++) {
-      instances.push({
-        id: `${toolId}-service-${instanceCounter++}`,
-        toolId,
-        status: 'service',
-        dateTime: undefined,
-        jobSize: sizeItem.size,
-        location: undefined,
-        rig: undefined,
-      });
-    }
-  });
-
-  return instances;
 };
 
 const Tools = () => {
-  const [selectedToolId, setSelectedToolId] = useState<string>(toolItems[0]?.id || '');
-  const [selectedStatus, setSelectedStatus] = useState<'all' | 'onsite' | 'yard' | 'service' | null>('all');
+  const [allTools, setAllTools] = useState<ToolItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const selectedTool = toolItems.find((t) => t.id === selectedToolId) || toolItems[0];
+  const [selectedCategory, setSelectedCategory] = useState<string>('CRT');
+  const [selectedStatus, setSelectedStatus] = useState<'all' | DisplayStatus>('all');
+  const [searchTerm, setSearchTerm] = useState('');
 
-  // Get all tool instances for the selected tool (pass the tool object to get sizes)
-  const allToolInstances = selectedTool ? generateToolInstances(selectedToolId, selectedTool) : [];
+  useEffect(() => {
+    const fetchTools = async () => {
+      try {
+        setLoading(true);
+        const tools = await apiClient.tools.getAll();
+        if (Array.isArray(tools)) {
+          const mapped: ToolItem[] = tools.map((t: any) => {
+            let cat = 'Other';
+            if (t.description?.startsWith('Imported from ')) {
+              cat = t.description.replace('Imported from ', '');
+            }
+            return {
+              id: t.id,
+              name: t.name,
+              groupType: t.type as 'TRS' | 'DHT',
+              category: cat,
+              size: t.size || '',
+              serialNumber: t.serialNumber,
+              status: STATUS_MAP[t.status] || 'yard',
+              operationalHours: Number(t.operationalHours) || 0,
+              rigName: t.rig?.name,
+              locationName: t.rig?.location?.name,
+            };
+          });
+          setAllTools(mapped);
+        }
+      } catch (err) {
+        console.error('Failed to fetch tools:', err);
+        setError('Failed to load tools.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTools();
+  }, []);
 
-  // Filter instances by selected status
-  const filteredInstances = selectedStatus === 'all'
-    ? allToolInstances
-    : selectedStatus
-      ? allToolInstances.filter((inst) => inst.status === selectedStatus)
-      : [];
+  // Memoize filtered tools to prevent re-computation on every render
+  const categoryTools = useMemo(() =>
+    allTools.filter(t => t.category === selectedCategory),
+    [allTools, selectedCategory]
+  );
 
-  // Get counts for each status
-  const totalCount = allToolInstances.length;
-  const onsiteCount = allToolInstances.filter((inst) => inst.status === 'onsite').length;
-  const yardCount = allToolInstances.filter((inst) => inst.status === 'yard').length;
-  const serviceCount = allToolInstances.filter((inst) => inst.status === 'service').length;
+  const filteredTools = useMemo(() =>
+    categoryTools.filter(t => {
+      if (selectedStatus !== 'all' && t.status !== selectedStatus) return false;
+      if (searchTerm) {
+        const term = searchTerm.toLowerCase();
+        return t.name.toLowerCase().includes(term) ||
+          t.serialNumber.toLowerCase().includes(term) ||
+          t.size?.toLowerCase().includes(term);
+      }
+      return true;
+    }),
+    [categoryTools, selectedStatus, searchTerm]
+  );
 
-  // Generate tool identifier (e.g., "CRT-001")
-  const getToolIdentifier = (_instance: ToolInstance, index: number) => {
-    const toolName = selectedTool.name;
-    const paddedIndex = String(index + 1).padStart(3, '0');
-    return `${toolName}-${paddedIndex}`;
-  };
+  // Stable counts derived from memoized data
+  const totalCount = categoryTools.length;
+  const onsiteCount = categoryTools.filter(t => t.status === 'onsite').length;
+  const yardCount = categoryTools.filter(t => t.status === 'yard').length;
+  const serviceCount = categoryTools.filter(t => t.status === 'service').length;
+
+  // Category counts for sidebar badges
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    allTools.forEach(t => {
+      counts[t.category] = (counts[t.category] || 0) + 1;
+    });
+    return counts;
+  }, [allTools]);
+
+  if (loading) return <MainLayout><div className="flex items-center justify-center h-[60vh]">
+    <div className="text-center">
+      <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
+      <p className="text-slate-500 font-semibold">Loading Tools...</p>
+    </div>
+  </div></MainLayout>;
+  if (error) return <MainLayout><div className="p-10 text-center text-red-500">{error}</div></MainLayout>;
 
   return (
-    <MainLayout
-      headerContent={
-        <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 via-primary-700 to-gray-900 bg-clip-text text-transparent">Operations Tools</h1>
-          <p className="text-sm text-gray-500 mt-1">Manage and track all operational tools</p>
-        </div>
-      }
-    >
+    <MainLayout headerContent={
+      <div className="space-y-1">
+        <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 tracking-tight">Operations Tools</h1>
+        <p className="text-sm text-slate-500 font-medium dark:text-slate-400">Manage and track all operational tools</p>
+      </div>
+    }>
       <div className="flex flex-col md:flex-row gap-6">
-        {/* Secondary Tools Menu - Sticky */}
+        {/* SIDEBAR: Categories */}
         <div className="w-full md:w-72 flex-shrink-0">
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-200/50 p-5 sticky top-0 md:max-h-[calc(100vh-140px)] overflow-y-auto custom-scrollbar">
-            <h2 className="text-base font-bold bg-gradient-to-r from-primary-600 to-blue-600 text-transparent bg-clip-text mb-4">Tools</h2>
+          <div className="glass-premium dark:bg-boxdark/90 rounded-2xl shadow-xl border border-white/20 dark:border-white/5 p-5 md:sticky md:top-0 h-[calc(100vh-150px)] overflow-y-auto">
 
-            <div className="space-y-5">
-              {/* TRS Group */}
-              <div>
-                <div className="text-xs font-bold text-gray-600 mb-2 px-2 uppercase tracking-wider">TRS Tools</div>
-                <div className="space-y-2">
-                  {toolItems
-                    .filter((t) => t.group === 'TRS')
-                    .map((tool) => (
-                      <button
-                        key={tool.id}
-                        onClick={() => {
-                          setSelectedToolId(tool.id);
-                          setSelectedStatus('all');
-                        }}
-                        className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-semibold border-2 transition-all duration-300 transform ${selectedToolId === tool.id
-                          ? 'bg-gradient-to-r from-primary-50 to-blue-50 border-primary-500 text-primary-800 shadow-lg scale-105'
-                          : 'bg-white border-gray-200 text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-blue-50/30 hover:border-primary-300 hover:shadow-md'
-                          }`}
-                      >
-                        <div className="flex flex-col">
-                          <span className="truncate">{tool.name}</span>
-                          {tool.sizes && tool.sizes.length > 0 && (
-                            <span className="text-xs font-normal text-gray-500 mt-0.5 truncate">
-                              {tool.sizes.map(s => s.size).join(', ')}
-                            </span>
-                          )}
-                        </div>
-                      </button>
-                    ))}
-                </div>
+            {/* TRS Section */}
+            <div className="mb-6">
+              <div className="flex items-center gap-2 mb-3 px-2">
+                <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                <span className="text-xs font-black text-blue-600 dark:text-blue-400 uppercase tracking-[0.15em]">TRS System</span>
               </div>
+              <div className="space-y-1">
+                {TRS_CATEGORIES.map(cat => (
+                  <button
+                    key={cat}
+                    onClick={() => { setSelectedCategory(cat); setSelectedStatus('all'); setSearchTerm(''); }}
+                    className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-bold border transition-all duration-300 flex items-center justify-between ${selectedCategory === cat
+                      ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white border-transparent shadow-[0_0_12px_rgba(25,86,168,0.3)]'
+                      : 'bg-white/60 border-white/20 text-slate-600 hover:bg-white dark:bg-boxdark/60 dark:border-white/5 dark:text-slate-300 dark:hover:bg-meta-4 hover:shadow-sm hover:-translate-y-0.5'
+                      }`}
+                  >
+                    <span>{CATEGORY_DISPLAY_MAP[cat] || cat}</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-black ${selectedCategory === cat
+                      ? 'bg-white/20 text-white'
+                      : 'bg-slate-100 text-slate-500 dark:bg-meta-4 dark:text-slate-400'
+                      }`}>{categoryCounts[cat] || 0}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
 
-              {/* DHT Group */}
-              <div>
-                <div className="text-xs font-bold text-gray-600 mb-2 px-2 uppercase tracking-wider">DHT Tools</div>
-                <div className="space-y-2">
-                  {toolItems
-                    .filter((t) => t.group === 'DHT')
-                    .map((tool) => (
-                      <button
-                        key={tool.id}
-                        onClick={() => {
-                          setSelectedToolId(tool.id);
-                          setSelectedStatus('all');
-                        }}
-                        className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-semibold border-2 transition-all duration-300 transform ${selectedToolId === tool.id
-                          ? 'bg-gradient-to-r from-primary-50 to-blue-50 border-primary-500 text-primary-800 shadow-lg scale-105'
-                          : 'bg-white border-gray-200 text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-blue-50/30 hover:border-primary-300 hover:shadow-md'
-                          }`}
-                      >
-                        <div className="flex flex-col">
-                          <span className="truncate">{tool.name}</span>
-                          {tool.sizes && tool.sizes.length > 0 && (
-                            <span className="text-xs font-normal text-gray-500 mt-0.5 truncate">
-                              {tool.sizes.map(s => s.size).join(', ')}
-                            </span>
-                          )}
-                        </div>
-                      </button>
-                    ))}
-                </div>
+            {/* DHT Section */}
+            <div>
+              <div className="flex items-center gap-2 mb-3 px-2">
+                <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
+                <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-[0.15em]">DHT System</span>
+              </div>
+              <div className="space-y-1">
+                {DHT_CATEGORIES.map(cat => (
+                  <button
+                    key={cat}
+                    onClick={() => { setSelectedCategory(cat); setSelectedStatus('all'); setSearchTerm(''); }}
+                    className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-bold border transition-all duration-300 flex items-center justify-between ${selectedCategory === cat
+                      ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-transparent shadow-[0_0_12px_rgba(99,102,241,0.3)]'
+                      : 'bg-white/60 border-white/20 text-slate-600 hover:bg-white dark:bg-boxdark/60 dark:border-white/5 dark:text-slate-300 dark:hover:bg-meta-4 hover:shadow-sm hover:-translate-y-0.5'
+                      }`}
+                  >
+                    <span>{CATEGORY_DISPLAY_MAP[cat] || cat}</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-black ${selectedCategory === cat
+                      ? 'bg-white/20 text-white'
+                      : 'bg-slate-100 text-slate-500 dark:bg-meta-4 dark:text-slate-400'
+                      }`}>{categoryCounts[cat] || 0}</span>
+                  </button>
+                ))}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Third Panel - Status Boxes and Details */}
+        {/* MAIN PANEL */}
         <div className="flex-1 min-w-0">
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-200/50 p-6">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-3 pb-4 border-b border-gray-200/50">
+          <div className="glass-premium dark:bg-boxdark/90 rounded-2xl shadow-xl border border-white/20 dark:border-white/5 p-6 min-h-[calc(100vh-150px)]">
+
+            {/* Header */}
+            <div className="flex justify-between items-center mb-6 border-b border-slate-100/50 dark:border-white/5 pb-4">
               <div>
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-primary-600 to-blue-600 text-transparent bg-clip-text">{selectedTool?.name}</h1>
-                <p className="text-sm text-gray-500 mt-2">Sample status for this tool across locations.</p>
-              </div>
-              <div className="px-4 py-2 bg-gradient-to-r from-primary-50 to-blue-50 rounded-xl border border-primary-200">
-                <span className="text-xs font-semibold text-gray-600">Group: </span>
-                <span className="text-xs font-bold text-primary-700 uppercase">{selectedTool?.group}</span>
+                <h2 className="text-3xl font-black text-slate-800 dark:text-white tracking-tight">{CATEGORY_DISPLAY_MAP[selectedCategory] || selectedCategory}</h2>
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-[0.15em]">{DHT_CATEGORIES.includes(selectedCategory) ? 'DHT Group' : 'TRS Group'}</span>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-              {/* All - All Tools */}
-              <button
-                onClick={() => setSelectedStatus(selectedStatus === 'all' ? null : 'all')}
-                className={`rounded-2xl border-2 p-5 flex flex-col justify-between transition-all duration-300 transform hover:scale-105 ${selectedStatus === 'all'
-                  ? 'border-primary-500 bg-gradient-to-br from-primary-100 to-primary-50 shadow-2xl ring-4 ring-primary-300/50'
-                  : 'border-primary-200 bg-gradient-to-br from-primary-50 to-white hover:from-primary-100 hover:to-primary-50 hover:shadow-xl cursor-pointer'
-                  }`}
-              >
-                <div>
-                  <div className="flex items-center space-x-2 mb-3">
-                    <span className="w-3 h-3 rounded-full bg-primary-600 shadow-lg" />
-                    <span className="text-xs font-bold text-primary-700 uppercase tracking-wider">All</span>
-                  </div>
-                  <p className="text-4xl font-bold text-primary-700 mb-1">{totalCount}</p>
-                  <p className="text-xs text-primary-600 mt-2 font-medium">All tools across all statuses</p>
-                </div>
-              </button>
-
-              {/* Green - Onsite (Rentout) */}
-              <button
-                onClick={() => setSelectedStatus(selectedStatus === 'onsite' ? null : 'onsite')}
-                className={`rounded-2xl border-2 p-5 flex flex-col justify-between transition-all duration-300 transform hover:scale-105 ${selectedStatus === 'onsite'
-                  ? 'border-green-500 bg-gradient-to-br from-green-100 to-green-50 shadow-2xl ring-4 ring-green-300/50'
-                  : 'border-green-200 bg-gradient-to-br from-green-50 to-white hover:from-green-100 hover:to-green-50 hover:shadow-xl cursor-pointer'
-                  }`}
-              >
-                <div>
-                  <div className="flex items-center space-x-2 mb-3">
-                    <span className="w-3 h-3 rounded-full bg-green-500 shadow-lg animate-pulse" />
-                    <span className="text-xs font-bold text-green-700 uppercase tracking-wider">Onsite (Rentout)</span>
-                  </div>
-                  <p className="text-4xl font-bold text-green-700 mb-1">{onsiteCount}</p>
-                  <p className="text-xs text-green-600 mt-2 font-medium">Tools currently deployed onsite</p>
-                </div>
-              </button>
-
-              {/* Yellow - Yard (Available) */}
-              <button
-                onClick={() => setSelectedStatus(selectedStatus === 'yard' ? null : 'yard')}
-                className={`rounded-2xl border-2 p-5 flex flex-col justify-between transition-all duration-300 transform hover:scale-105 ${selectedStatus === 'yard'
-                  ? 'border-yellow-500 bg-gradient-to-br from-yellow-100 to-yellow-50 shadow-2xl ring-4 ring-yellow-300/50'
-                  : 'border-yellow-200 bg-gradient-to-br from-yellow-50 to-white hover:from-yellow-100 hover:to-yellow-50 hover:shadow-xl cursor-pointer'
-                  }`}
-              >
-                <div>
-                  <div className="flex items-center space-x-2 mb-3">
-                    <span className="w-3 h-3 rounded-full bg-yellow-400 shadow-lg" />
-                    <span className="text-xs font-bold text-yellow-700 uppercase tracking-wider">Yard (Workshop)</span>
-                  </div>
-                  <p className="text-4xl font-bold text-yellow-700 mb-1">{yardCount}</p>
-                  <p className="text-xs text-yellow-600 mt-2 font-medium">Available in yard / workshop</p>
-                </div>
-              </button>
-
-              {/* Red - Services */}
-              <button
-                onClick={() => setSelectedStatus(selectedStatus === 'service' ? null : 'service')}
-                className={`rounded-2xl border-2 p-5 flex flex-col justify-between transition-all duration-300 transform hover:scale-105 ${selectedStatus === 'service'
-                  ? 'border-red-500 bg-gradient-to-br from-red-100 to-red-50 shadow-2xl ring-4 ring-red-300/50'
-                  : 'border-red-200 bg-gradient-to-br from-red-50 to-white hover:from-red-100 hover:to-red-50 hover:shadow-xl cursor-pointer'
-                  }`}
-              >
-                <div>
-                  <div className="flex items-center space-x-2 mb-3">
-                    <span className="w-3 h-3 rounded-full bg-red-500 shadow-lg" />
-                    <span className="text-xs font-bold text-red-700 uppercase tracking-wider">Under Service</span>
-                  </div>
-                  <p className="text-4xl font-bold text-red-700 mb-1">{serviceCount}</p>
-                  <p className="text-xs text-red-600 mt-2 font-medium">Tools currently in service</p>
-                </div>
-              </button>
+            {/* Status Tabs */}
+            <div className="grid grid-cols-4 gap-4 mb-6">
+              {[
+                { id: 'all' as const, label: 'All', count: totalCount, icon: '📋' },
+                { id: 'onsite' as const, label: 'Onsite', count: onsiteCount, icon: '🟢' },
+                { id: 'yard' as const, label: 'Yard', count: yardCount, icon: '🟡' },
+                { id: 'service' as const, label: 'Service', count: serviceCount, icon: '🔴' }
+              ].map(tab => {
+                const isActive = selectedStatus === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setSelectedStatus(tab.id)}
+                    className={`relative p-4 rounded-2xl border-2 transition-all duration-300 group overflow-hidden ${isActive
+                      ? tab.id === 'all'
+                        ? 'border-blue-400 bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/10 dark:border-blue-500/40 shadow-lg shadow-blue-100 dark:shadow-none'
+                        : `${STATUS_CONFIG[tab.id].tabBorder} ${STATUS_CONFIG[tab.id].tabBg} shadow-lg dark:shadow-none`
+                      : 'border-slate-100 dark:border-white/5 bg-white/60 dark:bg-boxdark/60 hover:bg-white dark:hover:bg-meta-4 hover:shadow-md hover:-translate-y-0.5'
+                      }`}
+                  >
+                    <div className="text-lg mb-1">{tab.icon}</div>
+                    <div className="text-3xl font-black text-slate-800 dark:text-white mb-1">{tab.count}</div>
+                    <div className={`text-[10px] font-black uppercase tracking-[0.15em] ${isActive
+                      ? tab.id === 'all' ? 'text-blue-600 dark:text-blue-400' : STATUS_CONFIG[tab.id].tabText
+                      : 'text-slate-400'
+                      }`}>{tab.label}</div>
+                  </button>
+                );
+              })}
             </div>
 
-            {/* Tool Details Section */}
-            {selectedStatus && filteredInstances.length > 0 && (
-              <div className="mt-8">
-                <h3 className="text-xl font-bold bg-gradient-to-r from-primary-600 to-blue-600 text-transparent bg-clip-text mb-5">
-                  {selectedStatus === 'all' && 'All Tools Details'}
-                  {selectedStatus === 'onsite' && 'Onsite Tools Details'}
-                  {selectedStatus === 'yard' && 'Yard Tools Details'}
-                  {selectedStatus === 'service' && 'Service Tools Details'}
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {filteredInstances.map((instance, index) => {
-                    const toolIdentifier = getToolIdentifier(instance, index);
-                    const statusColor =
-                      instance.status === 'onsite'
-                        ? 'green'
-                        : instance.status === 'yard'
-                          ? 'yellow'
-                          : 'red';
-                    const statusLabel =
-                      instance.status === 'onsite'
-                        ? 'Onsite'
-                        : instance.status === 'yard'
-                          ? 'Yard'
-                          : 'Under Service';
+            {/* Search */}
+            <div className="mb-6 relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
+              <input
+                type="text"
+                placeholder="Search by Name, Size or Serial Number..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="w-full pl-11 pr-4 py-3.5 rounded-xl border border-slate-200/60 bg-white/60 dark:bg-meta-4 dark:border-white/5 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 text-sm font-medium transition-all"
+              />
+            </div>
 
-                    return (
-                      <div
-                        key={instance.id}
-                        className="bg-gradient-to-br from-white to-gray-50 rounded-xl border-2 border-gray-200 p-5 space-y-3 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
-                      >
-                        <div className="font-bold text-primary-700 text-lg mb-4 pb-2 border-b border-gray-200">{toolIdentifier}</div>
-                        <div className="space-y-2.5 text-sm">
-                          <div className="flex items-center justify-between bg-white/80 rounded-lg p-2 border border-gray-100">
-                            <span className="font-bold text-primary-600">Status:</span>
-                            <span
-                              className={`px-3 py-1.5 rounded-full font-bold shadow-sm ${statusColor === 'green'
-                                ? 'bg-gradient-to-r from-green-200 to-green-100 text-green-800 border border-green-300'
-                                : statusColor === 'yellow'
-                                  ? 'bg-gradient-to-r from-yellow-200 to-yellow-100 text-yellow-800 border border-yellow-300'
-                                  : 'bg-gradient-to-r from-red-200 to-red-100 text-red-800 border border-red-300'
-                                }`}
-                            >
-                              {statusLabel}
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between bg-white/80 rounded-lg p-2 border border-gray-100">
-                            <span className="font-bold text-primary-600">Date/Time:</span>
-                            <span className="font-semibold text-gray-700">{instance.dateTime || '-'}</span>
-                          </div>
-                          <div className="flex items-center justify-between bg-white/80 rounded-lg p-2 border border-gray-100">
-                            <span className="font-bold text-primary-600">Size:</span>
-                            <span className="font-semibold text-primary-700">{instance.jobSize || '-'}</span>
-                          </div>
-                          <div className="flex items-center justify-between bg-white/80 rounded-lg p-2 border border-gray-100">
-                            <span className="font-bold text-primary-600">Location:</span>
-                            <span className="font-semibold text-gray-700">{instance.location || '-'}</span>
-                          </div>
-                          <div className="flex items-center justify-between bg-white/80 rounded-lg p-2 border border-gray-100">
-                            <span className="font-bold text-primary-600">Rig:</span>
-                            <span className="font-semibold text-gray-700">{instance.rig || '-'}</span>
-                          </div>
-                        </div>
+            {/* Tool Cards Grid */}
+            {filteredTools.length === 0 ? (
+              <div className="text-center py-20">
+                <div className="text-6xl mb-4 opacity-40">🔧</div>
+                <p className="text-slate-400 font-bold text-lg">No tools found</p>
+                <p className="text-slate-400/70 text-sm mt-1">
+                  {selectedStatus !== 'all'
+                    ? `No ${selectedStatus} tools in this category`
+                    : 'Try a different category'}
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {filteredTools.map(tool => {
+                  const sc = STATUS_CONFIG[tool.status];
+                  return (
+                    <div key={tool.id} className={`relative border-2 rounded-2xl p-5 shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 group bg-white/80 dark:bg-boxdark/60 ${sc.borderColor}`}>
+                      {/* Status Badge */}
+                      <div className={`absolute top-3 right-3 flex items-center gap-1.5 px-2.5 py-1 rounded-lg ${sc.badgeBg}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${sc.dotColor} animate-pulse`}></span>
+                        <span className={`text-[10px] font-black uppercase tracking-wider ${sc.badgeText}`}>{sc.label}</span>
                       </div>
-                    );
-                  })}
-                </div>
+
+                      {/* Tool Name & Serial */}
+                      <h4 className="font-black text-slate-800 dark:text-white mb-0.5 pr-20 tracking-tight text-sm">{tool.name}</h4>
+                      <div className="text-[11px] text-slate-400 mb-4 font-mono tracking-wider">{tool.serialNumber}</div>
+
+                      {/* Details */}
+                      <div className="space-y-2.5">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-slate-400 font-bold uppercase tracking-wider">Size</span>
+                          <span className="font-bold text-slate-700 dark:text-slate-200 bg-slate-100/80 dark:bg-meta-4/80 px-2.5 py-1 rounded-lg">{tool.size || '-'}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-slate-400 font-bold uppercase tracking-wider">Rig</span>
+                          <span className="font-semibold text-slate-700 dark:text-slate-300">{tool.rigName || '-'}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-slate-400 font-bold uppercase tracking-wider">Location</span>
+                          <span className="font-semibold text-slate-700 dark:text-slate-300">{tool.locationName || '-'}</span>
+                        </div>
+                        {tool.operationalHours > 0 && (
+                          <div className="flex justify-between items-center text-xs pt-1 border-t border-slate-100/50 dark:border-white/5 mt-1">
+                            <span className="text-slate-400 font-bold uppercase tracking-wider">Op. Hours</span>
+                            <span className="font-black text-blue-600 dark:text-blue-400">{tool.operationalHours.toFixed(1)} hrs</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -461,5 +348,3 @@ const Tools = () => {
 };
 
 export default Tools;
-
-

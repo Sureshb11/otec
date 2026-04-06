@@ -1,873 +1,544 @@
-import { useState } from 'react';
+
+import { useState, useEffect, useMemo } from 'react';
 import MainLayout from '../components/MainLayout';
+import { apiClient } from '../api/apiClient';
+
+const CATEGORY_DISPLAY_MAP: Record<string, string> = {
+  'CRT': 'CRT',
+  'Power Tong': 'POWER TONG',
+  'Jam Unit': 'JAM UNIT',
+  'Filup Tool': 'FILUP TOOL',
+  'Safety Clamp': 'SAFETY CLAMP',
+  'Elevators': 'ELEVATORS',
+  'Slips': 'SLIPS',
+  'Spider Elevators': 'SPIDER ELEVATORS',
+  'Reamers': 'REAMERS',
+  'Anti Stick Slip': 'ANTI STICK SLIP',
+  'Scrapper': 'SCRAPPER',
+  'Jars': 'JARS',
+  'Handling Tools DHT': 'HANDLING TOOLS'
+};
+
+const TRS_CATEGORIES = ['CRT', 'Power Tong', 'Jam Unit', 'Filup Tool', 'Safety Clamp', 'Elevators', 'Slips', 'Spider Elevators'];
+const DHT_CATEGORIES = ['Reamers', 'Anti Stick Slip', 'Scrapper', 'Jars', 'Handling Tools DHT'];
 
 type ToolGroupKey = 'TRS' | 'DHT';
 
 interface ToolSize {
   size: string;
   quantity: number;
+  inventoryId?: string;
 }
 
 interface Tool {
   id: string;
   name: string;
   group: ToolGroupKey;
-  available: number; // Total available across all sizes
-  sizes: ToolSize[]; // Array of sizes with quantities
+  available: number;
+  sizes: ToolSize[];
   type?: string;
+  category: string;
 }
 
 const Inventory = () => {
-  const [selectedGroup, setSelectedGroup] = useState<ToolGroupKey | 'ALL'>('ALL');
+  const [selectedCategory, setSelectedCategory] = useState<string>('CRT');
   const [searchTerm, setSearchTerm] = useState('');
-  const [showAddModal, setShowAddModal] = useState(false);
   const [editingTool, setEditingTool] = useState<Tool | null>(null);
   const [editSizeIndex, setEditSizeIndex] = useState<number>(-1);
   const [editQuantity, setEditQuantity] = useState(0);
+  const [showAddModal, setShowAddModal] = useState(false);
   const [newTool, setNewTool] = useState({
     name: '',
     group: 'TRS' as ToolGroupKey,
     type: '',
     sizes: [{ size: '', quantity: 0 }] as ToolSize[],
+    category: 'CRT'
   });
   const [showImportModal, setShowImportModal] = useState(false);
   const [, setImportFile] = useState<File | null>(null);
+  const [tools, setTools] = useState<Tool[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  const [tools, setTools] = useState<Tool[]>([
-    {
-      id: 'trs-crt',
-      name: 'CRT',
-      group: 'TRS',
-      available: 25,
-      sizes: [
-        { size: '4 1/2"', quantity: 10 },
-        { size: '5"', quantity: 8 },
-        { size: '6 5/8"', quantity: 7 }
-      ],
-      type: 'Standard'
-    },
-    {
-      id: 'trs-power-tong',
-      name: 'POWER TONG',
-      group: 'TRS',
-      available: 15,
-      sizes: [
-        { size: '5"', quantity: 10 },
-        { size: '6 5/8"', quantity: 5 }
-      ],
-      type: 'Standard'
-    },
-    {
-      id: 'trs-jam-unit',
-      name: 'JAM UNIT',
-      group: 'TRS',
-      available: 12,
-      sizes: [
-        { size: '6 5/8"', quantity: 7 },
-        { size: '7"', quantity: 5 }
-      ],
-      type: 'Standard'
-    },
-    {
-      id: 'trs-filup-tool',
-      name: 'FILUP TOOL',
-      group: 'TRS',
-      available: 18,
-      sizes: [
-        { size: '4 1/2"', quantity: 10 },
-        { size: '5"', quantity: 8 }
-      ],
-      type: 'Standard'
-    },
-    {
-      id: 'trs-handling-tools',
-      name: 'HANDLING TOOLS',
-      group: 'TRS',
-      available: 20,
-      sizes: [
-        { size: '5"', quantity: 12 },
-        { size: '6 5/8"', quantity: 8 }
-      ],
-      type: 'Standard'
-    },
-    {
-      id: 'dht-reamers',
-      name: 'REAMERS',
-      group: 'DHT',
-      available: 15,
-      sizes: [
-        { size: '7"', quantity: 10 },
-        { size: '8 5/8"', quantity: 5 }
-      ],
-      type: 'Standard'
-    },
-    {
-      id: 'dht-anti-stick-slip',
-      name: 'ANTI STICK SLIP',
-      group: 'DHT',
-      available: 22,
-      sizes: [
-        { size: '4 1/2"', quantity: 12 },
-        { size: '5"', quantity: 10 }
-      ],
-      type: 'Standard'
-    },
-    {
-      id: 'dht-scrapper',
-      name: 'SCRAPPER',
-      group: 'DHT',
-      available: 10,
-      sizes: [
-        { size: '6 5/8"', quantity: 10 }
-      ],
-      type: 'Standard'
-    },
-    {
-      id: 'dht-jars',
-      name: 'JARS',
-      group: 'DHT',
-      available: 18,
-      sizes: [
-        { size: '5"', quantity: 10 },
-        { size: '6 5/8"', quantity: 8 }
-      ],
-      type: 'Standard'
-    },
-    {
-      id: 'dht-control-valve',
-      name: 'CONTROL VALVE',
-      group: 'DHT',
-      available: 15,
-      sizes: [
-        { size: '4 1/2"', quantity: 8 },
-        { size: '5"', quantity: 7 }
-      ],
-      type: 'Standard'
-    },
-    {
-      id: 'dht-torque-reducer',
-      name: 'TORQUE REDUCER',
-      group: 'DHT',
-      available: 12,
-      sizes: [
-        { size: '7"', quantity: 12 }
-      ],
-      type: 'Standard'
-    },
-  ]);
+  useEffect(() => {
+    const fetchInventory = async () => {
+      try {
+        setLoading(true);
+        const data = await apiClient.inventory.getAll();
 
-  const filteredTools = tools.filter(t => {
-    const matchesGroup =
-      selectedGroup === 'ALL' ? true : t.group === selectedGroup;
-    const matchesSearch = t.name.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesGroup && matchesSearch;
-  });
+        if (Array.isArray(data)) {
+          const toolMap = new Map<string, Tool>();
 
-  const totalCount = tools.reduce((sum, t) => sum + t.available, 0);
+          data.forEach((item: any) => {
+            const categoryName = item.category || 'TRS';
+            const group = (categoryName === 'DHT' ? 'DHT' : 'TRS') as ToolGroupKey;
 
+            let deducedCategory = 'Other';
+            const nameUpper = item.itemName?.toUpperCase() || '';
+
+            if (item.description && item.description.startsWith('Imported from ')) {
+              const importedCat = item.description.replace('Imported from ', '');
+              const exactMatch = [...TRS_CATEGORIES, ...DHT_CATEGORIES].find(c => c.toLowerCase() === importedCat.toLowerCase());
+              if (exactMatch) {
+                deducedCategory = exactMatch;
+              } else {
+                deducedCategory = importedCat;
+              }
+            } else {
+              const KEYWORD_MAP: Record<string, string> = {
+                'AST': 'Anti Stick Slip', 'ANTI STICK': 'Anti Stick Slip',
+                'CRT': 'CRT', 'POWER TONG': 'Power Tong', 'TONG': 'Power Tong',
+                'JAM': 'Jam Unit', 'FILUP': 'Filup Tool', 'SAFETY CLAMP': 'Safety Clamp',
+                'CLAMP': 'Safety Clamp', 'ELEVATOR': 'Elevators', 'ELEV': 'Elevators',
+                'SLIP': 'Slips', 'SPIDER': 'Spider Elevators', 'REAMER': 'Reamers',
+                'SCRAP': 'Scrapper', 'JAR': 'Jars', 'HANDLING': 'Handling Tools DHT'
+              };
+              for (const [key, category] of Object.entries(KEYWORD_MAP)) {
+                if (nameUpper.includes(key)) {
+                  deducedCategory = category;
+                  break;
+                }
+              }
+            }
+
+            if (deducedCategory === 'Other' || deducedCategory === nameUpper) {
+              const exactMatch = [...TRS_CATEGORIES, ...DHT_CATEGORIES].find(c => nameUpper === c.toUpperCase());
+              if (exactMatch) deducedCategory = exactMatch;
+            }
+
+            const uniqueToolName = item.itemName || 'Unknown Tool';
+            const toolId = `${group.toLowerCase()}-${uniqueToolName.toLowerCase().replace(/\s+/g, '-')}`;
+
+            if (toolMap.has(toolId)) {
+              const tool = toolMap.get(toolId)!;
+              tool.sizes.push({ size: item.unit || '-', quantity: item.quantity, inventoryId: item.id });
+              tool.available += item.quantity;
+            } else {
+              toolMap.set(toolId, {
+                id: toolId,
+                name: uniqueToolName,
+                group: group,
+                available: item.quantity,
+                sizes: [{ size: item.unit || '-', quantity: item.quantity, inventoryId: item.id }],
+                type: item.description,
+                category: deducedCategory
+              });
+            }
+          });
+
+          setTools(Array.from(toolMap.values()));
+        } else {
+          setTools([]);
+          setError('Invalid server response');
+        }
+      } catch (err) {
+        console.error('Failed to fetch inventory:', err);
+        setError('Failed to load inventory.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchInventory();
+  }, []);
+
+  // Memoized filtered tools
+  const filteredTools = useMemo(() => tools.filter(t => {
+    const tCat = t.category.toUpperCase();
+    const sCat = selectedCategory.toUpperCase();
+    const sDisplay = CATEGORY_DISPLAY_MAP[selectedCategory]?.toUpperCase();
+    return tCat.includes(sCat) || (sDisplay && tCat.includes(sDisplay)) ||
+      t.name.toUpperCase().includes(sCat) || (sDisplay && t.name.toUpperCase().includes(sDisplay));
+  }), [tools, selectedCategory]);
+
+  // Collect and sort sizes
+  const allSizes = useMemo(() => {
+    const sizes: { tool: Tool, size: ToolSize, index: number }[] = [];
+    filteredTools.forEach(t => {
+      t.sizes.forEach((s, idx) => {
+        if (!searchTerm || s.size.toLowerCase().includes(searchTerm.toLowerCase()) || t.name.toLowerCase().includes(searchTerm.toLowerCase())) {
+          sizes.push({ tool: t, size: s, index: idx });
+        }
+      });
+    });
+    sizes.sort((a, b) => a.size.size.localeCompare(b.size.size, undefined, { numeric: true }));
+    return sizes;
+  }, [filteredTools, searchTerm]);
+
+  const totalCategoryStock = filteredTools.reduce((acc, t) => acc + t.available, 0);
+  const uniqueItems = filteredTools.length;
+
+  // Category counts for sidebar
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    tools.forEach(t => {
+      counts[t.category] = (counts[t.category] || 0) + t.available;
+    });
+    return counts;
+  }, [tools]);
+
+  // Handlers
   const handleAddSize = () => {
-    setNewTool({
-      ...newTool,
-      sizes: [...newTool.sizes, { size: '', quantity: 0 }],
-    });
+    setNewTool({ ...newTool, sizes: [...newTool.sizes, { size: '', quantity: 0 }] });
   };
-
   const handleRemoveSize = (index: number) => {
-    setNewTool({
-      ...newTool,
-      sizes: newTool.sizes.filter((_, i) => i !== index),
-    });
+    setNewTool({ ...newTool, sizes: newTool.sizes.filter((_, i) => i !== index) });
   };
-
   const handleUpdateSize = (index: number, field: 'size' | 'quantity', value: string | number) => {
     const updatedSizes = [...newTool.sizes];
-    updatedSizes[index] = {
-      ...updatedSizes[index],
-      [field]: field === 'quantity' ? Number(value) : value,
-    };
-    setNewTool({
-      ...newTool,
-      sizes: updatedSizes,
-    });
+    updatedSizes[index] = { ...updatedSizes[index], [field]: field === 'quantity' ? Number(value) : value };
+    setNewTool({ ...newTool, sizes: updatedSizes });
   };
 
-  const handleAddTool = () => {
-    if (!newTool.name.trim()) {
-      alert('Please enter a tool name');
-      return;
-    }
-
-    // Validate sizes
-    const validSizes = newTool.sizes.filter(s => s.size.trim() && s.quantity > 0);
-    if (validSizes.length === 0) {
-      alert('Please add at least one size with quantity');
-      return;
-    }
-
-    const toolId = `${newTool.group.toLowerCase()}-${newTool.name.toLowerCase().replace(/\s+/g, '-')}`;
-    const totalAvailable = validSizes.reduce((sum, s) => sum + s.quantity, 0);
-
-    const tool: Tool = {
-      id: toolId,
-      name: newTool.name.toUpperCase(),
-      group: newTool.group,
-      available: totalAvailable,
-      sizes: validSizes,
-      type: newTool.type || undefined,
-    };
-
-    setTools([...tools, tool]);
-    setNewTool({
-      name: '',
-      group: 'TRS',
-      type: '',
-      sizes: [{ size: '', quantity: 0 }]
-    });
-    setShowAddModal(false);
-  };
-
-  const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setImportFile(file);
-
+  const handleCreateTool = async () => {
+    if (!newTool.name) return alert("Name required");
     try {
-      // For CSV files (simple text parsing)
-      if (file.name.endsWith('.csv')) {
-        const text = await file.text();
-        const lines = text.split('\n').filter(line => line.trim());
+      setSaving(true);
+      const promises = newTool.sizes.map(s => apiClient.inventory.create({
+        itemName: newTool.name.toUpperCase(),
+        category: newTool.group,
+        quantity: s.quantity,
+        unit: s.size,
+        description: 'Created Manually'
+      }));
+      await Promise.all(promises);
+      window.location.reload();
+    } catch (e: any) {
+      alert(e.message);
+    } finally {
+      setSaving(false);
+      setShowAddModal(false);
+    }
+  };
 
-        if (lines.length < 2) {
-          alert('CSV file must have at least a header row and one data row');
-          return;
-        }
-
-        // Parse CSV header
-        const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-        const nameIdx = headers.findIndex(h => h.includes('name') || h.includes('tool'));
-        const groupIdx = headers.findIndex(h => h.includes('group') || h.includes('type'));
-        const sizeIdx = headers.findIndex(h => h.includes('size'));
-        const typeIdx = headers.findIndex(h => h.includes('type') && !h.includes('group'));
-        const qtyIdx = headers.findIndex(h => h.includes('quantity') || h.includes('qty') || h.includes('available'));
-
-        if (nameIdx === -1) {
-          alert('CSV file must have a "Name" or "Tool" column');
-          return;
-        }
-
-        // Group by tool name to collect all sizes
-        const toolMap = new Map<string, Tool>();
-
-        // Parse data rows
-        for (let i = 1; i < lines.length; i++) {
-          const values = lines[i].split(',').map(v => v.trim());
-          if (!values[nameIdx]) continue; // Skip empty rows
-
-          const toolName = values[nameIdx].toUpperCase();
-          const group = (values[groupIdx]?.toUpperCase() === 'DHT' ? 'DHT' : 'TRS') as ToolGroupKey;
-          const size = sizeIdx >= 0 && values[sizeIdx] ? values[sizeIdx].trim() : undefined;
-          const type = typeIdx >= 0 ? values[typeIdx] : undefined;
-          const quantity = qtyIdx >= 0 ? parseInt(values[qtyIdx]) || 0 : 1;
-
-          const toolId = `${group.toLowerCase()}-${toolName.toLowerCase().replace(/\s+/g, '-')}`;
-
-          if (toolMap.has(toolId)) {
-            // Tool exists, add size to existing tool
-            const existingTool = toolMap.get(toolId)!;
-            if (size && quantity > 0) {
-              // Check if size already exists
-              const sizeIndex = existingTool.sizes.findIndex(s => s.size === size);
-              if (sizeIndex >= 0) {
-                // Update quantity for existing size
-                existingTool.sizes[sizeIndex].quantity += quantity;
-              } else {
-                // Add new size
-                existingTool.sizes.push({ size, quantity });
-              }
-              // Recalculate total available
-              existingTool.available = existingTool.sizes.reduce((sum, s) => sum + s.quantity, 0);
-            }
-          } else {
-            // New tool
-            const sizes: ToolSize[] = size && quantity > 0 ? [{ size, quantity }] : [];
-            toolMap.set(toolId, {
-              id: toolId,
-              name: toolName,
-              group,
-              available: quantity,
-              sizes,
-              type,
-            });
-          }
-        }
-
-        const importedTools = Array.from(toolMap.values());
-
-        if (importedTools.length > 0) {
-          setTools(prev => {
-            // Merge with existing tools, update if exists, add if new
-            const existingMap = new Map(prev.map(t => [t.id, t]));
-
-            importedTools.forEach(imported => {
-              if (existingMap.has(imported.id)) {
-                // Merge sizes for existing tool
-                const existing = existingMap.get(imported.id)!;
-                const sizeMap = new Map(existing.sizes.map(s => [s.size, s.quantity]));
-
-                // Add/update sizes from imported tool
-                imported.sizes.forEach(s => {
-                  if (sizeMap.has(s.size)) {
-                    sizeMap.set(s.size, sizeMap.get(s.size)! + s.quantity);
-                  } else {
-                    sizeMap.set(s.size, s.quantity);
-                  }
-                });
-
-                // Update existing tool
-                existing.sizes = Array.from(sizeMap.entries()).map(([size, quantity]) => ({
-                  size,
-                  quantity,
-                }));
-                existing.available = existing.sizes.reduce((sum, s) => sum + s.quantity, 0);
-                if (imported.type) existing.type = imported.type;
-              } else {
-                // Add new tool
-                existingMap.set(imported.id, imported);
-              }
-            });
-
-            return Array.from(existingMap.values());
-          });
-          alert(`Successfully imported ${importedTools.length} tool(s) with their sizes`);
-          setShowImportModal(false);
-          setImportFile(null);
-        } else {
-          alert('No valid tools found in the file');
-        }
-      } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
-        // For Excel files, xlsx library is required
-        // Show helpful message and instructions
-        const installMessage = `Excel file import requires the xlsx library to be installed.
-
-To enable Excel import, please run:
-
-cd frontend
-npm install xlsx
-
-Then restart your development server.
-
-Alternatively, you can save your Excel file as CSV format (.csv) and import it directly - CSV import works immediately without any installation.`;
-
-        alert(installMessage);
-        setImportFile(null);
-        // NOTE: Excel import code removed to prevent Vite build errors
-        // After installing xlsx: npm install xlsx
-        // Re-enable Excel import functionality in a separate commit
-      } else {
-        alert('Please select a CSV or Excel file (.csv, .xlsx, .xls)');
-        setImportFile(null);
+  const handleUpdateQuantity = async () => {
+    if (!editingTool || editSizeIndex === -1) return;
+    const sizeObj = editingTool.sizes[editSizeIndex];
+    if (!sizeObj.inventoryId) return;
+    try {
+      setSaving(true);
+      await apiClient.inventory.update(sizeObj.inventoryId, { quantity: editQuantity });
+      const updatedSize = { ...sizeObj, quantity: editQuantity };
+      const toolIdx = tools.findIndex(t => t.id === editingTool.id);
+      if (toolIdx > -1) {
+        const newTools = [...tools];
+        const newSizes = [...newTools[toolIdx].sizes];
+        newSizes[editSizeIndex] = updatedSize;
+        newTools[toolIdx] = {
+          ...newTools[toolIdx],
+          sizes: newSizes,
+          available: newSizes.reduce((a, b) => a + b.quantity, 0)
+        };
+        setTools(newTools);
       }
-    } catch (error) {
-      console.error('Error importing file:', error);
-      alert('Error importing file. Please check the file format.');
-      setImportFile(null);
-    }
-  };
-
-  const handleEditQuantity = (tool: Tool, sizeIndex: number) => {
-    setEditingTool(tool);
-    setEditSizeIndex(sizeIndex);
-    setEditQuantity(tool.sizes[sizeIndex]?.quantity || 0);
-  };
-
-  const handleUpdateQuantity = () => {
-    if (editingTool && editSizeIndex >= 0 && editQuantity >= 0) {
-      setTools(
-        tools.map(tool => {
-          if (tool.id === editingTool.id) {
-            const updatedSizes = [...tool.sizes];
-            updatedSizes[editSizeIndex] = {
-              ...updatedSizes[editSizeIndex],
-              quantity: editQuantity,
-            };
-            const totalAvailable = updatedSizes.reduce((sum, s) => sum + s.quantity, 0);
-            return {
-              ...tool,
-              sizes: updatedSizes,
-              available: totalAvailable,
-            };
-          }
-          return tool;
-        })
-      );
       setEditingTool(null);
-      setEditSizeIndex(-1);
-      setEditQuantity(0);
-    }
+    } catch (e: any) { alert(e.message); }
+    finally { setSaving(false); }
   };
+
+  const handleFileImport = async (e: any) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setSaving(true);
+      setImportFile(file);
+      alert("Please use the specific Import Script or Tools page for bulk import, or contact admin.");
+    } catch (err) { console.error(err); }
+    finally { setSaving(false); setShowImportModal(false); }
+  };
+
+  if (loading) return <MainLayout><div className="flex items-center justify-center h-[60vh]">
+    <div className="text-center">
+      <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
+      <p className="text-slate-500 font-semibold">Loading Inventory...</p>
+    </div>
+  </div></MainLayout>;
+  if (error) return <MainLayout><div className="p-10 text-center text-red-500">{error}</div></MainLayout>;
 
   return (
-    <MainLayout
-      headerContent={
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 via-primary-700 to-gray-900 bg-clip-text text-transparent">Inventory</h1>
-            <p className="text-sm text-gray-500 mt-1">
-              Overview of TRS and DHT tools with available quantities.
-            </p>
-          </div>
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-            <button
-              onClick={() => setShowImportModal(true)}
-              className="px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg text-sm font-medium hover:from-green-500 hover:to-green-600 hover:shadow-md transition-all duration-200 flex items-center space-x-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-              </svg>
-              <span>Import Tools</span>
-            </button>
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="px-4 py-2 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-lg text-sm font-medium hover:from-primary-500 hover:to-primary-600 hover:shadow-md transition-all duration-200 flex items-center space-x-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              <span>Add Tool</span>
-            </button>
-            <div className="bg-white rounded-lg shadow px-4 py-3 flex items-center space-x-3">
-              <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center">
-                <svg
-                  className="w-4 h-4 text-primary-700"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 7l9-4 9 4-9 4-9-4z"
-                  />
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 7v10l9 4 9-4V7"
-                  />
-                </svg>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-wide text-gray-500">
-                  Total Quantity
-                </p>
-                <p className="text-xl font-semibold text-gray-900">{totalCount}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      }
-    >
-      <div className="space-y-6">
-        {/* Filters + search */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-          <div className="flex items-center flex-wrap gap-2">
-            <button
-              onClick={() => setSelectedGroup('ALL')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium ${selectedGroup === 'ALL'
-                ? 'bg-primary-700 text-white'
-                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                }`}
-            >
-              All Tools
-            </button>
-            <button
-              onClick={() => setSelectedGroup('TRS')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium ${selectedGroup === 'TRS'
-                ? 'bg-primary-700 text-white'
-                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                }`}
-            >
-              TRS
-            </button>
-            <button
-              onClick={() => setSelectedGroup('DHT')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium ${selectedGroup === 'DHT'
-                ? 'bg-primary-700 text-white'
-                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                }`}
-            >
-              DHT
-            </button>
-          </div>
+    <MainLayout headerContent={
+      <div className="space-y-1">
+        <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 tracking-tight">Inventory Management</h1>
+        <p className="text-sm text-slate-500 font-medium dark:text-slate-400">Track stock levels across all tool categories</p>
+      </div>
+    }>
+      <div className="flex flex-col md:flex-row gap-6">
 
-          <div className="relative w-full md:w-64">
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search tools"
-              className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-            />
-            <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
-              <svg
-                className="h-4 w-4 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-            </div>
-          </div>
-        </div>
+        {/* SIDEBAR */}
+        <div className="w-full md:w-72 flex-shrink-0">
+          <div className="glass-premium dark:bg-boxdark/90 rounded-2xl shadow-xl border border-white/20 dark:border-white/5 p-5 md:sticky md:top-0 h-[calc(100vh-150px)] overflow-y-auto">
 
-        {/* TRS section */}
-        {(selectedGroup === 'ALL' || selectedGroup === 'TRS') && (
-          <div className="mb-6 bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">TRS</h2>
-              <span className="text-sm text-gray-500">
-                Tools: {filteredTools.filter(t => t.group === 'TRS').length}
-              </span>
-            </div>
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Tool Name
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Sizes & Quantities
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Type
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Total Qty
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredTools.filter(t => t.group === 'TRS').map((tool) => (
-                  <tr key={tool.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{tool.name}</div>
-                      <div className="text-xs text-gray-500">{tool.id}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-wrap gap-2">
-                        {tool.sizes.map((size, idx) => (
-                          <span
-                            key={idx}
-                            onClick={() => handleEditQuantity(tool, idx)}
-                            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 cursor-pointer hover:bg-blue-200"
-                            title="Click to edit quantity"
-                          >
-                            {size.size}: {size.quantity}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {tool.type || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-gray-900">
-                      {tool.available}
-                    </td>
-                  </tr>
+            {/* TRS */}
+            <div className="mb-6">
+              <div className="flex items-center gap-2 mb-3 px-2">
+                <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                <span className="text-xs font-black text-blue-600 dark:text-blue-400 uppercase tracking-[0.15em]">TRS Inventory</span>
+              </div>
+              <div className="space-y-1">
+                {TRS_CATEGORIES.map(cat => (
+                  <button
+                    key={cat}
+                    onClick={() => { setSelectedCategory(cat); setSearchTerm(''); }}
+                    className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-bold border transition-all duration-300 flex items-center justify-between ${selectedCategory === cat
+                      ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white border-transparent shadow-[0_0_12px_rgba(25,86,168,0.3)]'
+                      : 'bg-white/60 border-white/20 text-slate-600 hover:bg-white dark:bg-boxdark/60 dark:border-white/5 dark:text-slate-300 dark:hover:bg-meta-4 hover:shadow-sm hover:-translate-y-0.5'
+                      }`}
+                  >
+                    <span>{CATEGORY_DISPLAY_MAP[cat] || cat}</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-black ${selectedCategory === cat
+                      ? 'bg-white/20 text-white'
+                      : 'bg-slate-100 text-slate-500 dark:bg-meta-4 dark:text-slate-400'
+                      }`}>{categoryCounts[cat] || 0}</span>
+                  </button>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            </div>
+
+            {/* DHT */}
+            <div>
+              <div className="flex items-center gap-2 mb-3 px-2">
+                <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
+                <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-[0.15em]">DHT Inventory</span>
+              </div>
+              <div className="space-y-1">
+                {DHT_CATEGORIES.map(cat => (
+                  <button
+                    key={cat}
+                    onClick={() => { setSelectedCategory(cat); setSearchTerm(''); }}
+                    className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-bold border transition-all duration-300 flex items-center justify-between ${selectedCategory === cat
+                      ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-transparent shadow-[0_0_12px_rgba(99,102,241,0.3)]'
+                      : 'bg-white/60 border-white/20 text-slate-600 hover:bg-white dark:bg-boxdark/60 dark:border-white/5 dark:text-slate-300 dark:hover:bg-meta-4 hover:shadow-sm hover:-translate-y-0.5'
+                      }`}
+                  >
+                    <span>{CATEGORY_DISPLAY_MAP[cat] || cat}</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-black ${selectedCategory === cat
+                      ? 'bg-white/20 text-white'
+                      : 'bg-slate-100 text-slate-500 dark:bg-meta-4 dark:text-slate-400'
+                      }`}>{categoryCounts[cat] || 0}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Others */}
+            {(() => {
+              const knownCats = new Set([...TRS_CATEGORIES, ...DHT_CATEGORIES]);
+              const otherCats = Array.from(new Set(tools.map(t => t.category))).filter(c => !knownCats.has(c));
+              if (otherCats.length === 0) return null;
+              return (
+                <div className="mt-6">
+                  <div className="flex items-center gap-2 mb-3 px-2">
+                    <span className="w-2 h-2 rounded-full bg-slate-400"></span>
+                    <span className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.15em]">Others</span>
+                  </div>
+                  <div className="space-y-1">
+                    {otherCats.map(cat => (
+                      <button
+                        key={cat}
+                        onClick={() => { setSelectedCategory(cat); setSearchTerm(''); }}
+                        className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-bold border transition-all duration-300 flex items-center justify-between ${selectedCategory === cat
+                          ? 'bg-gradient-to-r from-slate-600 to-slate-500 text-white border-transparent shadow-lg'
+                          : 'bg-white/60 border-white/20 text-slate-600 hover:bg-white dark:bg-boxdark/60 dark:border-white/5 dark:text-slate-300 dark:hover:bg-meta-4'
+                          }`}
+                      >
+                        <span>{cat}</span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-black ${selectedCategory === cat
+                          ? 'bg-white/20' : 'bg-slate-100 text-slate-500 dark:bg-meta-4 dark:text-slate-400'
+                          }`}>{categoryCounts[cat] || 0}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+
+        {/* MAIN PANEL */}
+        <div className="flex-1 min-w-0">
+          <div className="glass-premium dark:bg-boxdark/90 rounded-2xl shadow-xl border border-white/20 dark:border-white/5 p-6 min-h-[calc(100vh-150px)]">
+
+            {/* Header */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 pb-6 border-b border-slate-100/50 dark:border-white/5 gap-4">
+              <div>
+                <h2 className="text-3xl font-black text-slate-800 dark:text-white tracking-tight mb-2">{CATEGORY_DISPLAY_MAP[selectedCategory] || selectedCategory}</h2>
+                <div className="flex items-center gap-3">
+                  <span className="inline-flex items-center gap-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-wider border border-blue-200 dark:border-blue-500/30">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6z" /></svg>
+                    {totalCategoryStock} Units
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 bg-slate-100 dark:bg-meta-4 text-slate-500 dark:text-slate-400 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-wider border border-slate-200 dark:border-white/5">
+                    {uniqueItems} Items
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex gap-3 items-center">
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Search items..."
+                    className="pl-9 pr-4 py-2.5 border border-slate-200/60 dark:border-white/5 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 bg-white/60 dark:bg-meta-4 dark:text-white transition-all"
+                  />
+                </div>
+                <button onClick={() => setShowAddModal(true)}
+                  className="px-5 py-2.5 bg-gradient-to-r from-slate-800 to-slate-700 text-white rounded-xl text-sm font-bold hover:from-slate-700 hover:to-slate-600 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2">
+                  <span className="text-lg leading-none">+</span> Add Stock
+                </button>
+              </div>
+            </div>
+
+            {/* Stock Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              {allSizes.length === 0 ? (
+                <div className="col-span-full py-16 text-center">
+                  <div className="text-6xl mb-4 opacity-40">📦</div>
+                  <p className="font-bold text-slate-400 text-lg">No inventory found</p>
+                  <p className="text-slate-400/60 text-sm mt-1 mb-4">This category has no stock items yet</p>
+                  <button onClick={() => setShowAddModal(true)} className="text-blue-600 dark:text-blue-400 font-bold hover:underline">+ Add Initial Stock</button>
+                </div>
+              ) : (
+                allSizes.map(({ tool, size, index }) => {
+                  const isTRS = tool.group === 'TRS';
+                  const isLow = size.quantity <= 2;
+                  return (
+                    <div key={`${tool.id}-${index}`}
+                      onClick={() => { setEditingTool(tool); setEditSizeIndex(index); setEditQuantity(size.quantity); }}
+                      className={`cursor-pointer group relative rounded-2xl border-2 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col bg-white/80 dark:bg-boxdark/60 ${isLow
+                        ? 'border-rose-200 dark:border-rose-500/30'
+                        : isTRS
+                          ? 'border-blue-100 dark:border-blue-500/10 hover:border-blue-300 dark:hover:border-blue-500/30'
+                          : 'border-indigo-100 dark:border-indigo-500/10 hover:border-indigo-300 dark:hover:border-indigo-500/30'
+                        }`}
+                    >
+                      {/* Size Badge */}
+                      <div className={`absolute top-0 right-0 px-3 py-1.5 rounded-bl-xl text-[10px] font-black uppercase tracking-wider ${isTRS
+                        ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400'
+                        : 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400'
+                        }`}>
+                        {size.size}
+                      </div>
+
+                      {/* Low Stock Warning */}
+                      {isLow && (
+                        <div className="absolute top-0 left-0 px-2 py-1 rounded-br-xl bg-rose-50 dark:bg-rose-900/20">
+                          <span className="text-[10px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-wider">Low</span>
+                        </div>
+                      )}
+
+                      <div className="p-5 flex-1 flex flex-col items-center justify-center">
+                        <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.15em] mb-1 mt-3">{tool.name}</h4>
+
+                        <div className="py-5">
+                          <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mb-1 text-center">Quantity</div>
+                          <div className={`text-5xl font-black text-center ${isLow
+                            ? 'text-rose-600 dark:text-rose-400'
+                            : 'text-slate-800 dark:text-white'
+                            }`}>
+                            {size.quantity}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Hover Overlay */}
+                      <div className="absolute inset-0 bg-slate-900/5 dark:bg-white/5 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center backdrop-blur-[1px]">
+                        <span className="bg-white dark:bg-boxdark text-slate-900 dark:text-white px-5 py-2.5 rounded-full font-bold shadow-2xl transform scale-90 group-hover:scale-100 transition-transform duration-300">
+                          Update Stock
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Edit Quantity Modal */}
+        {editingTool && editSizeIndex >= 0 && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setEditingTool(null)}>
+            <div className="bg-white dark:bg-boxdark rounded-2xl p-8 w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
+              <div className="text-center mb-6">
+                <h3 className="text-xl font-black text-slate-800 dark:text-white mb-1">Update Stock</h3>
+                <p className="text-sm text-slate-400 font-bold">{editingTool.name} — {editingTool.sizes[editSizeIndex].size}</p>
+              </div>
+              <div className="flex items-center justify-center gap-6 mb-8">
+                <button onClick={() => setEditQuantity(Math.max(0, editQuantity - 1))}
+                  className="w-14 h-14 rounded-2xl border-2 border-slate-200 dark:border-white/10 text-xl font-bold hover:bg-slate-50 dark:hover:bg-meta-4 transition-all active:scale-95 text-slate-700 dark:text-white">−</button>
+                <span className="text-5xl font-black text-slate-800 dark:text-white w-24 text-center tabular-nums">{editQuantity}</span>
+                <button onClick={() => setEditQuantity(editQuantity + 1)}
+                  className="w-14 h-14 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-700 text-white text-xl font-bold hover:from-slate-700 hover:to-slate-600 shadow-xl transition-all active:scale-95">+</button>
+              </div>
+              <div className="flex gap-3">
+                <button onClick={() => setEditingTool(null)} className="flex-1 py-3.5 font-bold text-slate-500 hover:bg-slate-50 dark:hover:bg-meta-4 rounded-xl transition-colors">Cancel</button>
+                <button onClick={handleUpdateQuantity} disabled={saving}
+                  className="flex-1 py-3.5 font-bold bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl shadow-lg hover:shadow-xl transition-all active:scale-[0.98] disabled:opacity-50">
+                  {saving ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
-        {/* DHT section */}
-        {(selectedGroup === 'ALL' || selectedGroup === 'DHT') && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">DHT</h2>
-              <span className="text-sm text-gray-500">
-                Tools: {filteredTools.filter(t => t.group === 'DHT').length}
-              </span>
+        {/* Add Stock Modal */}
+        {showAddModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowAddModal(false)}>
+            <div className="bg-white dark:bg-boxdark rounded-2xl p-8 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+              <h3 className="text-2xl font-black text-slate-800 dark:text-white mb-6">Add Stock</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-black uppercase text-slate-400 mb-1.5 tracking-wider">Name / Category</label>
+                  <input type="text" value={newTool.name} onChange={e => setNewTool({ ...newTool, name: e.target.value })}
+                    className="w-full p-3 bg-slate-50 dark:bg-meta-4 rounded-xl font-bold border border-slate-200 dark:border-white/5 focus:outline-none focus:ring-2 focus:ring-blue-500/30" placeholder="e.g. CRT" />
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-xs font-black uppercase text-slate-400 tracking-wider">Size Variants</label>
+                  {newTool.sizes.map((s, i) => (
+                    <div key={i} className="flex gap-2">
+                      <input type="text" value={s.size} onChange={e => handleUpdateSize(i, 'size', e.target.value)}
+                        className="flex-1 p-3 bg-slate-50 dark:bg-meta-4 rounded-xl font-bold text-sm border border-slate-200 dark:border-white/5 focus:outline-none focus:ring-2 focus:ring-blue-500/30" placeholder='Size (e.g. 5")' />
+                      <input type="number" value={s.quantity} onChange={e => handleUpdateSize(i, 'quantity', e.target.value)}
+                        className="w-24 p-3 bg-slate-50 dark:bg-meta-4 rounded-xl font-bold text-sm border border-slate-200 dark:border-white/5 focus:outline-none focus:ring-2 focus:ring-blue-500/30" placeholder="Qty" />
+                      {newTool.sizes.length > 1 && (
+                        <button onClick={() => handleRemoveSize(i)} className="text-rose-500 font-bold px-3 hover:bg-rose-50 rounded-xl transition-colors">✕</button>
+                      )}
+                    </div>
+                  ))}
+                  <button onClick={handleAddSize} className="text-blue-600 dark:text-blue-400 font-bold text-sm hover:underline">+ Add Size Variant</button>
+                </div>
+                <div className="flex gap-3 pt-4 border-t border-slate-100 dark:border-white/5">
+                  <button onClick={() => setShowAddModal(false)} className="flex-1 py-3.5 font-bold text-slate-500 hover:bg-slate-50 dark:hover:bg-meta-4 rounded-xl transition-colors">Cancel</button>
+                  <button onClick={handleCreateTool} disabled={saving}
+                    className="flex-1 py-3.5 font-bold bg-gradient-to-r from-slate-800 to-slate-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all active:scale-[0.98] disabled:opacity-50">
+                    {saving ? 'Creating...' : 'Create'}
+                  </button>
+                </div>
+              </div>
             </div>
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Tool Name
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Sizes & Quantities
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Type
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Total Qty
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredTools.filter(t => t.group === 'DHT').map((tool) => (
-                  <tr key={tool.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{tool.name}</div>
-                      <div className="text-xs text-gray-500">{tool.id}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-wrap gap-2">
-                        {tool.sizes.map((size, idx) => (
-                          <span
-                            key={idx}
-                            onClick={() => handleEditQuantity(tool, idx)}
-                            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 cursor-pointer hover:bg-blue-200"
-                            title="Click to edit quantity"
-                          >
-                            {size.size}: {size.quantity}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {tool.type || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-gray-900">
-                      {tool.available}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          </div>
+        )}
+
+        {/* Import Modal */}
+        {showImportModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowImportModal(false)}>
+            <div className="bg-white dark:bg-boxdark rounded-2xl p-8 w-full max-w-lg shadow-2xl" onClick={e => e.stopPropagation()}>
+              <div className="text-center">
+                <h3 className="text-2xl font-black mb-2 text-slate-800 dark:text-white">Import Tools</h3>
+                <p className="text-slate-400 mb-6 font-medium">Upload a CSV file to bulk import inventory.</p>
+                <div className="border-2 border-dashed border-slate-300 dark:border-white/10 rounded-2xl p-10 mb-6 hover:border-blue-400 cursor-pointer transition-colors relative">
+                  <input type="file" onChange={handleFileImport} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                  <div className="text-5xl mb-3 opacity-60">📄</div>
+                  <span className="font-bold text-blue-600 dark:text-blue-400">Click to Upload CSV</span>
+                </div>
+                <button onClick={() => setShowImportModal(false)} className="w-full py-3.5 font-bold text-slate-500 hover:bg-slate-50 dark:hover:bg-meta-4 rounded-xl transition-colors">Close</button>
+              </div>
+            </div>
           </div>
         )}
       </div>
-
-      {/* Add Tool Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 transition-opacity" aria-hidden="true">
-              <div className="absolute inset-0 bg-gray-500 opacity-75" onClick={() => setShowAddModal(false)}></div>
-            </div>
-
-            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Add New Tool</h3>
-
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Tool Name</label>
-                    <input
-                      type="text"
-                      value={newTool.name}
-                      onChange={(e) => setNewTool({ ...newTool, name: e.target.value })}
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                      placeholder="e.g. CRT"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Group</label>
-                    <select
-                      value={newTool.group}
-                      onChange={(e) => setNewTool({ ...newTool, group: e.target.value as ToolGroupKey })}
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                    >
-                      <option value="TRS">TRS</option>
-                      <option value="DHT">DHT</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Sizes & Quantities</label>
-                    {newTool.sizes.map((size, index) => (
-                      <div key={index} className="flex gap-2 mt-2">
-                        <input
-                          type="text"
-                          value={size.size}
-                          onChange={(e) => handleUpdateSize(index, 'size', e.target.value)}
-                          className="block w-1/2 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                          placeholder="Size (e.g. 5&quot;)"
-                        />
-                        <input
-                          type="number"
-                          value={size.quantity}
-                          onChange={(e) => handleUpdateSize(index, 'quantity', Number(e.target.value))}
-                          className="block w-1/3 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                          placeholder="Qty"
-                          min="0"
-                        />
-                        {newTool.sizes.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveSize(index)}
-                            className="text-red-600 hover:text-red-800"
-                          >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={handleAddSize}
-                      className="mt-2 text-sm text-primary-600 hover:text-primary-800 font-medium flex items-center"
-                    >
-                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                      </svg>
-                      Add Another Size
-                    </button>
-                  </div>
-                </div>
-
-                <div className="mt-5 sm:mt-6 flex gap-3">
-                  <button
-                    type="button"
-                    onClick={handleAddTool}
-                    className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary-600 text-base font-medium text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 sm:text-sm"
-                  >
-                    Add Tool
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowAddModal(false)}
-                    className="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 sm:text-sm"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Quantity Modal */}
-      {editingTool && editSizeIndex >= 0 && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 transition-opacity" aria-hidden="true">
-              <div className="absolute inset-0 bg-gray-500 opacity-75" onClick={() => setEditingTool(null)}></div>
-            </div>
-
-            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-sm sm:w-full">
-              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Edit Quantity</h3>
-                <p className="text-sm text-gray-500 mb-4">
-                  {editingTool.name} - Size: {editingTool.sizes[editSizeIndex].size}
-                </p>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Quantity</label>
-                  <input
-                    type="number"
-                    value={editQuantity}
-                    onChange={(e) => setEditQuantity(Number(e.target.value))}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                    min="0"
-                  />
-                </div>
-
-                <div className="mt-5 sm:mt-6 flex gap-3">
-                  <button
-                    type="button"
-                    onClick={handleUpdateQuantity}
-                    className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary-600 text-base font-medium text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 sm:text-sm"
-                  >
-                    Update
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingTool(null);
-                      setEditSizeIndex(-1);
-                    }}
-                    className="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 sm:text-sm"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Import Modal */}
-      {showImportModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 transition-opacity" aria-hidden="true">
-              <div className="absolute inset-0 bg-gray-500 opacity-75" onClick={() => setShowImportModal(false)}></div>
-            </div>
-
-            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Import Tools</h3>
-
-                <div className="space-y-4">
-                  <p className="text-sm text-gray-600">
-                    Upload a CSV file with columns for Name, Group (TRS/DHT), Size, and Quantity.
-                  </p>
-
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-primary-500 transition-colors">
-                    <input
-                      type="file"
-                      accept=".csv,.xlsx,.xls"
-                      onChange={handleFileImport}
-                      className="hidden"
-                      id="file-upload"
-                    />
-                    <label htmlFor="file-upload" className="cursor-pointer">
-                      <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                      </svg>
-                      <span className="mt-2 block text-sm font-medium text-gray-900">
-                        Click to upload file
-                      </span>
-                      <span className="mt-1 block text-xs text-gray-500">
-                        CSV, Excel
-                      </span>
-                    </label>
-                  </div>
-
-                  <div className="bg-gray-50 p-3 rounded text-xs text-gray-600">
-                    <p className="font-semibold mb-1">Expected Format:</p>
-                    <p>Name, Group, Size, Quantity</p>
-                    <p className="text-gray-400 mt-1">Example: CRT, TRS, 5&quot;, 10</p>
-                  </div>
-                </div>
-
-                <div className="mt-5 sm:mt-6">
-                  <button
-                    type="button"
-                    onClick={() => setShowImportModal(false)}
-                    className="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 sm:text-sm"
-                  >
-                    Close
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </MainLayout>
   );
 };

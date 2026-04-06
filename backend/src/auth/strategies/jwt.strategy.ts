@@ -15,16 +15,18 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       ignoreExpiration: false,
       secretOrKey: configService.get<string>('JWT_SECRET', 'your-secret-key'),
     });
+    console.log('🔧 JwtStrategy Initialized. Secret:', configService.get<string>('JWT_SECRET', 'your-secret-key'));
   }
 
   async validate(payload: any) {
+    console.log('🔍 JwtStrategy validating payload:', payload);
     const user = await this.usersService.findOne(payload.sub);
     if (!user) {
       return null;
     }
     // Extract role names from the user object
     const roleNames = user.roles?.map((role) => role.name) || [];
-    
+
     // Debug logging (remove in production)
     console.log('🔑 JWT Strategy - User validated:', {
       userId: user.id,
@@ -32,7 +34,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       roles: roleNames,
       rolesCount: user.roles?.length || 0,
     });
-    
+
     // Return user with roles for role-based access control
     return {
       userId: user.id,

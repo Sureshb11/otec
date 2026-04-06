@@ -46,3 +46,21 @@ GITHUB_SECRETS_SETUP.md
 *SECRETS*.md
 *CREDENTIALS*.md
 
+# Vercel CLI pulled env files (contain real passwords)
+.env.vercel
+*/.env.vercel
+
+# Temp / junk files
+logs.zip
+logs2.zip
+logs3.zip
+tmp_parser/
+backend/backend-source.zip
+backend/backend/
+~$*
+*.xlsx~
+Operation tool list.csv
+
+# Claude Code worktrees & internal files
+.claude/
+

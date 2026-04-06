@@ -1,18 +1,22 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, MoreThan } from 'typeorm';
 import { User } from './user.entity';
 import { Role } from '../roles/role.entity';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 
 @Injectable()
-export class UsersService {
+export class UsersService implements OnApplicationBootstrap {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
     @InjectRepository(Role)
     private rolesRepository: Repository<Role>,
   ) { }
+
+  async onApplicationBootstrap() {
+    await this.seedAdminUser();
+  }
 
   async create(userData: Partial<User>, roleName: string = 'user'): Promise<User> {
     const hashedPassword = await bcrypt.hash(userData.password, 10);
@@ -133,7 +137,7 @@ export class UsersService {
     const existingAdmin = await this.findByEmail(adminEmail);
 
     if (!existingAdmin) {
-      console.log('Seeding admin user...');
+      console.log('🌱 Seeding admin user...');
       try {
         await this.create(
           {
@@ -145,10 +149,12 @@ export class UsersService {
           },
           'admin'
         );
-        console.log('Admin user seeded successfully');
+        console.log('✅ Admin user seeded successfully');
       } catch (error) {
-        console.error('Failed to seed admin user:', error);
+        console.error('❌ Failed to seed admin user:', error);
       }
+    } else {
+      console.log('ℹ️ Admin user already exists, skipping seeding.');
     }
   }
 }

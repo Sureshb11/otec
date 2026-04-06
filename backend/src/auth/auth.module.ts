@@ -16,12 +16,16 @@ import { RolesModule } from '../roles/roles.module';
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET', 'your-secret-key'),
-        signOptions: {
-          expiresIn: configService.get<string>('JWT_EXPIRES_IN', '24h'),
-        },
-      }),
+      useFactory: async (configService: ConfigService) => {
+        const secret = configService.get<string>('JWT_SECRET', 'your-secret-key');
+        console.log('🔐 AuthModule signing with secret:', secret);
+        return {
+          secret: secret,
+          signOptions: {
+            expiresIn: configService.get<string>('JWT_EXPIRES_IN', '24h'),
+          },
+        };
+      },
       inject: [ConfigService],
     }),
   ],
@@ -29,5 +33,5 @@ import { RolesModule } from '../roles/roles.module';
   providers: [AuthService, JwtStrategy, LocalStrategy],
   exports: [AuthService],
 })
-export class AuthModule {}
+export class AuthModule { }
 

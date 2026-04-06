@@ -2,7 +2,7 @@ import { Injectable, UnauthorizedException, NotFoundException, BadRequestExcepti
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
 import { RolesService } from '../roles/roles.service';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -11,24 +11,37 @@ export class AuthService {
     private usersService: UsersService,
     private jwtService: JwtService,
     private rolesService: RolesService,
-  ) {
-    // Seed roles on initialization (async, won't block)
-    this.rolesService.seedRoles().catch(console.error);
-  }
+  ) { }
 
   async validateUser(email: string, password: string): Promise<any> {
+    console.log('🔍 Validate user attempt:', {
+      email,
+      hasPassword: !!password,
+      passwordLength: password?.length
+    });
+    
     const user = await this.usersService.findByEmail(email);
-    if (user && (await bcrypt.compare(password, user.password))) {
+
+    if (!user) {
+      console.warn('❌ User not found in database:', email);
+      return null;
+    }
+
+    const isPasswordMatching = await bcrypt.compare(password, user.password);
+    if (isPasswordMatching) {
+      console.log('✅ Password matched for user:', email);
       const { password, ...result } = user;
       return result;
     }
+
+    console.warn('❌ Password mismatch for user:', email);
     return null;
   }
 
   async login(user: any) {
     const userWithRoles = await this.usersService.findOne(user.id);
-    const payload = { 
-      email: user.email, 
+    const payload = {
+      email: user.email,
       sub: user.id,
       roles: userWithRoles.roles?.map((role) => role.name) || [],
     };
@@ -77,9 +90,9 @@ export class AuthService {
     // In production, send email with reset link
     // For now, return token in response (remove in production)
     const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${resetToken}`;
-    
+
     console.log('Password reset link:', resetUrl); // Remove in production
-    
+
     return {
       message: 'If an account with that email exists, a password reset link has been sent.',
       token: resetToken, // Remove in production - only for development
