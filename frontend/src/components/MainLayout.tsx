@@ -4,6 +4,13 @@ import { useAuthStore } from '../store/authStore';
 import UserAvatarMenu from './UserAvatarMenu';
 import ThemeToggler from './ThemeToggler';
 
+// ─── Icon helpers ─────────────────────────────────────────────────────────────
+const ChevronDown = ({ className = '' }) => (
+  <svg className={`w-4 h-4 ${className}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+  </svg>
+);
+
 interface MainLayoutProps {
     children: ReactNode;
     headerContent?: ReactNode;
@@ -13,6 +20,7 @@ const MainLayout = ({ children, headerContent }: MainLayoutProps) => {
     const { isAdmin } = useAuthStore();
     const [showOperationsMenu, setShowOperationsMenu] = useState(false);
     const [showClientsMenu, setShowClientsMenu] = useState(false);
+    const [showMaintenanceMenu, setShowMaintenanceMenu] = useState(false);
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const location = useLocation();
 
@@ -76,31 +84,23 @@ const MainLayout = ({ children, headerContent }: MainLayoutProps) => {
                         </div>
 
                         <ul className="space-y-1">
+                            {/* Dashboard */}
                             <li>
                                 <NavLink
                                     to="/dashboard"
-                                    active={location.pathname === '/dashboard'}
+                                    active={location.pathname === '/dashboard' || location.pathname.startsWith('/dashboard/')}
                                     label="Dashboard"
-                                    icon={(
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                                        </svg>
-                                    )}
+                                    icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>}
                                 />
                             </li>
 
-                            {/* Operations Group */}
+                            {/* Operations (Tools only — Inventory is now top-level) */}
                             <li>
                                 <button
                                     onClick={() => setShowOperationsMenu(!showOperationsMenu)}
-                                    className={`group relative flex w-full items-center justify-between gap-3 rounded-xl py-2.5 px-4 font-semibold text-sm transition-all duration-300 ${isActive('/operations')
-                                        ? 'bg-white/10 text-white shadow-lg shadow-blue-500/10'
-                                        : 'text-slate-400 hover:text-white hover:bg-white/5'
-                                        }`}
+                                    className={`group relative flex w-full items-center justify-between gap-3 rounded-xl py-2.5 px-4 font-semibold text-sm transition-all duration-300 ${isActive('/operations') ? 'bg-white/10 text-white shadow-lg shadow-blue-500/10' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
                                 >
-                                    {isActive('/operations') && (
-                                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-blue-400 to-blue-500 rounded-r-full shadow-[0_0_8px_rgba(25,86,168,0.6)]"></div>
-                                    )}
+                                    {isActive('/operations') && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-blue-400 to-blue-500 rounded-r-full shadow-[0_0_8px_rgba(25,86,168,0.6)]"></div>}
                                     <div className="flex items-center gap-3">
                                         <svg className={`w-5 h-5 transition-colors duration-300 ${isActive('/operations') ? 'text-blue-400' : 'text-slate-500 group-hover:text-slate-300'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -108,105 +108,88 @@ const MainLayout = ({ children, headerContent }: MainLayoutProps) => {
                                         </svg>
                                         <span className="tracking-wide">Operations</span>
                                     </div>
-                                    <svg className={`w-4 h-4 transition-transform duration-300 text-slate-500 ${showOperationsMenu || isActive('/operations') ? 'rotate-180 text-slate-300' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                    </svg>
+                                    <ChevronDown className={`transition-transform duration-300 text-slate-500 ${showOperationsMenu || isActive('/operations') ? 'rotate-180 text-slate-300' : ''}`} />
                                 </button>
-                                <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showOperationsMenu || isActive('/operations') ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'}`}>
+                                <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showOperationsMenu || isActive('/operations') ? 'max-h-20 opacity-100' : 'max-h-0 opacity-0'}`}>
                                     <ul className="mt-2 ml-8 space-y-1 border-l border-white/10 pl-4">
-                                        <li>
-                                            <Link to="/operations/tools" onClick={() => setSidebarOpen(false)} className={`block py-2 px-3 text-sm rounded-lg transition-all duration-200 ${location.pathname === '/operations/tools' ? 'text-blue-400 font-semibold bg-blue-500/5' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}>Tools</Link>
-                                        </li>
-                                        <li>
-                                            <Link to="/operations/inventory" onClick={() => setSidebarOpen(false)} className={`block py-2 px-3 text-sm rounded-lg transition-all duration-200 ${location.pathname === '/operations/inventory' ? 'text-blue-400 font-semibold bg-blue-500/5' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}>Inventory</Link>
-                                        </li>
+                                        <li><Link to="/operations/tools" onClick={() => setSidebarOpen(false)} className={`block py-2 px-3 text-sm rounded-lg transition-all duration-200 ${location.pathname === '/operations/tools' ? 'text-blue-400 font-semibold bg-blue-500/5' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}>Tools</Link></li>
                                     </ul>
                                 </div>
                             </li>
 
+                            {/* Orders */}
                             <li>
                                 <NavLink
                                     to="/orders"
                                     active={location.pathname === '/orders'}
                                     label="Orders"
-                                    icon={(
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                                        </svg>
-                                    )}
+                                    icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>}
                                 />
-                                {/* Orders sub-links */}
-                                {location.pathname.startsWith('/orders') && (
-                                    <div className="mt-1 ml-4 space-y-1">
-                                        <Link
-                                            to="/orders"
-                                            className={`flex items-center gap-2 rounded-lg py-2 px-3 text-xs font-medium transition-all duration-200 ${location.pathname === '/orders' ? 'text-white bg-white/10' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
-                                        >
-                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                                            </svg>
-                                            All Orders
-                                        </Link>
-                                        <Link
-                                            to="/orders/pipeline"
-                                            className={`flex items-center gap-2 rounded-lg py-2 px-3 text-xs font-medium transition-all duration-200 ${location.pathname === '/orders/pipeline' ? 'text-white bg-white/10' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
-                                        >
-                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
-                                            </svg>
-                                            Pipeline
-                                        </Link>
-                                    </div>
-                                )}
                             </li>
 
-                            {/* Clients Group */}
+                            {/* Inventory — top-level */}
+                            <li>
+                                <NavLink
+                                    to="/inventory"
+                                    active={isActive('/inventory')}
+                                    label="Inventory"
+                                    icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>}
+                                />
+                            </li>
+
+                            {/* Maintenance — top-level */}
+                            <li>
+                                <button
+                                    onClick={() => setShowMaintenanceMenu(!showMaintenanceMenu)}
+                                    className={`group relative flex w-full items-center justify-between gap-3 rounded-xl py-2.5 px-4 font-semibold text-sm transition-all duration-300 ${isActive('/maintenance') ? 'bg-white/10 text-white shadow-lg shadow-blue-500/10' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+                                >
+                                    {isActive('/maintenance') && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-amber-400 to-amber-500 rounded-r-full shadow-[0_0_8px_rgba(245,158,11,0.6)]"></div>}
+                                    <div className="flex items-center gap-3">
+                                        <svg className={`w-5 h-5 transition-colors duration-300 ${isActive('/maintenance') ? 'text-amber-400' : 'text-slate-500 group-hover:text-slate-300'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z" />
+                                        </svg>
+                                        <span className="tracking-wide">Maintenance</span>
+                                    </div>
+                                    <ChevronDown className={`transition-transform duration-300 text-slate-500 ${showMaintenanceMenu || isActive('/maintenance') ? 'rotate-180 text-slate-300' : ''}`} />
+                                </button>
+                                <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showMaintenanceMenu || isActive('/maintenance') ? 'max-h-20 opacity-100' : 'max-h-0 opacity-0'}`}>
+                                    <ul className="mt-2 ml-8 space-y-1 border-l border-white/10 pl-4">
+                                        <li><Link to="/maintenance" onClick={() => setSidebarOpen(false)} className={`block py-2 px-3 text-sm rounded-lg transition-all duration-200 ${location.pathname === '/maintenance' ? 'text-amber-400 font-semibold bg-amber-500/5' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}>Overview</Link></li>
+                                    </ul>
+                                </div>
+                            </li>
+
+                            {/* Clients */}
                             <li>
                                 <button
                                     onClick={() => setShowClientsMenu(!showClientsMenu)}
-                                    className={`group relative flex w-full items-center justify-between gap-3 rounded-xl py-2.5 px-4 font-semibold text-sm transition-all duration-300 ${isActive('/clients')
-                                        ? 'bg-white/10 text-white shadow-lg shadow-blue-500/10'
-                                        : 'text-slate-400 hover:text-white hover:bg-white/5'
-                                        }`}
+                                    className={`group relative flex w-full items-center justify-between gap-3 rounded-xl py-2.5 px-4 font-semibold text-sm transition-all duration-300 ${isActive('/clients') ? 'bg-white/10 text-white shadow-lg shadow-blue-500/10' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
                                 >
-                                    {isActive('/clients') && (
-                                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-blue-400 to-blue-500 rounded-r-full shadow-[0_0_8px_rgba(25,86,168,0.6)]"></div>
-                                    )}
+                                    {isActive('/clients') && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-blue-400 to-blue-500 rounded-r-full shadow-[0_0_8px_rgba(25,86,168,0.6)]"></div>}
                                     <div className="flex items-center gap-3">
                                         <svg className={`w-5 h-5 transition-colors duration-300 ${isActive('/clients') ? 'text-blue-400' : 'text-slate-500 group-hover:text-slate-300'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                                         </svg>
                                         <span className="tracking-wide">Clients</span>
                                     </div>
-                                    <svg className={`w-4 h-4 transition-transform duration-300 text-slate-500 ${showClientsMenu || isActive('/clients') ? 'rotate-180 text-slate-300' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                    </svg>
+                                    <ChevronDown className={`transition-transform duration-300 text-slate-500 ${showClientsMenu || isActive('/clients') ? 'rotate-180 text-slate-300' : ''}`} />
                                 </button>
                                 <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showClientsMenu || isActive('/clients') ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'}`}>
                                     <ul className="mt-2 ml-8 space-y-1 border-l border-white/10 pl-4">
-                                        <li>
-                                            <Link to="/clients/customers" onClick={() => setSidebarOpen(false)} className={`block py-2 px-3 text-sm rounded-lg transition-all duration-200 ${location.pathname === '/clients/customers' ? 'text-blue-400 font-semibold bg-blue-500/5' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}>Customers</Link>
-                                        </li>
-                                        <li>
-                                            <Link to="/clients/locations" onClick={() => setSidebarOpen(false)} className={`block py-2 px-3 text-sm rounded-lg transition-all duration-200 ${location.pathname === '/clients/locations' ? 'text-blue-400 font-semibold bg-blue-500/5' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}>Locations</Link>
-                                        </li>
-                                        <li>
-                                            <Link to="/clients/rigs" onClick={() => setSidebarOpen(false)} className={`block py-2 px-3 text-sm rounded-lg transition-all duration-200 ${location.pathname === '/clients/rigs' ? 'text-blue-400 font-semibold bg-blue-500/5' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}>Rigs</Link>
-                                        </li>
+                                        <li><Link to="/clients/customers" onClick={() => setSidebarOpen(false)} className={`block py-2 px-3 text-sm rounded-lg transition-all duration-200 ${location.pathname === '/clients/customers' ? 'text-blue-400 font-semibold bg-blue-500/5' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}>Customers</Link></li>
+                                        <li><Link to="/clients/locations" onClick={() => setSidebarOpen(false)} className={`block py-2 px-3 text-sm rounded-lg transition-all duration-200 ${location.pathname === '/clients/locations' ? 'text-blue-400 font-semibold bg-blue-500/5' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}>Locations</Link></li>
+                                        <li><Link to="/clients/rigs" onClick={() => setSidebarOpen(false)} className={`block py-2 px-3 text-sm rounded-lg transition-all duration-200 ${location.pathname === '/clients/rigs' ? 'text-blue-400 font-semibold bg-blue-500/5' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}>Rigs</Link></li>
                                     </ul>
                                 </div>
                             </li>
 
+                            {/* Reports */}
                             <li>
                                 <NavLink
                                     to="/reports"
                                     active={location.pathname === '/reports'}
                                     label="Reports"
-                                    icon={(
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                        </svg>
-                                    )}
+                                    icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>}
                                 />
                             </li>
                         </ul>
@@ -256,7 +239,7 @@ const MainLayout = ({ children, headerContent }: MainLayoutProps) => {
             </aside>
 
             {/* Main Content Areas */}
-            <div className="relative flex flex-1 flex-col overflow-y-auto overflow-x-hidden">
+            <div className="relative flex flex-1 flex-col overflow-y-auto overflow-x-auto">
                 {/* Header */}
                 <header className="sticky top-0 z-999 flex w-full glass-premium dark:bg-boxdark/90 dark:backdrop-blur-md border-b border-slate-200/50 dark:border-white/5">
                     <div className="flex flex-grow items-center justify-between px-4 py-4 md:px-6 2xl:px-11">

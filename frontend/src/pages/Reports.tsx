@@ -126,7 +126,7 @@ const Reports = () => {
           <ResponsiveContainer width="100%" height={350}>
             <PieChart>
               <Pie data={currentChartData} cx="50%" cy="50%" innerRadius={80} outerRadius={120} paddingAngle={5} dataKey="Value">
-                {currentChartData.map((entry, index) => (
+                {currentChartData.map((_entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
@@ -216,7 +216,7 @@ const Reports = () => {
 
             {/* Metric Cards Top Row */}
             <div className="grid grid-cols-2 lg:grid-cols-6 gap-4 mb-8">
-              {Object.entries(currentData).map(([key, value], idx) => (
+              {Object.entries(currentData).map(([key, value]) => (
                 <div
                   key={key}
                   className="bg-white/40 dark:bg-[#1E293B]/60 backdrop-blur-md rounded-2xl border border-white/50 dark:border-slate-700/50 p-4 transition-all hover:bg-white/60 dark:hover:bg-[#1E293B] hover:shadow-md group"

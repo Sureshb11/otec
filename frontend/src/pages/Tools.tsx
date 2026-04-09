@@ -15,11 +15,11 @@ const CATEGORY_DISPLAY_MAP: Record<string, string> = {
   'Anti Stick Slip': 'ANTI STICK SLIP',
   'Scrapper': 'SCRAPPER',
   'Jars': 'JARS',
-  'Handling Tools DHT': 'HANDLING TOOLS'
+  'Circulating DHT': 'CIRCULATING'
 };
 
 const TRS_CATEGORIES = ['CRT', 'Power Tong', 'Jam Unit', 'Filup Tool', 'Safety Clamp', 'Elevators', 'Slips', 'Spider Elevators'];
-const DHT_CATEGORIES = ['Reamers', 'Anti Stick Slip', 'Scrapper', 'Jars', 'Handling Tools DHT'];
+const DHT_CATEGORIES = ['Reamers', 'Anti Stick Slip', 'Scrapper', 'Jars', 'Circulating DHT'];
 
 // Status mapping from backend ToolStatus to display labels
 type DisplayStatus = 'onsite' | 'yard' | 'service';

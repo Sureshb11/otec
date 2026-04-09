@@ -18,9 +18,10 @@ import Customers from './pages/Customers';
 import Locations from './pages/Locations';
 import Rigs from './pages/Rigs';
 import Reports from './pages/Reports';
-import OrdersPipeline from './pages/OrdersPipeline';
 import RequestPasswordReset from './pages/RequestPasswordReset';
 import ResetPassword from './pages/ResetPassword';
+import SingleView from './pages/SingleView';
+import { MaintenanceOverview, MaintenanceToolDetail } from './pages/Maintenance';
 import MainLayout from './components/MainLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -76,14 +77,6 @@ function App() {
             }
           />
           <Route
-            path="/orders/pipeline"
-            element={
-              <ProtectedRoute>
-                <OrdersPipeline />
-              </ProtectedRoute>
-            }
-          />
-          <Route
             path="/orders/:orderId"
             element={
               <ProtectedRoute>
@@ -93,6 +86,11 @@ function App() {
           />
           <Route
             path="/operations/inventory"
+            element={<Navigate to="/inventory" replace />}
+          />
+          {/* Inventory — top-level */}
+          <Route
+            path="/inventory"
             element={
               <ProtectedRoute>
                 <Inventory />
@@ -128,6 +126,32 @@ function App() {
             element={
               <ProtectedRoute>
                 <Reports />
+              </ProtectedRoute>
+            }
+          />
+          {/* Single View — TV dashboard, no MainLayout wrapper (full-screen) */}
+          <Route
+            path="/dashboard/single-view"
+            element={
+              <ProtectedRoute>
+                <SingleView />
+              </ProtectedRoute>
+            }
+          />
+          {/* Maintenance */}
+          <Route
+            path="/maintenance"
+            element={
+              <ProtectedRoute>
+                <MaintenanceOverview />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/maintenance/:toolId"
+            element={
+              <ProtectedRoute>
+                <MaintenanceToolDetail />
               </ProtectedRoute>
             }
           />
