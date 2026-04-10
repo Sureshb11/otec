@@ -4,13 +4,16 @@ import { apiClient } from '../api/apiClient';
 
 const CATEGORY_DISPLAY_MAP: Record<string, string> = {
   'CRT': 'CRT',
+  'Torque Sub': 'TORQUE SUB',
   'Power Tong': 'POWER TONG',
   'Jam Unit': 'JAM UNIT',
+  'HPU': 'HPU',
   'Filup Tool': 'FILUP TOOL',
   'Safety Clamp': 'SAFETY CLAMP',
   'Elevators': 'ELEVATORS',
   'Slips': 'SLIPS',
   'Spider Elevators': 'SPIDER ELEVATORS',
+  'Bucking': 'BUCKING',
   'Reamers': 'REAMERS',
   'Anti Stick Slip': 'ANTI STICK SLIP',
   'Scrapper': 'SCRAPPER',
@@ -18,8 +21,8 @@ const CATEGORY_DISPLAY_MAP: Record<string, string> = {
   'Circulating DHT': 'CIRCULATING'
 };
 
-const TRS_CATEGORIES = ['CRT', 'Power Tong', 'Jam Unit', 'Filup Tool', 'Safety Clamp', 'Elevators', 'Slips', 'Spider Elevators'];
-const DHT_CATEGORIES = ['Reamers', 'Anti Stick Slip', 'Scrapper', 'Jars', 'Circulating DHT'];
+const TRS_CATEGORIES = ['CRT', 'Torque Sub', 'Power Tong', 'Jam Unit', 'HPU', 'Filup Tool', 'Safety Clamp', 'Elevators', 'Slips', 'Spider Elevators'];
+const DHT_CATEGORIES = ['Bucking', 'Reamers', 'Anti Stick Slip', 'Scrapper', 'Jars', 'Circulating DHT'];
 
 // Status mapping from backend ToolStatus to display labels
 type DisplayStatus = 'onsite' | 'yard' | 'service';
@@ -95,7 +98,10 @@ const Tools = () => {
         if (Array.isArray(tools)) {
           const mapped: ToolItem[] = tools.map((t: any) => {
             let cat = 'Other';
-            if (t.description?.startsWith('Imported from ')) {
+            // Prefer the canonical category set by the backend importer.
+            if (t.category) {
+              cat = t.category;
+            } else if (t.description?.startsWith('Imported from ')) {
               cat = t.description.replace('Imported from ', '');
             }
             return {

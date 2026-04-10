@@ -13,6 +13,7 @@ interface ToolData {
   serialNumber: string;
   status: 'available' | 'onsite' | 'maintenance';
   operationalHours: number;
+  updatedAt: string;
   rigName?: string;
   rigLocation?: string;
   customerName?: string;
@@ -25,38 +26,31 @@ interface DashboardStats {
   serviceTools: number;
   totalRigs: number;
   totalCustomers: number;
+  activeOrders: number;
+  draftOrders: number;
 }
-
-// Deterministic hours offset based on tool ID hash — provides unique but stable values
-const getStableOffset = (id: string): number => {
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) {
-    hash = ((hash << 5) - hash) + id.charCodeAt(i);
-    hash |= 0;
-  }
-  return Math.abs(hash % 720) + 1; // 1 to 720 minutes (up to 12 hours)
-};
 
 const Dashboard = () => {
   const { user } = useAuthStore();
   const [tools, setTools] = useState<ToolData[]>([]);
   const [stats, setStats] = useState<DashboardStats>({
-    totalTools: 0, onsiteTools: 0, yardTools: 0, serviceTools: 0, totalRigs: 0, totalCustomers: 0
+    totalTools: 0, onsiteTools: 0, yardTools: 0, serviceTools: 0,
+    totalRigs: 0, totalCustomers: 0, activeOrders: 0, draftOrders: 0
   });
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [baseTime] = useState(() => new Date()); // captured once at mount
 
   // Fetch real data from API
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        const [toolsData, rigsData, customersData] = await Promise.all([
+        const [toolsData, rigsData, customersData, ordersData] = await Promise.all([
           apiClient.tools.getAll(),
           apiClient.rigs.getAll(),
           apiClient.customers.getAll(),
+          apiClient.orders.getAll().catch(() => []),
         ]);
 
         if (Array.isArray(toolsData)) {
@@ -74,6 +68,7 @@ const Dashboard = () => {
               serialNumber: t.serialNumber,
               status: t.status || 'available',
               operationalHours: Number(t.operationalHours) || 0,
+              updatedAt: t.updatedAt,
               rigName: t.rig?.name,
               rigLocation: t.rig?.location?.name,
               customerName: t.rig?.customer?.name,
@@ -85,6 +80,10 @@ const Dashboard = () => {
           const maintenanceCount = mapped.filter(t => t.status === 'maintenance').length;
           const yardCount = mapped.filter(t => t.status === 'available').length;
 
+          const ordersArray: any[] = Array.isArray(ordersData) ? ordersData : [];
+          const activeOrders = ordersArray.filter(o => o.status === 'active').length;
+          const draftOrders = ordersArray.filter(o => o.status === 'draft').length;
+
           setStats({
             totalTools: mapped.length,
             onsiteTools: onsiteCount,
@@ -92,6 +91,8 @@ const Dashboard = () => {
             serviceTools: maintenanceCount,
             totalRigs: Array.isArray(rigsData) ? rigsData.length : 0,
             totalCustomers: Array.isArray(customersData) ? customersData.length : 0,
+            activeOrders,
+            draftOrders,
           });
 
           // Auto-select first category
@@ -147,12 +148,11 @@ const Dashboard = () => {
     [activeCategoryTools]
   );
 
-  // Compute runtime per tool instance using stable offsets
+  // Compute runtime per tool instance using real updatedAt (deploy time proxy)
   const liveInstances = useMemo(() =>
     onsiteTools.map(tool => {
-      const offsetMinutes = getStableOffset(tool.id);
-      const startTime = new Date(baseTime.getTime() - offsetMinutes * 60 * 1000);
-      const elapsedSec = Math.floor((currentTime.getTime() - startTime.getTime()) / 1000);
+      const startTime = new Date(tool.updatedAt);
+      const elapsedSec = Math.max(0, Math.floor((currentTime.getTime() - startTime.getTime()) / 1000));
       const hours = Math.floor(elapsedSec / 3600);
       const minutes = Math.floor((elapsedSec % 3600) / 60);
       const seconds = elapsedSec % 60;
@@ -164,12 +164,14 @@ const Dashboard = () => {
         startTime
       };
     }),
-    [onsiteTools, currentTime, baseTime]
+    [onsiteTools, currentTime]
   );
 
   // All tools not onsite for the yard/service count in the side panel
   const yardTools = activeCategoryTools.filter(t => t.status === 'available');
   const serviceToolsList = activeCategoryTools.filter(t => t.status === 'maintenance');
+
+
 
   if (loading) return (
     <MainLayout>
@@ -238,6 +240,34 @@ const Dashboard = () => {
                 <div>
                   <h3 className="text-2xl font-black text-slate-900 dark:text-white leading-none tracking-tight">{stats.yardTools}</h3>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mt-0.5">Stock</p>
+                </div>
+              </Link>
+
+              {/* Orders */}
+              <Link to="/orders" className="glass-premium dark:bg-boxdark/80 px-5 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 flex items-center gap-4 group relative overflow-hidden cursor-pointer">
+                <div className="absolute inset-0 bg-gradient-to-r from-violet-500/0 via-violet-500/5 to-violet-500/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+                <div className="w-10 h-10 rounded-lg bg-violet-100/80 dark:bg-violet-500/20 flex items-center justify-center shadow-inner">
+                  <svg className="w-5 h-5 text-violet-600 dark:text-violet-400 drop-shadow-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black text-slate-900 dark:text-white leading-none tracking-tight">{stats.activeOrders}</h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mt-0.5">Active Orders</p>
+                </div>
+              </Link>
+
+              {/* Customers */}
+              <Link to="/clients/customers" className="glass-premium dark:bg-boxdark/80 px-5 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 flex items-center gap-4 group relative overflow-hidden cursor-pointer">
+                <div className="absolute inset-0 bg-gradient-to-r from-teal-500/0 via-teal-500/5 to-teal-500/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+                <div className="w-10 h-10 rounded-lg bg-teal-100/80 dark:bg-teal-500/20 flex items-center justify-center shadow-inner">
+                  <svg className="w-5 h-5 text-teal-600 dark:text-teal-400 drop-shadow-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black text-slate-900 dark:text-white leading-none tracking-tight">{stats.totalCustomers}</h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mt-0.5">Customers</p>
                 </div>
               </Link>
             </div>
@@ -515,7 +545,7 @@ const Dashboard = () => {
                             <div>
                               <div className="flex items-center gap-1.5 mb-1 text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.2em]">
                                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                                Active Runtime
+                                Deployed Since
                               </div>
                               <div className="flex items-baseline font-mono tracking-tighter">
                                 <span className="text-4xl font-black text-slate-800 dark:text-white leading-[1.1] tabular-nums drop-shadow-sm">

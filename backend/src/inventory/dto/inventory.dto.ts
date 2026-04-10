@@ -26,6 +26,10 @@ export class CreateInventoryDto {
     @IsOptional()
     @IsString()
     description?: string;
+
+    @IsOptional()
+    @IsString()
+    subCategory?: string;
 }
 
 export class UpdateInventoryDto {
@@ -56,4 +60,8 @@ export class UpdateInventoryDto {
     @IsOptional()
     @IsString()
     description?: string;
+
+    @IsOptional()
+    @IsString()
+    subCategory?: string;
 }

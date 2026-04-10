@@ -9,10 +9,11 @@
  * The router renders Overview at /maintenance and detail at /maintenance/:toolId.
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import MainLayout from '../components/MainLayout';
 import { format, differenceInDays, addMonths, parseISO } from 'date-fns';
+import { apiClient } from '../api/apiClient';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -41,63 +42,25 @@ export interface MaintainedTool {
 
 type DueStatus = 'overdue' | 'due-soon' | 'ok';
 
-// ─── Mock Data ────────────────────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const today = new Date();
 const fmtISO = (d: Date) => d.toISOString().split('T')[0];
-const daysAgo = (n: number) => fmtISO(new Date(today.getTime() - n * 86400000));
-const daysFrom = (n: number) => fmtISO(new Date(today.getTime() + n * 86400000));
 
-const MOCK_TOOLS: MaintainedTool[] = [
-  {
-    id: 't1', name: 'CRT', serialNumber: 'CRT-001', category: 'CRT', group: 'TRS', size: '5"',
-    currentStatus: 'Available', operationalHours: 1240, maintenanceInterval: 3,
-    nextDueDate: daysAgo(5),    // OVERDUE
-    history: [
-      { id: 'h1', date: daysAgo(95), type: 'Routine', technician: 'Ahmed Al-Rashid', notes: 'Full routine check completed. Bearings replaced.', hoursAtService: 1100 },
-      { id: 'h2', date: daysAgo(190), type: 'Inspection', technician: 'Omar Hassan', notes: 'Pre-deployment inspection. All clear.', hoursAtService: 960 },
-    ]
-  },
-  {
-    id: 't2', name: 'Power Tong', serialNumber: 'PT-003', category: 'Power Tong', group: 'TRS', size: '7.625"',
-    currentStatus: 'In Use', operationalHours: 880, maintenanceInterval: 6,
-    nextDueDate: daysFrom(18),  // DUE SOON (within 30 days)
-    history: [
-      { id: 'h3', date: daysAgo(165), type: 'Overhaul', technician: 'Khalid Ibrahim', notes: 'Full overhaul. New jaw dies installed.', hoursAtService: 750 },
-    ]
-  },
-  {
-    id: 't3', name: 'Reamers', serialNumber: 'RMR-007', category: 'Reamers', group: 'DHT', size: '8.5"',
-    currentStatus: 'Available', operationalHours: 420, maintenanceInterval: 6,
-    nextDueDate: daysFrom(65),  // OK
-    history: [
-      { id: 'h4', date: daysAgo(115), type: 'Routine', technician: 'Salem Al-Dosari', notes: 'Blades inspected. Minor wear noted.', hoursAtService: 380 },
-    ]
-  },
-  {
-    id: 't4', name: 'Jam Unit', serialNumber: 'JU-012', category: 'Jam Unit', group: 'TRS',
-    currentStatus: 'Under Maintenance', operationalHours: 2100, maintenanceInterval: 3,
-    nextDueDate: daysAgo(12),   // OVERDUE
-    history: [
-      { id: 'h5', date: daysAgo(105), type: 'Repair', technician: 'Faisal Mahmoud', notes: 'Hydraulic seal replaced. Pressure tested OK.', hoursAtService: 2050 },
-      { id: 'h6', date: daysAgo(200), type: 'Calibration', technician: 'Ahmed Al-Rashid', notes: 'Torque calibration performed.', hoursAtService: 1900 },
-    ]
-  },
-  {
-    id: 't5', name: 'Anti Stick Slip', serialNumber: 'ASS-004', category: 'Anti Stick Slip', group: 'DHT', size: '6.5"',
-    currentStatus: 'Available', operationalHours: 310, maintenanceInterval: 6,
-    nextDueDate: daysFrom(90),  // OK
-    history: []
-  },
-  {
-    id: 't6', name: 'Elevators', serialNumber: 'ELV-009', category: 'Elevators', group: 'TRS',
-    currentStatus: 'In Use', operationalHours: 560, maintenanceInterval: 6,
-    nextDueDate: daysFrom(25),  // DUE SOON
-    history: [
-      { id: 'h7', date: daysAgo(155), type: 'Inspection', technician: 'Omar Hassan', notes: 'Latch mechanism inspected and lubricated.', hoursAtService: 490 },
-    ]
-  },
-];
+// Map backend tool to MaintainedTool shape
+const mapTool = (t: any): MaintainedTool => ({
+  id: t.id,
+  name: t.name,
+  serialNumber: t.serialNumber,
+  category: t.category || '—',
+  group: t.type as 'TRS' | 'DHT',
+  size: t.size,
+  currentStatus: t.status === 'available' ? 'Available' : t.status === 'onsite' ? 'In Use' : 'Under Maintenance',
+  operationalHours: Number(t.operationalHours) || 0,
+  nextDueDate: t.nextMaintenanceDate ? t.nextMaintenanceDate.split('T')[0] : '',
+  maintenanceInterval: t.maintenanceIntervalMonths || 6,
+  history: [],
+});
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -197,9 +160,16 @@ const LogMaintenanceModal = ({ tool, onClose, onSave }: LogModalProps) => {
 // ─── MaintenanceOverview ──────────────────────────────────────────────────────
 
 export const MaintenanceOverview = () => {
-  const [tools] = useState<MaintainedTool[]>(MOCK_TOOLS);
+  const [tools, setTools] = useState<MaintainedTool[]>([]);
+  const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState<'status' | 'name' | 'date'>('status');
   const [groupFilter, setGroupFilter] = useState<'All' | 'TRS' | 'DHT'>('All');
+
+  useEffect(() => {
+    apiClient.tools.getAll().then((data: any[]) => {
+      setTools(Array.isArray(data) ? data.map(mapTool) : []);
+    }).catch(console.error).finally(() => setLoading(false));
+  }, []);
 
   const overdue  = tools.filter(t => getDueStatus(t.nextDueDate) === 'overdue').length;
   const dueSoon  = tools.filter(t => getDueStatus(t.nextDueDate) === 'due-soon').length;
@@ -216,6 +186,10 @@ export const MaintenanceOverview = () => {
       return a.nextDueDate.localeCompare(b.nextDueDate);
     });
   }, [tools, sortBy, groupFilter]);
+
+  if (loading) return (
+    <MainLayout><div className="flex items-center justify-center h-64 text-slate-400 font-bold">Loading…</div></MainLayout>
+  );
 
   return (
     <MainLayout headerContent={
@@ -338,12 +312,23 @@ export const MaintenanceOverview = () => {
 export const MaintenanceToolDetail = () => {
   const { toolId } = useParams<{ toolId: string }>();
   const navigate = useNavigate();
-  const [tools, setTools] = useState<MaintainedTool[]>(MOCK_TOOLS);
+  const [tool, setTool] = useState<MaintainedTool | null>(null);
+  const [loading, setLoading] = useState(true);
   const [showLogModal, setShowLogModal] = useState(false);
   const [showSetDueModal, setShowSetDueModal] = useState(false);
   const [newDueDate, setNewDueDate] = useState('');
 
-  const tool = tools.find(t => t.id === toolId);
+  useEffect(() => {
+    if (!toolId) return;
+    apiClient.tools.getById(toolId).then((data: any) => {
+      setTool(mapTool(data));
+    }).catch(console.error).finally(() => setLoading(false));
+  }, [toolId]);
+
+  if (loading) return (
+    <MainLayout><div className="flex items-center justify-center h-64 text-slate-400 font-bold">Loading…</div></MainLayout>
+  );
+
   if (!tool) return (
     <MainLayout>
       <div className="flex flex-col items-center justify-center h-64 gap-4">
@@ -357,20 +342,27 @@ export const MaintenanceToolDetail = () => {
   const dueCfg = DUE_CONFIG[dueStatus];
   const daysUntil = tool.nextDueDate ? differenceInDays(parseISO(tool.nextDueDate), new Date()) : null;
 
-  const handleLogSave = (record: Omit<MaintenanceRecord, 'id'>) => {
+  const handleLogSave = async (record: Omit<MaintenanceRecord, 'id'>) => {
     const newRecord: MaintenanceRecord = { ...record, id: `h-${Date.now()}` };
-    // Also auto-advance next due date by interval
-    const nextDue = addMonths(parseISO(record.date), tool.maintenanceInterval);
-    setTools(prev => prev.map(t => t.id === toolId
-      ? { ...t, history: [newRecord, ...t.history], nextDueDate: fmtISO(nextDue) }
-      : t
-    ));
+    // Auto-advance next due date by interval and persist to API
+    const nextDue = fmtISO(addMonths(parseISO(record.date), tool.maintenanceInterval));
+    try {
+      await apiClient.tools.update(tool.id, { nextMaintenanceDate: nextDue });
+      setTool(prev => prev ? { ...prev, history: [newRecord, ...prev.history], nextDueDate: nextDue } : prev);
+    } catch (err) {
+      console.error('Failed to update next due date:', err);
+    }
     setShowLogModal(false);
   };
 
-  const handleSetDue = () => {
+  const handleSetDue = async () => {
     if (!newDueDate) return;
-    setTools(prev => prev.map(t => t.id === toolId ? { ...t, nextDueDate: newDueDate } : t));
+    try {
+      await apiClient.tools.update(tool.id, { nextMaintenanceDate: newDueDate });
+      setTool(prev => prev ? { ...prev, nextDueDate: newDueDate } : prev);
+    } catch (err) {
+      console.error('Failed to set due date:', err);
+    }
     setShowSetDueModal(false);
     setNewDueDate('');
   };

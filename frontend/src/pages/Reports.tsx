@@ -1,81 +1,159 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import MainLayout from '../components/MainLayout';
-import { 
+import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  AreaChart, Area, PieChart, Pie, Cell 
+  AreaChart, Area, PieChart, Pie, Cell
 } from 'recharts';
+import { apiClient } from '../api/apiClient';
 
 // Define chart colors for the premium aesthetic
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 
 const Reports = () => {
   const [selectedReportType, setSelectedReportType] = useState<string>('orders');
+  const [tools, setTools] = useState<any[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [inventory, setInventory] = useState<any[]>([]);
+
+  useEffect(() => {
+    Promise.all([
+      apiClient.tools.getAll().catch(() => []),
+      apiClient.orders.getAll().catch(() => []),
+      apiClient.customers.getAll().catch(() => []),
+      apiClient.inventory.getAll().catch(() => []),
+    ]).then(([t, o, c, i]) => {
+      setTools(Array.isArray(t) ? t : []);
+      setOrders(Array.isArray(o) ? o : []);
+      setCustomers(Array.isArray(c) ? c : []);
+      setInventory(Array.isArray(i) ? i : []);
+    });
+  }, []);
 
   const reportTypes = [
     { id: 'orders', name: 'Orders Report', icon: '📋', description: 'View order statistics and analytics' },
     { id: 'tools', name: 'Tools Report', icon: '🔧', description: 'Track tool usage and availability' },
     { id: 'customers', name: 'Customers Report', icon: '👥', description: 'Customer activity and insights' },
     { id: 'inventory', name: 'Inventory Report', icon: '📦', description: 'Inventory levels and movements' },
-    { id: 'financial', name: 'Financial Report', icon: '💰', description: 'Revenue and financial metrics' },
     { id: 'maintenance', name: 'Maintenance Report', icon: '🔨', description: 'Maintenance schedules and history' },
   ];
 
-  // Dummy aggregate data
-  const aggregateData = {
-    orders: { totalOrders: 156, activeOrders: 42, completedOrders: 98, revenue: '$245,680', averageOrderValue: '$1,575', topCustomer: 'Kuwait Oil Co.' },
-    tools: { totalTools: 120, onsite: 45, available: 58, inService: 17, utilizationRate: '75%', mostUsed: 'CRT' },
-    customers: { totalCustomers: 28, activeCustomers: 18, newCustomers: 5, totalRevenue: '$1,245,680', averageOrderValue: '$1,575', topCustomer: 'Kuwait Oil Co.' },
-    inventory: { totalItems: 3450, lowStock: 12, value: '$850k', movements: 124, pendingReceive: 45, topCategory: 'Consumables' },
-    financial: { mrr: '$125k', arr: '$1.5M', growth: '+15%', ebitda: '32%', expenses: '$40k', outstanding: '$25k' },
-    maintenance: { scheduled: 45, overdue: 3, completed: 112, avgTime: '4.5 hrs', cost: '$12,400', topItem: 'Power Tong' },
+  // Real aggregate data derived from API responses
+  const activeOrders = orders.filter(o => o.status === 'active').length;
+  const completedOrders = orders.filter(o => o.status === 'returned' || o.status === 'job_done').length;
+  const draftOrders = orders.filter(o => o.status === 'draft').length;
+  const onsiteTools = tools.filter(t => t.status === 'onsite').length;
+  const availableTools = tools.filter(t => t.status === 'available').length;
+  const maintenanceTools = tools.filter(t => t.status === 'maintenance').length;
+  const activeCustomers = customers.filter(c => c.isActive).length;
+  const lowStockItems = inventory.filter(i => i.quantity != null && i.minQuantity != null && i.quantity <= i.minQuantity).length;
+  const overdueTools = tools.filter(t => t.nextMaintenanceDate && new Date(t.nextMaintenanceDate) < new Date()).length;
+
+  const aggregateData: Record<string, Record<string, any>> = {
+    orders: {
+      totalOrders: orders.length,
+      activeOrders,
+      draftOrders,
+      completedOrders,
+      revenue: orders.reduce((s, o) => s + (Number(o.totalAmount) || 0), 0).toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }),
+      topCustomer: (() => {
+        const counts: Record<string, number> = {};
+        orders.forEach(o => { if (o.customer?.name) counts[o.customer.name] = (counts[o.customer.name] || 0) + 1; });
+        const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+        return top ? top[0] : '—';
+      })(),
+    },
+    tools: {
+      totalTools: tools.length,
+      onsite: onsiteTools,
+      available: availableTools,
+      maintenance: maintenanceTools,
+      utilizationRate: tools.length ? `${Math.round(onsiteTools / tools.length * 100)}%` : '0%',
+      topCategory: (() => {
+        const counts: Record<string, number> = {};
+        tools.forEach(t => { if (t.category) counts[t.category] = (counts[t.category] || 0) + 1; });
+        const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+        return top ? top[0] : '—';
+      })(),
+    },
+    customers: {
+      totalCustomers: customers.length,
+      activeCustomers,
+      inactiveCustomers: customers.length - activeCustomers,
+      totalOrders: orders.length,
+      avgOrdersPerCustomer: customers.length ? (orders.length / customers.length).toFixed(1) : '0',
+      topCustomer: aggregateData?.orders?.topCustomer || '—',
+    },
+    inventory: {
+      totalItems: inventory.length,
+      lowStock: lowStockItems,
+      totalQuantity: inventory.reduce((s, i) => s + (Number(i.quantity) || 0), 0),
+      topCategory: (() => {
+        const counts: Record<string, number> = {};
+        inventory.forEach(i => { if (i.category) counts[i.category] = (counts[i.category] || 0) + 1; });
+        const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+        return top ? top[0] : '—';
+      })(),
+    },
+    maintenance: {
+      totalTools: tools.length,
+      overdue: overdueTools,
+      underMaintenance: maintenanceTools,
+      ok: tools.length - overdueTools - maintenanceTools,
+      dueSoon: tools.filter(t => {
+        if (!t.nextMaintenanceDate) return false;
+        const days = Math.ceil((new Date(t.nextMaintenanceDate).getTime() - Date.now()) / 86400000);
+        return days >= 0 && days <= 30;
+      }).length,
+    },
   };
 
-  // Dummy Chart Data
+  // Real chart data
+  const buildToolCategoryChart = () => {
+    const cats: Record<string, { Onsite: number; Available: number }> = {};
+    tools.forEach(t => {
+      const cat = t.category || 'Other';
+      if (!cats[cat]) cats[cat] = { Onsite: 0, Available: 0 };
+      if (t.status === 'onsite') cats[cat].Onsite++;
+      else if (t.status === 'available') cats[cat].Available++;
+    });
+    return Object.entries(cats).slice(0, 8).map(([name, v]) => ({ name, ...v }));
+  };
+
+  const buildOrderStatusChart = () => {
+    const counts: Record<string, number> = {};
+    orders.forEach(o => { counts[o.status] = (counts[o.status] || 0) + 1; });
+    return Object.entries(counts).map(([name, Count]) => ({ name: name.replace('_', ' '), Count }));
+  };
+
+  const buildCustomerOrderChart = () => {
+    const counts: Record<string, number> = {};
+    orders.forEach(o => { if (o.customer?.name) counts[o.customer.name] = (counts[o.customer.name] || 0) + 1; });
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([name, Value]) => ({ name, Value }));
+  };
+
+  const buildInventoryCategoryChart = () => {
+    const cats: Record<string, number> = {};
+    inventory.forEach(i => { const c = i.category || 'Other'; cats[c] = (cats[c] || 0) + (Number(i.quantity) || 0); });
+    return Object.entries(cats).slice(0, 8).map(([name, Quantity]) => ({ name, Quantity }));
+  };
+
+  const buildMaintenanceChart = () => [
+    { name: 'Overdue', Count: overdueTools },
+    { name: 'Due Soon', Count: aggregateData.maintenance?.dueSoon || 0 },
+    { name: 'OK', Count: (aggregateData.maintenance?.ok || 0) },
+    { name: 'Under Maint.', Count: maintenanceTools },
+  ];
+
   const chartData: Record<string, any[]> = {
-    orders: [
-      { name: 'Jan', Orders: 25, Revenue: 34000 },
-      { name: 'Feb', Orders: 32, Revenue: 42000 },
-      { name: 'Mar', Orders: 28, Revenue: 39000 },
-      { name: 'Apr', Orders: 45, Revenue: 61000 },
-      { name: 'May', Orders: 35, Revenue: 48000 },
-      { name: 'Jun', Orders: 52, Revenue: 72000 },
-    ],
-    tools: [
-      { name: 'CRT', Onsite: 15, Available: 5 },
-      { name: 'Power Tong', Onsite: 8, Available: 12 },
-      { name: 'Jam Unit', Onsite: 12, Available: 4 },
-      { name: 'Filup Tool', Onsite: 6, Available: 10 },
-      { name: 'Elevators', Onsite: 14, Available: 18 },
-    ],
-    customers: [
-      { name: 'KOC', Value: 400 },
-      { name: 'KNPC', Value: 300 },
-      { name: 'Aramco', Value: 300 },
-      { name: 'ADNOC', Value: 200 },
-    ],
-    inventory: [
-        { month: 'Jan', StockIn: 400, StockOut: 240 },
-        { month: 'Feb', StockIn: 300, StockOut: 139 },
-        { month: 'Mar', StockIn: 200, StockOut: 380 },
-        { month: 'Apr', StockIn: 278, StockOut: 390 },
-        { month: 'May', StockIn: 189, StockOut: 480 },
-    ],
-    financial: [
-      { name: 'Jan', Income: 80000, Expenses: 45000 },
-      { name: 'Feb', Income: 95000, Expenses: 48000 },
-      { name: 'Mar', Income: 85000, Expenses: 43000 },
-      { name: 'Apr', Income: 110000, Expenses: 51000 },
-      { name: 'May', Income: 125000, Expenses: 54000 },
-    ],
-    maintenance: [
-      { name: 'Week 1', Scheduled: 12, Completed: 10 },
-      { name: 'Week 2', Scheduled: 15, Completed: 14 },
-      { name: 'Week 3', Scheduled: 8, Completed: 8 },
-      { name: 'Week 4', Scheduled: 22, Completed: 18 },
-    ]
+    orders: buildOrderStatusChart().length > 0 ? buildOrderStatusChart() : [{ name: 'No data', Count: 0 }],
+    tools: buildToolCategoryChart().length > 0 ? buildToolCategoryChart() : [{ name: 'No data', Onsite: 0, Available: 0 }],
+    customers: buildCustomerOrderChart().length > 0 ? buildCustomerOrderChart() : [{ name: 'No data', Value: 0 }],
+    inventory: buildInventoryCategoryChart().length > 0 ? buildInventoryCategoryChart() : [{ name: 'No data', Quantity: 0 }],
+    maintenance: buildMaintenanceChart(),
   };
 
-  const currentData = aggregateData[selectedReportType as keyof typeof aggregateData] || aggregateData.orders;
+  const currentData = aggregateData[selectedReportType] || aggregateData.orders;
   const currentChartData = chartData[selectedReportType] || chartData.orders;
 
   const renderChart = () => {
