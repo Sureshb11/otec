@@ -192,9 +192,10 @@ interface OrderCardProps {
   onDragStart: (id: string) => void;
   onTrackingChange: (orderId: string, t: MachineTracking) => void;
   hasHardcopy?: boolean;
+  onDelete?: (id: string) => void;
 }
 
-const OrderCard = ({ order, colId, tracking, onDragStart, onTrackingChange, hasHardcopy }: OrderCardProps) => {
+const OrderCard = ({ order, colId, tracking, onDragStart, onTrackingChange, hasHardcopy, onDelete }: OrderCardProps) => {
   const col           = COLUMNS.find(c => c.id === colId)!;
   const isInTransit   = colId === 'in-transit';
   const isOnsite      = colId === 'onsite';
@@ -234,6 +235,17 @@ const OrderCard = ({ order, colId, tracking, onDragStart, onTrackingChange, hasH
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
                 </svg>
               </span>
+            )}
+            {colId === 'booked' && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); onDelete?.(order.id); }} 
+                className="text-slate-400 hover:text-red-500 transition-colors ml-2"
+                title="Delete Order"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
             )}
           </div>
 
@@ -671,6 +683,18 @@ const Orders = () => {
     onError:    () => alert('Failed to update order status.'),
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: apiClient.orders.delete,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['orders'] }),
+    onError: () => alert('Failed to delete order.'),
+  });
+
+  const handleDelete = (id: string) => {
+    if (window.confirm('Are you sure you want to delete this order?')) {
+      deleteMutation.mutate(id);
+    }
+  };
+
   const [searchTerm,       setSearchTerm]       = useState('');
   const [trackingMap,      setTrackingMapRaw]   = useState<TrackingMap>(() => {
     try { return JSON.parse(localStorage.getItem('otec_tracking_map') || '{}'); } catch { return {}; }
@@ -937,6 +961,7 @@ const Orders = () => {
                     onDragStart={setDragId}
                     onTrackingChange={handleTrackingChange}
                     hasHardcopy={!!hardcopyMap[order.id]}
+                    onDelete={handleDelete}
                   />
                 ))
               )}
