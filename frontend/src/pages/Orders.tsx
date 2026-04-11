@@ -46,10 +46,10 @@ const COLUMNS: ColConfig[] = [
     id: 'booked',
     label: 'Booked',
     description: 'Order confirmed · awaiting dispatch',
-    topBar: 'bg-yellow-400',
-    dot: 'bg-yellow-400',
-    headerBg: 'bg-yellow-50 dark:bg-yellow-900/20',
-    bodyBg: 'bg-yellow-50/30 dark:bg-yellow-900/10',
+    topBar: 'bg-slate-500',
+    dot: 'bg-slate-500',
+    headerBg: 'bg-slate-50 dark:bg-slate-900/30',
+    bodyBg: 'bg-slate-50/30 dark:bg-slate-900/10',
     apiStatus: 'booked',
   },
   {
@@ -106,13 +106,13 @@ const emptyTracking = (): MachineTracking => ({
   lastUpdated:      nowStr(),
 });
 
-/** Map backend status + local tracking → Kanban column. Returns null for statuses not on the board. */
+/** Map backend status + local tracking → Kanban column. Returns null for statuses outside the pipeline. */
 const getColId = (apiStatus: string, t: MachineTracking): KanbanColId | null => {
   switch (apiStatus) {
     case 'booked':   return 'booked';
     case 'active':   return t.reachedOnsite.status ? 'onsite' : 'in-transit';
     case 'job_done': return 'job-done';
-    default:         return null; // returned / cancelled / draft → not on board
+    default:         return null; // draft / returned / cancelled → hidden
   }
 };
 
