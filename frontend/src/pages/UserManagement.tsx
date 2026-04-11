@@ -44,6 +44,9 @@ const UserManagement = () => {
     enabled: isAuthenticated, // Only make the request if user is authenticated
   });
 
+  const getRoleName = (r: string | { id: string; name: string }): string =>
+    typeof r === 'string' ? r : r.name;
+
   // Filter and search users
   const filteredUsers = users?.filter((user) => {
     const matchesSearch =
@@ -53,7 +56,7 @@ const UserManagement = () => {
       user.email.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesRole =
-      filterRole === 'all' || user.roles?.some((role) => role.name === filterRole);
+      filterRole === 'all' || user.roles?.some((role) => getRoleName(role) === filterRole);
 
     const matchesStatus =
       filterStatus === 'all' ||
@@ -68,7 +71,7 @@ const UserManagement = () => {
     total: users?.length || 0,
     active: users?.filter((u) => u.isActive).length || 0,
     inactive: users?.filter((u) => !u.isActive).length || 0,
-    admins: users?.filter((u) => u.roles?.some((r) => r.name === 'admin')).length || 0,
+    admins: users?.filter((u) => u.roles?.some((r) => getRoleName(r) === 'admin')).length || 0,
   };
 
   const roleColors: Record<string, { bg: string; text: string }> = {
@@ -426,13 +429,14 @@ const UserManagement = () => {
                 <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-[0.15em]">Roles</p>
                 <div className="flex flex-wrap gap-2">
                   {user.roles?.map((role) => {
-                    const colors = getRoleColor(role.name);
+                    const roleName = getRoleName(role);
+                    const colors = getRoleColor(roleName);
                     return (
                       <span
-                        key={role.name}
+                        key={roleName}
                         className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${colors.bg} ${colors.text} border border-white/10`}
                       >
-                        {role.name}
+                        {roleName}
                       </span>
                     );
                   })}

@@ -27,28 +27,6 @@ const CATEGORY_DISPLAY_MAP: Record<string, string> = {
 const TRS_CATEGORIES = ['CRT', 'Torque Sub', 'Power Tong', 'Jam Unit', 'HPU', 'Filup Tool', 'Safety Clamp', 'Elevators', 'Slips', 'Spider Elevators'];
 const DHT_CATEGORIES = ['Bucking', 'Reamers', 'Anti Stick Slip', 'Scrapper', 'Jars', 'Circulating DHT'];
 
-type ToolGroupKey = 'TRS' | 'DHT';
-type OperationalStatus = 'Available' | 'In Use' | 'Under Maintenance';
-
-interface ToolSize {
-  size: string;
-  quantity: number;
-  inventoryId?: string;
-}
-
-interface OperationalTool {
-  id: string;
-  name: string;
-  group: ToolGroupKey;
-  available: number;
-  sizes: ToolSize[];
-  type?: string;
-  category: string;
-  status?: OperationalStatus;
-  serialNumber?: string;
-  assignedRig?: string;
-}
-
 // ─── Consumables sub-section ──────────────────────────────────────────────────
 
 // Backed by the `inventory` table. The `import-tools.ts` script also writes
@@ -333,8 +311,6 @@ const OperationalInventory = () => {
     </div>
   );
   if (error) return <div className="p-10 text-center text-red-500">{error}</div>;
-
-  const pct = (n: number, total: number) => (total > 0 ? Math.round((n / total) * 100) : 0);
 
   return (
     <div className="flex flex-col gap-5">
