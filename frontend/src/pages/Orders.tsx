@@ -672,14 +672,32 @@ const Orders = () => {
   });
 
   const [searchTerm,       setSearchTerm]       = useState('');
-  const [trackingMap,      setTrackingMap]      = useState<TrackingMap>({});
+  const [trackingMap,      setTrackingMapRaw]   = useState<TrackingMap>(() => {
+    try { return JSON.parse(localStorage.getItem('otec_tracking_map') || '{}'); } catch { return {}; }
+  });
+  const setTrackingMap = (updater: TrackingMap | ((prev: TrackingMap) => TrackingMap)) => {
+    setTrackingMapRaw(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      localStorage.setItem('otec_tracking_map', JSON.stringify(next));
+      return next;
+    });
+  };
   const [dragId,           setDragId]           = useState<string | null>(null);
   const [dragOver,         setDragOver]         = useState<KanbanColId | null>(null);
   const [showModal,        setShowModal]        = useState(false);
   const [reportOrder,      setReportOrder]      = useState<any | null>(null);   // order awaiting job-done confirmation
   const [reportTracking,   setReportTracking]   = useState<MachineTracking | null>(null);
   // Map of orderId → hardcopy filename, persisted across re-renders
-  const [hardcopyMap,      setHardcopyMap]      = useState<Record<string, string>>({});
+  const [hardcopyMap,      setHardcopyMapRaw]   = useState<Record<string, string>>(() => {
+    try { return JSON.parse(localStorage.getItem('otec_hardcopy_map') || '{}'); } catch { return {}; }
+  });
+  const setHardcopyMap = (updater: Record<string, string> | ((prev: Record<string, string>) => Record<string, string>)) => {
+    setHardcopyMapRaw(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      localStorage.setItem('otec_hardcopy_map', JSON.stringify(next));
+      return next;
+    });
+  };
 
   const search      = searchTerm.toLowerCase();
   const allOrders   = Array.isArray(orders) ? orders : [];

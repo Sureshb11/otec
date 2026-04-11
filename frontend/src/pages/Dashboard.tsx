@@ -27,15 +27,7 @@ interface DashboardStats {
   totalCustomers: number;
 }
 
-// Deterministic hours offset based on tool ID hash — provides unique but stable values
-const getStableOffset = (id: string): number => {
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) {
-    hash = ((hash << 5) - hash) + id.charCodeAt(i);
-    hash |= 0;
-  }
-  return Math.abs(hash % 720) + 1; // 1 to 720 minutes (up to 12 hours)
-};
+
 
 const Dashboard = () => {
   const { user } = useAuthStore();
@@ -147,12 +139,37 @@ const Dashboard = () => {
     [activeCategoryTools]
   );
 
-  // Compute runtime per tool instance using stable offsets
+  // Compute runtime per tool using real activatedAt from orders (falls back to mount-time)
+  const [orderActivatedMap, setOrderActivatedMap] = useState<Record<string, string>>({});
+
+  // Fetch orders to get activatedAt timestamps for onsite tools
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const ordersData = await apiClient.orders.getAll();
+        if (Array.isArray(ordersData)) {
+          const map: Record<string, string> = {};
+          ordersData.forEach((order: any) => {
+            if (order.status === 'active' && order.activatedAt && Array.isArray(order.items)) {
+              order.items.forEach((item: any) => {
+                map[item.toolId] = order.activatedAt;
+              });
+            }
+          });
+          setOrderActivatedMap(map);
+        }
+      } catch (err) {
+        console.error('Failed to fetch orders for tool activation times:', err);
+      }
+    };
+    fetchOrders();
+  }, []);
+
   const liveInstances = useMemo(() =>
     onsiteTools.map(tool => {
-      const offsetMinutes = getStableOffset(tool.id);
-      const startTime = new Date(baseTime.getTime() - offsetMinutes * 60 * 1000);
-      const elapsedSec = Math.floor((currentTime.getTime() - startTime.getTime()) / 1000);
+      const activatedAt = orderActivatedMap[tool.id];
+      const startTime = activatedAt ? new Date(activatedAt) : baseTime;
+      const elapsedSec = Math.max(0, Math.floor((currentTime.getTime() - startTime.getTime()) / 1000));
       const hours = Math.floor(elapsedSec / 3600);
       const minutes = Math.floor((elapsedSec % 3600) / 60);
       const seconds = elapsedSec % 60;
@@ -164,7 +181,7 @@ const Dashboard = () => {
         startTime
       };
     }),
-    [onsiteTools, currentTime, baseTime]
+    [onsiteTools, currentTime, baseTime, orderActivatedMap]
   );
 
   // All tools not onsite for the yard/service count in the side panel
