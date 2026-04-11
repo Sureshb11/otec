@@ -781,10 +781,28 @@ const Orders = () => {
     if (reportData.hardcopyFileName) {
       setHardcopyMap(prev => ({ ...prev, [reportOrder.id]: reportData.hardcopyFileName! }));
     }
-    // Now actually update the API status
+    // Chain: active → job_done → returned
+    // The "returned" transition releases tools (marks available, clears rig, logs hours)
+    const orderId = reportOrder.id;
+    const chainToReturned = () => {
+      apiClient.orders.updateStatus(orderId, 'returned')
+        .then(() => queryClient.invalidateQueries({ queryKey: ['orders'] }))
+        .catch(() => console.error('Failed to auto-transition to returned'));
+    };
+
     if (reportOrder.status !== 'job_done') {
-      updateStatusMutation.mutate({ id: reportOrder.id, status: 'job_done' });
+      apiClient.orders.updateStatus(orderId, 'job_done')
+        .then(() => chainToReturned())
+        .catch(() => alert('Failed to update order status to Job Done.'));
+    } else {
+      chainToReturned();
     }
+    // Clean up tracking data for this order
+    setTrackingMap(prev => {
+      const next = { ...prev };
+      delete next[orderId];
+      return next;
+    });
     setReportOrder(null);
     setReportTracking(null);
   };
