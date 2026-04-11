@@ -49,6 +49,13 @@ const Reports = () => {
   const lowStockItems = inventory.filter(i => i.quantity != null && i.minQuantity != null && i.quantity <= i.minQuantity).length;
   const overdueTools = tools.filter(t => t.nextMaintenanceDate && new Date(t.nextMaintenanceDate) < new Date()).length;
 
+  const topCustomerName = (() => {
+    const counts: Record<string, number> = {};
+    orders.forEach(o => { if (o.customer?.name) counts[o.customer.name] = (counts[o.customer.name] || 0) + 1; });
+    const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+    return top ? top[0] : '—';
+  })();
+
   const aggregateData: Record<string, Record<string, any>> = {
     orders: {
       totalOrders: orders.length,
@@ -56,12 +63,7 @@ const Reports = () => {
       draftOrders,
       completedOrders,
       revenue: orders.reduce((s, o) => s + (Number(o.totalAmount) || 0), 0).toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }),
-      topCustomer: (() => {
-        const counts: Record<string, number> = {};
-        orders.forEach(o => { if (o.customer?.name) counts[o.customer.name] = (counts[o.customer.name] || 0) + 1; });
-        const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
-        return top ? top[0] : '—';
-      })(),
+      topCustomer: topCustomerName,
     },
     tools: {
       totalTools: tools.length,
@@ -82,7 +84,7 @@ const Reports = () => {
       inactiveCustomers: customers.length - activeCustomers,
       totalOrders: orders.length,
       avgOrdersPerCustomer: customers.length ? (orders.length / customers.length).toFixed(1) : '0',
-      topCustomer: aggregateData?.orders?.topCustomer || '—',
+      topCustomer: topCustomerName,
     },
     inventory: {
       totalItems: inventory.length,

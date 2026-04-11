@@ -27,28 +27,6 @@ const CATEGORY_DISPLAY_MAP: Record<string, string> = {
 const TRS_CATEGORIES = ['CRT', 'Torque Sub', 'Power Tong', 'Jam Unit', 'HPU', 'Filup Tool', 'Safety Clamp', 'Elevators', 'Slips', 'Spider Elevators'];
 const DHT_CATEGORIES = ['Bucking', 'Reamers', 'Anti Stick Slip', 'Scrapper', 'Jars', 'Circulating DHT'];
 
-type ToolGroupKey = 'TRS' | 'DHT';
-type OperationalStatus = 'Available' | 'In Use' | 'Under Maintenance';
-
-interface ToolSize {
-  size: string;
-  quantity: number;
-  inventoryId?: string;
-}
-
-interface OperationalTool {
-  id: string;
-  name: string;
-  group: ToolGroupKey;
-  available: number;
-  sizes: ToolSize[];
-  type?: string;
-  category: string;
-  status?: OperationalStatus;
-  serialNumber?: string;
-  assignedRig?: string;
-}
-
 // ─── Consumables sub-section ──────────────────────────────────────────────────
 
 // Backed by the `inventory` table. The `import-tools.ts` script also writes
@@ -132,7 +110,7 @@ const blankForm = (category = 'CRT'): ToolFormState => ({
 });
 
 const STATUS_BADGE: Record<ToolRow['status'], { label: string; bg: string; dot: string }> = {
-  available:   { label: 'Yard',    bg: 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400',     dot: 'bg-amber-500' },
+  available:   { label: 'Yard',    bg: 'bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-400',     dot: 'bg-sky-500' },
   onsite:      { label: 'Onsite',  bg: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400', dot: 'bg-emerald-500' },
   maintenance: { label: 'Service', bg: 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400',           dot: 'bg-rose-500' },
 };
@@ -170,13 +148,18 @@ const OperationalInventory = () => {
 
   useEffect(() => { fetchTools(); }, []);
 
-  // Counts per category for sidebar badges (uses ALL tools, not filtered ones)
-  const categoryCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
+  // Per-category breakdown (total + status split) for the sidebar mini-bars.
+  const categoryBreakdown = useMemo(() => {
+    const map: Record<string, { total: number; yard: number; onsite: number; service: number }> = {};
     tools.forEach(t => {
-      if (t.category) counts[t.category] = (counts[t.category] || 0) + 1;
+      if (!t.category) return;
+      if (!map[t.category]) map[t.category] = { total: 0, yard: 0, onsite: 0, service: 0 };
+      map[t.category].total += 1;
+      if (t.status === 'available') map[t.category].yard += 1;
+      else if (t.status === 'onsite') map[t.category].onsite += 1;
+      else if (t.status === 'maintenance') map[t.category].service += 1;
     });
-    return counts;
+    return map;
   }, [tools]);
 
   // Tools in the selected category
@@ -329,122 +312,127 @@ const OperationalInventory = () => {
   );
   if (error) return <div className="p-10 text-center text-red-500">{error}</div>;
 
-  const totalAcrossAll = tools.length;
-
   return (
-    <div className="flex flex-col lg:flex-row gap-6">
-      {/* ── SIDEBAR ── */}
-      <aside className="w-full lg:w-72 flex-shrink-0">
-        <div className="glass-premium dark:bg-boxdark/90 rounded-2xl shadow-xl border border-white/20 dark:border-white/5 p-5 lg:sticky lg:top-0 lg:max-h-[calc(100vh-180px)] overflow-y-auto">
-          <div className="px-2 mb-4">
-            <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Total Tools</div>
-            <div className="text-3xl font-black text-slate-800 dark:text-white">{totalAcrossAll}</div>
-          </div>
-          {/* TRS */}
-          <div className="mb-5">
-            <div className="flex items-center gap-2 mb-2 px-2">
-              <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-              <span className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-[0.15em]">TRS System</span>
-            </div>
-            <div className="space-y-1">
-              {TRS_CATEGORIES.map(cat => (
-                <button key={cat} onClick={() => { setSelectedCategory(cat); setSearchTerm(''); setStatusFilter('all'); }}
-                  className={`w-full text-left px-3.5 py-2 rounded-lg text-xs font-bold border transition-all duration-200 flex items-center justify-between ${selectedCategory === cat
-                    ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white border-transparent shadow-md'
-                    : 'bg-white/60 border-white/20 text-slate-600 hover:bg-white dark:bg-boxdark/60 dark:border-white/5 dark:text-slate-300 dark:hover:bg-meta-4'}`}>
-                  <span className="truncate">{CATEGORY_DISPLAY_MAP[cat] || cat}</span>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-black ${selectedCategory === cat ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500 dark:bg-meta-4 dark:text-slate-400'}`}>{categoryCounts[cat] || 0}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-          {/* DHT */}
-          <div>
-            <div className="flex items-center gap-2 mb-2 px-2">
-              <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
-              <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-[0.15em]">DHT System</span>
-            </div>
-            <div className="space-y-1">
-              {DHT_CATEGORIES.map(cat => (
-                <button key={cat} onClick={() => { setSelectedCategory(cat); setSearchTerm(''); setStatusFilter('all'); }}
-                  className={`w-full text-left px-3.5 py-2 rounded-lg text-xs font-bold border transition-all duration-200 flex items-center justify-between ${selectedCategory === cat
-                    ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-transparent shadow-md'
-                    : 'bg-white/60 border-white/20 text-slate-600 hover:bg-white dark:bg-boxdark/60 dark:border-white/5 dark:text-slate-300 dark:hover:bg-meta-4'}`}>
-                  <span className="truncate">{CATEGORY_DISPLAY_MAP[cat] || cat}</span>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-black ${selectedCategory === cat ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500 dark:bg-meta-4 dark:text-slate-400'}`}>{categoryCounts[cat] || 0}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </aside>
-
-      {/* ── MAIN PANEL ── */}
-      <section className="flex-1 min-w-0">
-        <div className="glass-premium dark:bg-boxdark/90 rounded-2xl shadow-xl border border-white/20 dark:border-white/5 p-6 min-h-[calc(100vh-180px)]">
-          {/* Header */}
-          <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 pb-5 border-b border-slate-100/60 dark:border-white/5">
-            <div>
-              <h2 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">{CATEGORY_DISPLAY_MAP[selectedCategory] || selectedCategory}</h2>
-              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mt-0.5">
-                {TRS_CATEGORIES.includes(selectedCategory) ? 'TRS Group' : 'DHT Group'} · {filtered.length} of {inCategory.length} {inCategory.length === 1 ? 'tool' : 'tools'}
-              </p>
-            </div>
-            <div className="flex gap-2.5 items-center w-full xl:w-auto">
-              <div className="relative flex-1 xl:flex-initial">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">🔍</span>
-                <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-                  placeholder="Search name, serial, mfr, part no..."
-                  className="pl-9 pr-4 py-2.5 border border-slate-200/60 dark:border-white/5 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/30 bg-white/60 dark:bg-meta-4 dark:text-white w-full xl:w-72" />
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-col lg:flex-row gap-5">
+        {/* ── SIDEBAR ── */}
+        <aside className="w-full lg:w-56 flex-shrink-0">
+          <div className="glass-premium dark:bg-boxdark/90 rounded-2xl shadow-xl border border-white/20 dark:border-white/5 p-3 lg:sticky lg:top-0 lg:max-h-[calc(100vh-180px)] overflow-y-auto">
+            {/* TRS */}
+            <div className="mb-3">
+              <div className="flex items-center gap-1.5 mb-1.5 px-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                <span className="text-[9px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-[0.15em]">TRS</span>
+                <span className="ml-auto text-[9px] font-black text-slate-400 tabular-nums">
+                  {TRS_CATEGORIES.reduce((sum, c) => sum + (categoryBreakdown[c]?.total || 0), 0)}
+                </span>
               </div>
-              <button onClick={openCreate}
-                className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl text-sm font-bold hover:from-blue-500 hover:to-blue-400 shadow-md transition-all flex items-center gap-1.5 whitespace-nowrap">
-                <span className="text-base leading-none">+</span> Add Tool
-              </button>
+              <div className="space-y-0.5">
+                {TRS_CATEGORIES.map(cat => (
+                  <CategoryButton
+                    key={cat}
+                    label={CATEGORY_DISPLAY_MAP[cat] || cat}
+                    breakdown={categoryBreakdown[cat]}
+                    active={selectedCategory === cat}
+                    group="TRS"
+                    onClick={() => { setSelectedCategory(cat); setSearchTerm(''); setStatusFilter('all'); }}
+                  />
+                ))}
+              </div>
+            </div>
+            {/* DHT */}
+            <div>
+              <div className="flex items-center gap-1.5 mb-1.5 px-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                <span className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-[0.15em]">DHT</span>
+                <span className="ml-auto text-[9px] font-black text-slate-400 tabular-nums">
+                  {DHT_CATEGORIES.reduce((sum, c) => sum + (categoryBreakdown[c]?.total || 0), 0)}
+                </span>
+              </div>
+              <div className="space-y-0.5">
+                {DHT_CATEGORIES.map(cat => (
+                  <CategoryButton
+                    key={cat}
+                    label={CATEGORY_DISPLAY_MAP[cat] || cat}
+                    breakdown={categoryBreakdown[cat]}
+                    active={selectedCategory === cat}
+                    group="DHT"
+                    onClick={() => { setSelectedCategory(cat); setSearchTerm(''); setStatusFilter('all'); }}
+                  />
+                ))}
+              </div>
             </div>
           </div>
+        </aside>
 
-          {/* Status filter chips */}
-          <div className="flex flex-wrap gap-2 mt-4 mb-4">
-            {([
-              ['all',         'All',     statusCounts.all],
-              ['available',   'Yard',    statusCounts.available],
-              ['onsite',      'Onsite',  statusCounts.onsite],
-              ['maintenance', 'Service', statusCounts.maintenance],
-            ] as const).map(([key, label, count]) => (
-              <button key={key} onClick={() => setStatusFilter(key)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${statusFilter === key
-                  ? 'bg-slate-800 dark:bg-white text-white dark:text-slate-800 shadow-md'
-                  : 'bg-slate-100 text-slate-500 dark:bg-meta-4 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-meta-4/80'}`}>
-                {label} <span className="ml-1 opacity-70">{count}</span>
-              </button>
-            ))}
-          </div>
+        {/* ── MAIN PANEL ── */}
+        <section className="flex-1 min-w-0">
+          <div className="glass-premium dark:bg-boxdark/90 rounded-2xl shadow-xl border border-white/20 dark:border-white/5 p-6 min-h-[calc(100vh-180px)]">
+            {/* Header */}
+            <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 pb-4 border-b border-slate-100/60 dark:border-white/5">
+              <div className="flex items-center gap-3.5">
+                <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-white text-lg shadow-md ${
+                  TRS_CATEGORIES.includes(selectedCategory)
+                    ? 'bg-gradient-to-br from-blue-600 to-blue-500'
+                    : 'bg-gradient-to-br from-indigo-600 to-violet-600'
+                }`}>
+                  {TRS_CATEGORIES.includes(selectedCategory) ? '🔩' : '⚙️'}
+                </div>
+                <div>
+                  <h2 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight leading-tight">{CATEGORY_DISPLAY_MAP[selectedCategory] || selectedCategory}</h2>
+                  <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">
+                    {TRS_CATEGORIES.includes(selectedCategory) ? 'TRS Group' : 'DHT Group'} · Showing {filtered.length} of {inCategory.length}
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2.5 items-center w-full xl:w-auto">
+                <div className="relative flex-1 xl:flex-initial">
+                  <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M10 18a8 8 0 100-16 8 8 0 000 16z" />
+                  </svg>
+                  <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+                    placeholder="Search name, serial, mfr, part no..."
+                    className="pl-9 pr-4 py-2.5 border border-slate-200/60 dark:border-white/5 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/30 bg-white/60 dark:bg-meta-4 dark:text-white w-full xl:w-72" />
+                </div>
+                <button onClick={openCreate}
+                  className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl text-sm font-bold hover:from-blue-500 hover:to-blue-400 shadow-md transition-all flex items-center gap-1.5 whitespace-nowrap">
+                  <span className="text-base leading-none">+</span> Add Tool
+                </button>
+              </div>
+            </div>
+
+            {/* Status filter chips */}
+            <div className="mt-4 mb-4 flex flex-wrap gap-2">
+              <FilterChip label="All"     count={statusCounts.all}          active={statusFilter === 'all'}         onClick={() => setStatusFilter('all')}         accent="slate" />
+              <FilterChip label="Yard"    count={statusCounts.available}    active={statusFilter === 'available'}   onClick={() => setStatusFilter('available')}   accent="sky" />
+              <FilterChip label="Onsite"  count={statusCounts.onsite}       active={statusFilter === 'onsite'}      onClick={() => setStatusFilter('onsite')}      accent="emerald" />
+              <FilterChip label="Service" count={statusCounts.maintenance}  active={statusFilter === 'maintenance'} onClick={() => setStatusFilter('maintenance')} accent="rose" />
+            </div>
 
           {/* Table */}
           <div className="overflow-x-auto rounded-xl border border-slate-100 dark:border-white/5">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm table-fixed">
               <thead>
                 <tr className="bg-slate-50 dark:bg-meta-4/40 border-b border-slate-100 dark:border-white/5">
                   {([
-                    ['name',           'Name'],
-                    ['serialNumber',   'Serial'],
-                    ['size',           'Size'],
-                    ['manufacturer',   'Manufacturer'],
-                    ['partNo',         'Part No'],
-                    ['country',        'Country'],
-                    ['status',         'Status'],
-                    ['receivedDate',   'Received'],
-                  ] as const).map(([key, label]) => (
+                    ['name',           'Name',          'w-[34%]'],
+                    ['serialNumber',   'Serial',        'w-[15%]'],
+                    ['size',           'Size',          'w-[6%]'],
+                    ['manufacturer',   'Manufacturer',  'w-[8%]'],
+                    ['partNo',         'Part No',       'w-[7%]'],
+                    ['country',        'Country',       'w-[5%]'],
+                    ['status',         'Status',        'w-[7%]'],
+                    ['receivedDate',   'Received',      'w-[8%]'],
+                  ] as const).map(([key, label, width]) => (
                     <th key={key} onClick={() => onSort(key as keyof ToolRow)}
-                      className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-wider text-slate-400 cursor-pointer select-none hover:text-slate-700 dark:hover:text-white">
-                      <span className="inline-flex items-center gap-1">
-                        {label}
-                        {sortKey === key && (<span className="text-[8px]">{sortDir === 'asc' ? '▲' : '▼'}</span>)}
+                      className={`${width} text-left px-3 py-2.5 text-[10px] font-black uppercase tracking-wider text-slate-400 cursor-pointer select-none hover:text-slate-700 dark:hover:text-white overflow-hidden`}>
+                      <span className="inline-flex items-center gap-1 truncate max-w-full">
+                        <span className="truncate">{label}</span>
+                        {sortKey === key && (<span className="text-[8px] flex-shrink-0">{sortDir === 'asc' ? '▲' : '▼'}</span>)}
                       </span>
                     </th>
                   ))}
-                  <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-wider text-slate-400">Actions</th>
+                  <th className="w-[10%] px-3 py-2.5 text-right text-[10px] font-black uppercase tracking-wider text-slate-400 whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-white/5">
@@ -461,27 +449,27 @@ const OperationalInventory = () => {
                   return (
                     <tr key={t.id} onClick={() => setDetailsTool(t)}
                       className="cursor-pointer transition-colors hover:bg-slate-50/80 dark:hover:bg-meta-4/30">
-                      <td className="px-4 py-3">
-                        <div className="font-bold text-slate-800 dark:text-white">{t.name}</div>
+                      <td className="px-3 py-3 max-w-0">
+                        <div className="font-bold text-slate-800 dark:text-white text-[15px] truncate" title={t.name}>{t.name}</div>
                         {t.description && t.description !== t.name && (
-                          <div className="text-[11px] text-slate-400 truncate max-w-xs">{t.description}</div>
+                          <div className="text-[10px] text-slate-400 truncate" title={t.description}>{t.description}</div>
                         )}
                       </td>
-                      <td className="px-4 py-3 font-mono text-[11px] text-slate-500 dark:text-slate-400">{t.serialNumber}</td>
-                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300 font-semibold">{t.size || '—'}</td>
-                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{t.manufacturer || '—'}</td>
-                      <td className="px-4 py-3 text-slate-500 dark:text-slate-400 font-mono text-[11px]">{t.partNo || '—'}</td>
-                      <td className="px-4 py-3 text-slate-500 dark:text-slate-400">{t.country || '—'}</td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider ${status.bg}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />
+                      <td className="px-3 py-2.5 font-mono text-[10px] text-slate-500 dark:text-slate-400 whitespace-nowrap">{t.serialNumber}</td>
+                      <td className="px-3 py-2.5 text-slate-600 dark:text-slate-300 font-semibold text-[12px] whitespace-nowrap">{t.size || '—'}</td>
+                      <td className="px-3 py-2.5 text-slate-600 dark:text-slate-300 text-[12px] truncate max-w-0" title={t.manufacturer || ''}>{t.manufacturer || '—'}</td>
+                      <td className="px-3 py-2.5 text-slate-500 dark:text-slate-400 font-mono text-[10px] truncate max-w-0" title={t.partNo || ''}>{t.partNo || '—'}</td>
+                      <td className="px-3 py-2.5 text-slate-500 dark:text-slate-400 text-[12px] whitespace-nowrap">{t.country || '—'}</td>
+                      <td className="px-3 py-2.5 whitespace-nowrap">
+                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${status.bg}`}>
+                          <span className={`w-1 h-1 rounded-full ${status.dot}`} />
                           {status.label}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-slate-500 dark:text-slate-400 text-xs tabular-nums">
+                      <td className="px-3 py-2.5 text-slate-500 dark:text-slate-400 text-[11px] tabular-nums whitespace-nowrap">
                         {t.receivedDate ? new Date(t.receivedDate).toLocaleDateString() : '—'}
                       </td>
-                      <td className="px-4 py-3 text-right whitespace-nowrap" onClick={e => e.stopPropagation()}>
+                      <td className="px-3 py-2.5 text-right whitespace-nowrap" onClick={e => e.stopPropagation()}>
                         <button onClick={() => openEdit(t)}
                           className="px-2.5 py-1 text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md mr-1 transition-colors">
                           Edit
@@ -499,6 +487,7 @@ const OperationalInventory = () => {
           </div>
         </div>
       </section>
+      </div>
 
       {/* ── Add / Edit Modal ── */}
       {showFormModal && (
@@ -684,6 +673,68 @@ const OperationalInventory = () => {
         </div>
       )}
     </div>
+  );
+};
+
+// ─── Operational Inventory presentation helpers ─────────────────────────────
+
+type Accent = 'slate' | 'sky' | 'emerald' | 'rose';
+
+const ACCENT_STYLES: Record<Accent, { ring: string; text: string; soft: string; dot: string; bar: string }> = {
+  slate:   { ring: 'ring-slate-200 dark:ring-white/10',   text: 'text-slate-800 dark:text-white',     soft: 'bg-slate-100 text-slate-600 dark:bg-meta-4 dark:text-slate-300', dot: 'bg-slate-400',   bar: 'bg-slate-400' },
+  sky:     { ring: 'ring-sky-200 dark:ring-sky-500/20', text: 'text-sky-700 dark:text-sky-300', soft: 'bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300', dot: 'bg-sky-500',  bar: 'bg-sky-400' },
+  emerald: { ring: 'ring-emerald-200 dark:ring-emerald-500/20', text: 'text-emerald-700 dark:text-emerald-300', soft: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300', dot: 'bg-emerald-500', bar: 'bg-emerald-500' },
+  rose:    { ring: 'ring-rose-200 dark:ring-rose-500/20',  text: 'text-rose-700 dark:text-rose-300',  soft: 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300',   dot: 'bg-rose-500',    bar: 'bg-rose-500' },
+};
+
+const CategoryButton = ({ label, breakdown, active, group, onClick }: {
+  label: string;
+  breakdown?: { total: number; yard: number; onsite: number; service: number };
+  active: boolean;
+  group: 'TRS' | 'DHT';
+  onClick: () => void;
+}) => {
+  const total = breakdown?.total || 0;
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full text-left px-3 py-2.5 rounded-lg border transition-all duration-150 ${
+        active
+          ? group === 'TRS'
+            ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white border-transparent shadow-sm'
+            : 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-transparent shadow-sm'
+          : 'bg-white/60 border-transparent text-slate-600 hover:bg-white dark:bg-boxdark/60 dark:text-slate-300 dark:hover:bg-meta-4'
+      }`}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span className="truncate text-[13px] font-bold leading-tight">{label}</span>
+        <span className={`text-[10px] px-1.5 py-0.5 rounded font-black tabular-nums ${
+          active ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500 dark:bg-meta-4 dark:text-slate-400'
+        }`}>
+          {total}
+        </span>
+      </div>
+    </button>
+  );
+};
+
+const FilterChip = ({ label, count, active, onClick, accent }: {
+  label: string; count: number; active: boolean; onClick: () => void; accent: Accent;
+}) => {
+  const s = ACCENT_STYLES[accent];
+  return (
+    <button
+      onClick={onClick}
+      className={`px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all inline-flex items-center gap-2 border ${
+        active
+          ? `${s.soft} border-transparent shadow-sm ring-1 ${s.ring}`
+          : 'bg-slate-50 text-slate-500 border-transparent dark:bg-meta-4 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-meta-4/80'
+      }`}
+    >
+      <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
+      {label}
+      <span className="tabular-nums opacity-80">{count}</span>
+    </button>
   );
 };
 
@@ -1073,7 +1124,7 @@ const Inventory = () => {
           onClick={() => setActiveTab('consumables')}
           className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 ${
             activeTab === 'consumables'
-              ? 'bg-gradient-to-r from-amber-500 to-amber-400 text-white shadow-md'
+              ? 'bg-gradient-to-r from-sky-600 to-sky-500 text-white shadow-md'
               : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
           }`}
         >
