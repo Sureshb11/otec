@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import UserAvatarMenu from '../components/UserAvatarMenu';
+import { apiClient } from '../api/apiClient';
 
 const CustomerDetails = () => {
   const { customerId } = useParams<{ customerId: string }>();
@@ -8,48 +9,52 @@ const CustomerDetails = () => {
   const [activeTab, setActiveTab] = useState<'details' | 'orders' | 'address'>('details');
   const [showOperationsMenu, setShowOperationsMenu] = useState(false);
   const [showClientsMenu, setShowClientsMenu] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [customerOrders, setCustomerOrders] = useState<any[]>([]);
+  const [customer, setCustomer] = useState<any>({
+    id: customerId || '',
+    name: '—',
+    email: '—',
+    phone: '—',
+    address: '—',
+    contactPerson: '—',
+    isActive: true,
+    createdAt: '—',
+  });
 
-  // Mock customer data - will be replaced with API calls later
-  const customer = {
-    id: customerId || '1',
-    customerNumber: 9,
-    firstName: 'Sarah',
-    lastName: 'Smith',
-    email: 'sarah.smith@sample.com',
-    phone: '--',
-    fax: '--',
-    department: '--',
-    identificationNumber: '--',
-    category: 'Good',
-    status: 'Non-Login',
-    taxed: true,
-    subscribedToAlerts: false,
-    loginEnabled: false,
-    webstoreSignUp: false,
-    markedAsEngaged: false,
-    description: '--',
-    assignedTo: '--',
-    secondaryEmails: '--',
-    lastLoginAt: '--',
-    createdAt: '30-12-2025 01:16',
-    rentedOutOrders: 0,
-    completedOrders: 0,
-    customerRevenue: 0.00,
-    canReceiveEmails: false,
-    ordersCount: 1,
-    addressBookCount: 1,
-  };
+  useEffect(() => {
+    if (!customerId) return;
+    const fetchData = async () => {
+      try {
+        const [cust, orders] = await Promise.all([
+          apiClient.customers.getById(customerId),
+          apiClient.orders.getAll(),
+        ]);
+        setCustomer({
+          ...cust,
+          name: cust.name || '—',
+          email: cust.email || '—',
+          phone: cust.phone || '—',
+          address: cust.address || '—',
+          contactPerson: cust.contactPerson || '—',
+        });
+        setCustomerOrders(
+          (Array.isArray(orders) ? orders : []).filter((o: any) => o.customerId === customerId)
+        );
+      } catch (err) {
+        console.error('Failed to load customer details:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [customerId]);
 
-  const customerOrders = [
-    {
-      id: '1',
-      orderNumber: 2,
-      price: 168.30,
-      rentOutDate: '30-11-2025 01:16',
-      returnDate: '05-12-2025 01:16',
-      status: 'Booked',
-    },
-  ];
+  if (loading) return (
+    <div className="min-h-screen bg-gray-50 dark:bg-boxdark-2 flex items-center justify-center">
+      <div className="text-slate-400 font-bold text-lg">Loading…</div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-boxdark-2">
@@ -267,14 +272,14 @@ const CustomerDetails = () => {
                 <div className="flex items-start justify-between">
                   <div>
                     <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                      {customer.firstName} {customer.lastName}
+                      {customer.name}
                     </h1>
-                    {!customer.canReceiveEmails && (
+                    {!customer.isActive && (
                       <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-bodydark2 mb-4">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        <span>Customer cannot receive emails</span>
+                        <span>Customer is inactive</span>
                       </div>
                     )}
                     <div className="flex items-center space-x-3">
@@ -333,7 +338,7 @@ const CustomerDetails = () => {
                     : 'border-transparent text-gray-500 dark:text-bodydark2 hover:text-gray-700 dark:hover:text-white hover:border-gray-300 dark:hover:border-strokedark'
                   }`}
               >
-                Orders ({customer.ordersCount})
+                Orders ({customerOrders.length})
               </button>
               <button
                 onClick={() => setActiveTab('address')}
@@ -342,7 +347,7 @@ const CustomerDetails = () => {
                     : 'border-transparent text-gray-500 dark:text-bodydark2 hover:text-gray-700 dark:hover:text-white hover:border-gray-300 dark:hover:border-strokedark'
                   }`}
               >
-                Address Book ({customer.addressBookCount})
+                Address Book (0)
               </button>
             </div>
           </div>
@@ -358,105 +363,54 @@ const CustomerDetails = () => {
                     {/* Left Column */}
                     <div className="space-y-4">
                       <div>
-                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Customer#</dt>
-                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.customerNumber}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Rented Out Orders</dt>
-                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.rentedOutOrders}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Subscribed to Alerts</dt>
-                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.subscribedToAlerts ? 'Yes' : 'No'}</dd>
-                      </div>
-                      <div>
                         <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Email</dt>
                         <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.email}</dd>
                       </div>
                       <div>
-                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1 flex items-center space-x-1">
-                          <span>Customer Revenue (Excluding Tax)</span>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                        </dt>
-                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">${customer.customerRevenue.toFixed(2)}</dd>
+                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Phone</dt>
+                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.phone || '—'}</dd>
                       </div>
                       <div>
-                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Identification Number</dt>
-                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.identificationNumber}</dd>
+                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Contact Person</dt>
+                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.contactPerson || '—'}</dd>
                       </div>
                       <div>
-                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Category</dt>
-                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.category}</dd>
+                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Active Orders</dt>
+                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">
+                          {customerOrders.filter((o: any) => o.status === 'active').length}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Completed Orders</dt>
+                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">
+                          {customerOrders.filter((o: any) => o.status === 'returned' || o.status === 'job_done').length}
+                        </dd>
                       </div>
                       <div>
                         <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Status</dt>
-                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.status}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Last Login At</dt>
-                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.lastLoginAt}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Webstore sign up</dt>
-                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.webstoreSignUp ? 'Yes' : 'No'}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Description</dt>
-                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.description}</dd>
+                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.isActive ? 'Active' : 'Inactive'}</dd>
                       </div>
                     </div>
 
                     {/* Right Column */}
                     <div className="space-y-4">
                       <div>
-                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Completed Orders</dt>
-                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.completedOrders}</dd>
+                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Address</dt>
+                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.address || '—'}</dd>
                       </div>
                       <div>
-                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Taxed</dt>
-                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.taxed ? 'Yes' : 'No'}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Department</dt>
-                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.department}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Phone</dt>
-                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.phone}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Fax</dt>
-                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.fax}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Assigned to</dt>
-                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.assignedTo}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Login Enabled</dt>
-                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.loginEnabled ? 'Yes' : 'No'}</dd>
+                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Total Orders</dt>
+                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customerOrders.length}</dd>
                       </div>
                       <div>
                         <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1 flex items-center space-x-1">
                           <span>Created At</span>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
                         </dt>
-                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.createdAt}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Secondary Emails</dt>
-                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.secondaryEmails}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-sm font-medium text-gray-500 dark:text-bodydark1">Marked as Engaged</dt>
-                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">{customer.markedAsEngaged ? 'Yes' : 'No'}</dd>
+                        <dd className="mt-1 text-sm text-gray-900 dark:text-white">
+                          {customer.createdAt && customer.createdAt !== '—'
+                            ? new Date(customer.createdAt).toLocaleString()
+                            : '—'}
+                        </dd>
                       </div>
                     </div>
                   </div>
@@ -532,22 +486,24 @@ const CustomerDetails = () => {
                       </tr>
                     </thead>
                     <tbody className="bg-white dark:bg-boxdark divide-y divide-gray-200 dark:divide-strokedark">
-                      {customerOrders.map((order) => (
+                      {customerOrders.length === 0 ? (
+                        <tr><td colSpan={5} className="px-6 py-8 text-center text-sm text-gray-400">No orders found</td></tr>
+                      ) : customerOrders.map((order) => (
                         <tr key={order.id} className="hover:bg-gray-50 dark:hover:bg-meta-4">
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                             {order.orderNumber}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                            ${order.price.toFixed(2)}
+                            {order.totalAmount != null ? `$${Number(order.totalAmount).toFixed(2)}` : '—'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                            {order.rentOutDate}
+                            {order.startDate ? new Date(order.startDate).toLocaleDateString() : '—'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                            {order.returnDate}
+                            {order.endDate ? new Date(order.endDate).toLocaleDateString() : '—'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                            <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800 capitalize">
                               {order.status}
                             </span>
                           </td>

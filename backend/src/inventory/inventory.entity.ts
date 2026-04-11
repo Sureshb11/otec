@@ -16,6 +16,10 @@ export class Inventory {
     @Column()
     category: string;
 
+    // Sub-category within TRS/DHT (e.g. CRT, Power Tong, HPU, Bucking)
+    @Column({ name: 'subCategory', nullable: true })
+    subCategory: string;
+
     @Column({ type: 'int', default: 0 })
     quantity: number;
 

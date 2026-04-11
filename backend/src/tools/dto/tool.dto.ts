@@ -1,4 +1,12 @@
-import { IsString, IsOptional, IsEnum, IsUUID } from 'class-validator';
+import {
+    IsString,
+    IsOptional,
+    IsEnum,
+    IsUUID,
+    IsBoolean,
+    IsNumber,
+    IsDateString,
+} from 'class-validator';
 import { ToolType, ToolStatus } from '../tool.entity';
 
 export class CreateToolDto {
@@ -26,6 +34,66 @@ export class CreateToolDto {
     @IsOptional()
     @IsUUID()
     rigId?: string;
+
+    @IsOptional()
+    @IsString()
+    category?: string;
+
+    @IsOptional()
+    @IsString()
+    manufacturerSn?: string;
+
+    @IsOptional()
+    @IsString()
+    partNo?: string;
+
+    @IsOptional()
+    @IsString()
+    manufacturer?: string;
+
+    @IsOptional()
+    @IsString()
+    country?: string;
+
+    @IsOptional()
+    @IsString()
+    hsCode?: string;
+
+    @IsOptional()
+    @IsString()
+    cooNumber?: string;
+
+    @IsOptional()
+    @IsNumber()
+    netWeight?: number;
+
+    @IsOptional()
+    @IsDateString()
+    receivedDate?: string;
+
+    @IsOptional()
+    @IsString()
+    invoiceNumber?: string;
+
+    @IsOptional()
+    @IsString()
+    poNumber?: string;
+
+    @IsOptional()
+    @IsString()
+    uom?: string;
+
+    @IsOptional()
+    @IsBoolean()
+    catalogue?: boolean;
+
+    @IsOptional()
+    @IsDateString()
+    nextMaintenanceDate?: string;
+
+    @IsOptional()
+    @IsNumber()
+    maintenanceIntervalMonths?: number;
 }
 
 export class UpdateToolDto {
@@ -56,4 +124,64 @@ export class UpdateToolDto {
     @IsOptional()
     @IsUUID()
     rigId?: string;
+
+    @IsOptional()
+    @IsString()
+    category?: string;
+
+    @IsOptional()
+    @IsString()
+    manufacturerSn?: string;
+
+    @IsOptional()
+    @IsString()
+    partNo?: string;
+
+    @IsOptional()
+    @IsString()
+    manufacturer?: string;
+
+    @IsOptional()
+    @IsString()
+    country?: string;
+
+    @IsOptional()
+    @IsString()
+    hsCode?: string;
+
+    @IsOptional()
+    @IsString()
+    cooNumber?: string;
+
+    @IsOptional()
+    @IsNumber()
+    netWeight?: number;
+
+    @IsOptional()
+    @IsDateString()
+    receivedDate?: string;
+
+    @IsOptional()
+    @IsString()
+    invoiceNumber?: string;
+
+    @IsOptional()
+    @IsString()
+    poNumber?: string;
+
+    @IsOptional()
+    @IsString()
+    uom?: string;
+
+    @IsOptional()
+    @IsBoolean()
+    catalogue?: boolean;
+
+    @IsOptional()
+    @IsDateString()
+    nextMaintenanceDate?: string;
+
+    @IsOptional()
+    @IsNumber()
+    maintenanceIntervalMonths?: number;
 }

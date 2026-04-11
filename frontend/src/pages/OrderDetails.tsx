@@ -1,56 +1,65 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import UserAvatarMenu from '../components/UserAvatarMenu';
+import { apiClient } from '../api/apiClient';
 
 const OrderDetails = () => {
   const { orderId } = useParams<{ orderId: string }>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'details' | 'related' | 'history'>('details');
-  const [orderStatus] = useState('Drafted');
   const [showShippingDetails, setShowShippingDetails] = useState(false);
   const [showRecommendedItems, setShowRecommendedItems] = useState(false);
   const [itemSearchTerm, setItemSearchTerm] = useState('');
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showOperationsMenu, setShowOperationsMenu] = useState(false);
   const [showClientsMenu, setShowClientsMenu] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [orderItems, setOrderItems] = useState<any[]>([]);
 
-  // Check if this is a new order
   const isNewOrder = orderId === 'new';
-
-  // Get customerId from URL search params or use default
   const urlParams = new URLSearchParams(window.location.search);
   const customerIdFromUrl = urlParams.get('customerId');
 
-  // Mock order data - will be replaced with API calls later
-  const order = isNewOrder ? {
-    id: 'new',
+  const [order, setOrder] = useState<any>({
+    id: orderId || '',
     orderNumber: null,
-    customer: {
-      id: customerIdFromUrl || '1',
-      name: customerIdFromUrl === '1' ? 'Sarah Smith' : 'Customer',
-      category: 'Good',
-    },
-    expectedRentOutDate: '',
-    expectedReturnDate: '',
-    status: 'Drafted',
+    customer: { id: customerIdFromUrl || '', name: '—', category: '' },
+    startDate: '',
+    endDate: '',
+    status: 'draft',
     addedItems: [],
-    filesCount: 0,
-    commentsCount: 0,
-  } : {
-    id: orderId || '4',
-    orderNumber: parseInt(orderId || '4'),
-    customer: {
-      id: '1',
-      name: 'Sarah Smith',
-      category: 'Good',
-    },
-    expectedRentOutDate: '30-12-2025 02:26',
-    expectedReturnDate: '06-01-2026 02:25',
-    status: 'Drafted',
-    addedItems: [],
-    filesCount: 0,
-    commentsCount: 0,
-  };
+    totalAmount: null,
+    notes: '',
+  });
+
+  useEffect(() => {
+    if (isNewOrder) { setLoading(false); return; }
+    if (!orderId) return;
+    const fetchData = async () => {
+      try {
+        const [ord, items] = await Promise.all([
+          apiClient.orders.getById(orderId),
+          apiClient.orders.getItems(orderId).catch(() => []),
+        ]);
+        setOrder({
+          ...ord,
+          addedItems: Array.isArray(items) ? items : [],
+        });
+        setOrderItems(Array.isArray(items) ? items : []);
+      } catch (err) {
+        console.error('Failed to load order:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [orderId, isNewOrder]);
+
+  if (loading) return (
+    <div className="min-h-screen bg-gray-50 dark:bg-boxdark-2 flex items-center justify-center">
+      <div className="text-slate-400 font-bold text-lg">Loading…</div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-boxdark-2">
@@ -406,7 +415,7 @@ const OrderDetails = () => {
                     </div>
                     <div>
                       <span className="text-sm font-medium text-gray-700 dark:text-bodydark1">Category: </span>
-                      <span className="text-sm text-gray-900 dark:text-white">{order.customer.category}</span>
+                      <span className="text-sm text-gray-900 dark:text-white">{order.customer?.category || '—'}</span>
                     </div>
                     <div>
                       <span className="text-sm font-medium text-gray-700 dark:text-bodydark1">Feedback: </span>
@@ -434,11 +443,15 @@ const OrderDetails = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-bodydark1 mb-1">Expected Rent Out Date</label>
-                      <div className="text-sm text-gray-900 dark:text-white">{order.expectedRentOutDate}</div>
+                      <div className="text-sm text-gray-900 dark:text-white">
+                        {order.startDate ? new Date(order.startDate).toLocaleDateString() : '—'}
+                      </div>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-bodydark1 mb-1">Expected Return Date</label>
-                      <div className="text-sm text-gray-900 dark:text-white">{order.expectedReturnDate}</div>
+                      <div className="text-sm text-gray-900 dark:text-white">
+                        {order.endDate ? new Date(order.endDate).toLocaleDateString() : '—'}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -474,7 +487,7 @@ const OrderDetails = () => {
                       <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                       </svg>
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Added Items {order.addedItems.length}</h3>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Added Items {orderItems.length}</h3>
                     </div>
                   </div>
                   <div className="flex items-center space-x-3 mb-4">
@@ -542,7 +555,7 @@ const OrderDetails = () => {
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                         </svg>
-                        <span>Files {order.filesCount}</span>
+                        <span>Files 0</span>
                       </h3>
                       <button className="px-3 py-1.5 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-lg text-sm font-medium hover:from-primary-500 hover:to-primary-600 hover:shadow-md transition-all duration-200">
                         + ATTACH FILE
@@ -563,7 +576,7 @@ const OrderDetails = () => {
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                         </svg>
-                        <span>Comments {order.commentsCount}</span>
+                        <span>Comments 0</span>
                       </h3>
                       <select className="px-3 py-1.5 border border-gray-300 dark:border-strokedark rounded-lg text-sm bg-white dark:bg-boxdark dark:text-white">
                         <option>All Comments</option>

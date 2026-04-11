@@ -7,13 +7,16 @@ import { apiClient } from '../api/apiClient';
 
 const CATEGORY_DISPLAY_MAP: Record<string, string> = {
   'CRT': 'CRT',
+  'Torque Sub': 'TORQUE SUB',
   'Power Tong': 'POWER TONG',
   'Jam Unit': 'JAM UNIT',
+  'HPU': 'HPU',
   'Filup Tool': 'FILUP TOOL',
   'Safety Clamp': 'SAFETY CLAMP',
   'Elevators': 'ELEVATORS',
   'Slips': 'SLIPS',
   'Spider Elevators': 'SPIDER ELEVATORS',
+  'Bucking': 'BUCKING',
   'Reamers': 'REAMERS',
   'Anti Stick Slip': 'ANTI STICK SLIP',
   'Scrapper': 'SCRAPPER',
@@ -21,8 +24,8 @@ const CATEGORY_DISPLAY_MAP: Record<string, string> = {
   'Circulating DHT': 'CIRCULATING'
 };
 
-const TRS_CATEGORIES = ['CRT', 'Power Tong', 'Jam Unit', 'Filup Tool', 'Safety Clamp', 'Elevators', 'Slips', 'Spider Elevators'];
-const DHT_CATEGORIES = ['Reamers', 'Anti Stick Slip', 'Scrapper', 'Jars', 'Circulating DHT'];
+const TRS_CATEGORIES = ['CRT', 'Torque Sub', 'Power Tong', 'Jam Unit', 'HPU', 'Filup Tool', 'Safety Clamp', 'Elevators', 'Slips', 'Spider Elevators'];
+const DHT_CATEGORIES = ['Bucking', 'Reamers', 'Anti Stick Slip', 'Scrapper', 'Jars', 'Circulating DHT'];
 
 type ToolGroupKey = 'TRS' | 'DHT';
 type OperationalStatus = 'Available' | 'In Use' | 'Under Maintenance';
@@ -48,411 +51,634 @@ interface OperationalTool {
 
 // ─── Consumables sub-section ──────────────────────────────────────────────────
 
+// Backed by the `inventory` table. The `import-tools.ts` script also writes
+// TRS/DHT *tool* aggregates into that table — those are filtered out here so
+// the consumables view only shows real consumable items.
 interface Consumable {
   id: string;
-  name: string;
+  itemName: string;
   category: string;
+  subCategory: string | null;
   quantity: number;
-  unit: string;
-  reorderLevel: number;
+  unit: string | null;
+  minStock: number;
+  location: string | null;
+  description: string | null;
 }
 
-const MOCK_CONSUMABLES: Consumable[] = [
-  { id: 'c1',  name: 'Thread Compound (White)',  category: 'Lubricants',    quantity: 12, unit: 'kg',      reorderLevel: 5  },
-  { id: 'c2',  name: 'Pipe Dope',                category: 'Lubricants',    quantity: 3,  unit: 'litre',   reorderLevel: 5  },
-  { id: 'c3',  name: 'Teflon Tape (1")',          category: 'Sealing',       quantity: 48, unit: 'rolls',   reorderLevel: 10 },
-  { id: 'c4',  name: 'Safety Gloves (L)',         category: 'PPE',           quantity: 6,  unit: 'pairs',   reorderLevel: 10 },
-  { id: 'c5',  name: 'Safety Gloves (XL)',        category: 'PPE',           quantity: 4,  unit: 'pairs',   reorderLevel: 10 },
-  { id: 'c6',  name: 'Safety Goggles',            category: 'PPE',           quantity: 15, unit: 'pcs',     reorderLevel: 5  },
-  { id: 'c7',  name: 'Hydraulic Oil (46)',        category: 'Lubricants',    quantity: 2,  unit: 'drum',    reorderLevel: 2  },
-  { id: 'c8',  name: 'WD-40 Spray',              category: 'Lubricants',    quantity: 8,  unit: 'cans',    reorderLevel: 3  },
-  { id: 'c9',  name: 'Cable Ties (300mm)',        category: 'Fasteners',     quantity: 200, unit: 'pcs',   reorderLevel: 50 },
-  { id: 'c10', name: 'Zip Ties (small)',          category: 'Fasteners',     quantity: 45, unit: 'pcs',    reorderLevel: 50 },
-  { id: 'c11', name: 'Cleaning Cloths',           category: 'Consumables',   quantity: 30, unit: 'pcs',    reorderLevel: 20 },
-  { id: 'c12', name: 'Marker Pens',              category: 'Consumables',   quantity: 3,  unit: 'pcs',    reorderLevel: 5  },
-];
+type ConsumableForm = Omit<Consumable, 'id'> & { id?: string };
+
+const blankConsumable = (): ConsumableForm => ({
+  itemName: '',
+  category: '',
+  subCategory: null,
+  quantity: 0,
+  unit: 'pcs',
+  minStock: 5,
+  location: 'Warehouse',
+  description: null,
+});
 
 // ─── OperationalInventory ─────────────────────────────────────────────────────
+// Asset-level tool management. One row per tool in the `tools` table, with
+// full CRUD wired to /tools.
+
+interface ToolRow {
+  id: string;
+  name: string;
+  type: 'TRS' | 'DHT';
+  category: string | null;
+  serialNumber: string;
+  size: string | null;
+  status: 'available' | 'onsite' | 'maintenance';
+  description: string | null;
+  manufacturerSn: string | null;
+  partNo: string | null;
+  manufacturer: string | null;
+  country: string | null;
+  hsCode: string | null;
+  cooNumber: string | null;
+  netWeight: number | null;
+  receivedDate: string | null;
+  invoiceNumber: string | null;
+  poNumber: string | null;
+  uom: string | null;
+  catalogue: boolean;
+  rig?: { name?: string } | null;
+}
+
+type ToolFormState = Omit<ToolRow, 'id' | 'rig'> & { id?: string };
+
+const blankForm = (category = 'CRT'): ToolFormState => ({
+  name: '',
+  type: 'TRS',
+  category,
+  serialNumber: '',
+  size: '',
+  status: 'available',
+  description: '',
+  manufacturerSn: '',
+  partNo: '',
+  manufacturer: '',
+  country: '',
+  hsCode: '',
+  cooNumber: '',
+  netWeight: null,
+  receivedDate: '',
+  invoiceNumber: '',
+  poNumber: '',
+  uom: '',
+  catalogue: false,
+});
+
+const STATUS_BADGE: Record<ToolRow['status'], { label: string; bg: string; dot: string }> = {
+  available:   { label: 'Yard',    bg: 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400',     dot: 'bg-amber-500' },
+  onsite:      { label: 'Onsite',  bg: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400', dot: 'bg-emerald-500' },
+  maintenance: { label: 'Service', bg: 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400',           dot: 'bg-rose-500' },
+};
 
 const OperationalInventory = () => {
-  const [selectedCategory, setSelectedCategory] = useState<string>('CRT');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [editingTool, setEditingTool] = useState<OperationalTool | null>(null);
-  const [editSizeIndex, setEditSizeIndex] = useState<number>(-1);
-  const [editQuantity, setEditQuantity] = useState(0);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [newTool, setNewTool] = useState({
-    name: '',
-    group: 'TRS' as ToolGroupKey,
-    type: '',
-    sizes: [{ size: '', quantity: 0 }] as ToolSize[],
-    category: 'CRT'
-  });
-  const [tools, setTools] = useState<OperationalTool[]>([]);
+  const [tools, setTools] = useState<ToolRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    const fetchInventory = async () => {
-      try {
-        setLoading(true);
-        const data = await apiClient.inventory.getAll();
-        if (Array.isArray(data)) {
-          const toolMap = new Map<string, OperationalTool>();
-          data.forEach((item: any) => {
-            const categoryName = item.category || 'TRS';
-            const group = (categoryName === 'DHT' ? 'DHT' : 'TRS') as ToolGroupKey;
-            let deducedCategory = 'Other';
-            const nameUpper = item.itemName?.toUpperCase() || '';
+  const [selectedCategory, setSelectedCategory] = useState<string>('CRT');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | ToolRow['status']>('all');
+  const [sortKey, setSortKey] = useState<keyof ToolRow>('name');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
-            if (item.description && item.description.startsWith('Imported from ')) {
-              const importedCat = item.description.replace('Imported from ', '');
-              const exactMatch = [...TRS_CATEGORIES, ...DHT_CATEGORIES].find(c => c.toLowerCase() === importedCat.toLowerCase());
-              deducedCategory = exactMatch || importedCat;
-            } else {
-              const KEYWORD_MAP: Record<string, string> = {
-                'AST': 'Anti Stick Slip', 'ANTI STICK': 'Anti Stick Slip',
-                'CRT': 'CRT', 'POWER TONG': 'Power Tong', 'TONG': 'Power Tong',
-                'JAM': 'Jam Unit', 'FILUP': 'Filup Tool', 'SAFETY CLAMP': 'Safety Clamp',
-                'CLAMP': 'Safety Clamp', 'ELEVATOR': 'Elevators', 'ELEV': 'Elevators',
-                'SLIP': 'Slips', 'SPIDER': 'Spider Elevators', 'REAMER': 'Reamers',
-                'SCRAP': 'Scrapper', 'JAR': 'Jars',
-                'HANDLING': 'Circulating DHT', 'CIRCULATING': 'Circulating DHT'
-              };
-              for (const [key, category] of Object.entries(KEYWORD_MAP)) {
-                if (nameUpper.includes(key)) { deducedCategory = category; break; }
-              }
-            }
+  const [showFormModal, setShowFormModal] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<ToolFormState>(blankForm());
+  const [confirmDelete, setConfirmDelete] = useState<ToolRow | null>(null);
+  const [detailsTool, setDetailsTool] = useState<ToolRow | null>(null);
 
-            const exactMatch = [...TRS_CATEGORIES, ...DHT_CATEGORIES].find(c => nameUpper === c.toUpperCase());
-            if (deducedCategory === 'Other' && exactMatch) deducedCategory = exactMatch;
+  const fetchTools = async () => {
+    try {
+      setLoading(true);
+      const data = await apiClient.tools.getAll();
+      setTools(Array.isArray(data) ? (data as ToolRow[]) : []);
+      setError(null);
+    } catch {
+      setError('Failed to load tools.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-            const uniqueToolName = item.itemName || 'Unknown Tool';
-            const toolId = `${group.toLowerCase()}-${uniqueToolName.toLowerCase().replace(/\s+/g, '-')}`;
+  useEffect(() => { fetchTools(); }, []);
 
-            if (toolMap.has(toolId)) {
-              const tool = toolMap.get(toolId)!;
-              tool.sizes.push({ size: item.unit || '-', quantity: item.quantity, inventoryId: item.id });
-              tool.available += item.quantity;
-            } else {
-              toolMap.set(toolId, {
-                id: toolId,
-                name: uniqueToolName,
-                group,
-                available: item.quantity,
-                sizes: [{ size: item.unit || '-', quantity: item.quantity, inventoryId: item.id }],
-                type: item.description,
-                category: deducedCategory,
-              });
-            }
-          });
-          setTools(Array.from(toolMap.values()));
-        } else { setTools([]); setError('Invalid server response'); }
-      } catch { setError('Failed to load inventory.'); }
-      finally { setLoading(false); }
-    };
-    fetchInventory();
-  }, []);
-
-  const filteredTools = useMemo(() => tools.filter(t => {
-    const tCat = t.category.toUpperCase();
-    const sCat = selectedCategory.toUpperCase();
-    const sDisplay = CATEGORY_DISPLAY_MAP[selectedCategory]?.toUpperCase();
-    return tCat.includes(sCat) || (sDisplay && tCat.includes(sDisplay)) ||
-      t.name.toUpperCase().includes(sCat) || (sDisplay && t.name.toUpperCase().includes(sDisplay));
-  }), [tools, selectedCategory]);
-
-  const allSizes = useMemo(() => {
-    const sizes: { tool: OperationalTool, size: ToolSize, index: number }[] = [];
-    filteredTools.forEach(t => {
-      t.sizes.forEach((s, idx) => {
-        if (!searchTerm || s.size.toLowerCase().includes(searchTerm.toLowerCase()) || t.name.toLowerCase().includes(searchTerm.toLowerCase())) {
-          sizes.push({ tool: t, size: s, index: idx });
-        }
-      });
-    });
-    sizes.sort((a, b) => a.size.size.localeCompare(b.size.size, undefined, { numeric: true }));
-    return sizes;
-  }, [filteredTools, searchTerm]);
-
-  const totalCategoryStock = filteredTools.reduce((acc, t) => acc + t.available, 0);
-  const uniqueItems = filteredTools.length;
-
+  // Counts per category for sidebar badges (uses ALL tools, not filtered ones)
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    tools.forEach(t => { counts[t.category] = (counts[t.category] || 0) + t.available; });
+    tools.forEach(t => {
+      if (t.category) counts[t.category] = (counts[t.category] || 0) + 1;
+    });
     return counts;
   }, [tools]);
 
-  const handleAddSize = () => setNewTool({ ...newTool, sizes: [...newTool.sizes, { size: '', quantity: 0 }] });
-  const handleRemoveSize = (index: number) => setNewTool({ ...newTool, sizes: newTool.sizes.filter((_, i) => i !== index) });
-  const handleUpdateSize = (index: number, field: 'size' | 'quantity', value: string | number) => {
-    const updatedSizes = [...newTool.sizes];
-    updatedSizes[index] = { ...updatedSizes[index], [field]: field === 'quantity' ? Number(value) : value };
-    setNewTool({ ...newTool, sizes: updatedSizes });
+  // Tools in the selected category
+  const inCategory = useMemo(() =>
+    tools.filter(t => (t.category || '').toLowerCase() === selectedCategory.toLowerCase()),
+    [tools, selectedCategory]
+  );
+
+  // Apply search + status filter + sort
+  const filtered = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    let list = inCategory.filter(t => {
+      if (statusFilter !== 'all' && t.status !== statusFilter) return false;
+      if (!term) return true;
+      return (
+        t.name.toLowerCase().includes(term) ||
+        t.serialNumber.toLowerCase().includes(term) ||
+        (t.size || '').toLowerCase().includes(term) ||
+        (t.manufacturer || '').toLowerCase().includes(term) ||
+        (t.partNo || '').toLowerCase().includes(term) ||
+        (t.manufacturerSn || '').toLowerCase().includes(term)
+      );
+    });
+    list = [...list].sort((a, b) => {
+      const av = (a[sortKey] ?? '') as any;
+      const bv = (b[sortKey] ?? '') as any;
+      if (typeof av === 'number' && typeof bv === 'number') return sortDir === 'asc' ? av - bv : bv - av;
+      return sortDir === 'asc'
+        ? String(av).localeCompare(String(bv), undefined, { numeric: true })
+        : String(bv).localeCompare(String(av), undefined, { numeric: true });
+    });
+    return list;
+  }, [inCategory, searchTerm, statusFilter, sortKey, sortDir]);
+
+  const onSort = (key: keyof ToolRow) => {
+    if (sortKey === key) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortKey(key); setSortDir('asc'); }
   };
 
-  const handleCreateTool = async () => {
-    if (!newTool.name) return alert('Name required');
-    try {
-      setSaving(true);
-      await Promise.all(newTool.sizes.map(s => apiClient.inventory.create({
-        itemName: newTool.name.toUpperCase(),
-        category: newTool.group,
-        quantity: s.quantity,
-        unit: s.size,
-        description: 'Created Manually'
-      })));
-      window.location.reload();
-    } catch (e: any) { alert(e.message); }
-    finally { setSaving(false); setShowAddModal(false); }
+  // Status counts within selected category
+  const statusCounts = useMemo(() => ({
+    all: inCategory.length,
+    available: inCategory.filter(t => t.status === 'available').length,
+    onsite: inCategory.filter(t => t.status === 'onsite').length,
+    maintenance: inCategory.filter(t => t.status === 'maintenance').length,
+  }), [inCategory]);
+
+  // ─── Form handlers ──────────────────────────────────────────────────────────
+  const openCreate = () => {
+    const trsLike = TRS_CATEGORIES.includes(selectedCategory);
+    setEditingId(null);
+    setForm({ ...blankForm(selectedCategory), type: trsLike ? 'TRS' : 'DHT' });
+    setShowFormModal(true);
   };
 
-  const handleUpdateQuantity = async () => {
-    if (!editingTool || editSizeIndex === -1) return;
-    const sizeObj = editingTool.sizes[editSizeIndex];
-    if (!sizeObj.inventoryId) return;
+  const openEdit = (t: ToolRow) => {
+    setEditingId(t.id);
+    setForm({
+      name: t.name,
+      type: t.type,
+      category: t.category,
+      serialNumber: t.serialNumber,
+      size: t.size,
+      status: t.status,
+      description: t.description,
+      manufacturerSn: t.manufacturerSn,
+      partNo: t.partNo,
+      manufacturer: t.manufacturer,
+      country: t.country,
+      hsCode: t.hsCode,
+      cooNumber: t.cooNumber,
+      netWeight: t.netWeight,
+      receivedDate: t.receivedDate ? t.receivedDate.slice(0, 10) : '',
+      invoiceNumber: t.invoiceNumber,
+      poNumber: t.poNumber,
+      uom: t.uom,
+      catalogue: t.catalogue,
+    });
+    setShowFormModal(true);
+  };
+
+  const updateForm = <K extends keyof ToolFormState>(k: K, v: ToolFormState[K]) =>
+    setForm(prev => ({ ...prev, [k]: v }));
+
+  const handleSubmit = async () => {
+    if (!form.name.trim()) return alert('Name is required');
+    if (!form.serialNumber.trim()) return alert('Serial number is required');
+    // Coerce empty strings to null so backend clears the column. Using undefined
+    // would cause axios/JSON to drop the field entirely, leaving the old value.
+    const orNull = (v: string | null | undefined) => {
+      const s = (v ?? '').trim();
+      return s === '' ? null : s;
+    };
+    const payload: any = {
+      ...form,
+      name: form.name.trim(),
+      serialNumber: form.serialNumber.trim(),
+      size: orNull(form.size),
+      description: orNull(form.description),
+      manufacturerSn: orNull(form.manufacturerSn),
+      partNo: orNull(form.partNo),
+      manufacturer: orNull(form.manufacturer),
+      country: orNull(form.country),
+      hsCode: orNull(form.hsCode),
+      cooNumber: orNull(form.cooNumber),
+      netWeight: form.netWeight ?? null,
+      receivedDate: form.receivedDate || null,
+      invoiceNumber: orNull(form.invoiceNumber),
+      poNumber: orNull(form.poNumber),
+      uom: orNull(form.uom),
+    };
     try {
       setSaving(true);
-      await apiClient.inventory.update(sizeObj.inventoryId, { quantity: editQuantity });
-      const toolIdx = tools.findIndex(t => t.id === editingTool.id);
-      if (toolIdx > -1) {
-        const newTools = [...tools];
-        const newSizes = [...newTools[toolIdx].sizes];
-        newSizes[editSizeIndex] = { ...sizeObj, quantity: editQuantity };
-        newTools[toolIdx] = { ...newTools[toolIdx], sizes: newSizes, available: newSizes.reduce((a, b) => a + b.quantity, 0) };
-        setTools(newTools);
+      if (editingId) {
+        const updated = await apiClient.tools.update(editingId, payload);
+        setTools(prev => prev.map(t => (t.id === editingId ? { ...t, ...updated } : t)));
+      } else {
+        const created = await apiClient.tools.create(payload);
+        setTools(prev => [...prev, created]);
       }
-      setEditingTool(null);
-    } catch (e: any) { alert(e.message); }
-    finally { setSaving(false); }
+      setShowFormModal(false);
+    } catch (e: any) {
+      alert(e?.response?.data?.message || e?.message || 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirmDelete) return;
+    try {
+      setSaving(true);
+      await apiClient.tools.delete(confirmDelete.id);
+      setTools(prev => prev.filter(t => t.id !== confirmDelete.id));
+      setConfirmDelete(null);
+    } catch (e: any) {
+      alert(e?.response?.data?.message || e?.message || 'Failed to delete');
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (loading) return (
     <div className="flex items-center justify-center h-[60vh]">
       <div className="text-center">
         <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
-        <p className="text-slate-500 font-semibold">Loading Inventory...</p>
+        <p className="text-slate-500 font-semibold">Loading Tools...</p>
       </div>
     </div>
   );
   if (error) return <div className="p-10 text-center text-red-500">{error}</div>;
 
+  const totalAcrossAll = tools.length;
+
   return (
-    <div className="flex flex-col md:flex-row gap-6">
-      {/* SIDEBAR */}
-      <div className="w-full md:w-72 flex-shrink-0">
-        <div className="glass-premium dark:bg-boxdark/90 rounded-2xl shadow-xl border border-white/20 dark:border-white/5 p-5 md:sticky md:top-0 h-[calc(100vh-220px)] overflow-y-auto">
+    <div className="flex flex-col lg:flex-row gap-6">
+      {/* ── SIDEBAR ── */}
+      <aside className="w-full lg:w-72 flex-shrink-0">
+        <div className="glass-premium dark:bg-boxdark/90 rounded-2xl shadow-xl border border-white/20 dark:border-white/5 p-5 lg:sticky lg:top-0 lg:max-h-[calc(100vh-180px)] overflow-y-auto">
+          <div className="px-2 mb-4">
+            <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Total Tools</div>
+            <div className="text-3xl font-black text-slate-800 dark:text-white">{totalAcrossAll}</div>
+          </div>
           {/* TRS */}
-          <div className="mb-6">
-            <div className="flex items-center gap-2 mb-3 px-2">
+          <div className="mb-5">
+            <div className="flex items-center gap-2 mb-2 px-2">
               <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-              <span className="text-xs font-black text-blue-600 dark:text-blue-400 uppercase tracking-[0.15em]">TRS Tools</span>
+              <span className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-[0.15em]">TRS System</span>
             </div>
             <div className="space-y-1">
               {TRS_CATEGORIES.map(cat => (
-                <button key={cat} onClick={() => { setSelectedCategory(cat); setSearchTerm(''); }}
-                  className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-bold border transition-all duration-300 flex items-center justify-between ${selectedCategory === cat
-                    ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white border-transparent shadow-[0_0_12px_rgba(25,86,168,0.3)]'
+                <button key={cat} onClick={() => { setSelectedCategory(cat); setSearchTerm(''); setStatusFilter('all'); }}
+                  className={`w-full text-left px-3.5 py-2 rounded-lg text-xs font-bold border transition-all duration-200 flex items-center justify-between ${selectedCategory === cat
+                    ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white border-transparent shadow-md'
                     : 'bg-white/60 border-white/20 text-slate-600 hover:bg-white dark:bg-boxdark/60 dark:border-white/5 dark:text-slate-300 dark:hover:bg-meta-4'}`}>
-                  <span>{CATEGORY_DISPLAY_MAP[cat] || cat}</span>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-black ${selectedCategory === cat ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500 dark:bg-meta-4 dark:text-slate-400'}`}>{categoryCounts[cat] || 0}</span>
+                  <span className="truncate">{CATEGORY_DISPLAY_MAP[cat] || cat}</span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-black ${selectedCategory === cat ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500 dark:bg-meta-4 dark:text-slate-400'}`}>{categoryCounts[cat] || 0}</span>
                 </button>
               ))}
             </div>
           </div>
           {/* DHT */}
           <div>
-            <div className="flex items-center gap-2 mb-3 px-2">
+            <div className="flex items-center gap-2 mb-2 px-2">
               <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
-              <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-[0.15em]">DHT Tools</span>
+              <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-[0.15em]">DHT System</span>
             </div>
             <div className="space-y-1">
               {DHT_CATEGORIES.map(cat => (
-                <button key={cat} onClick={() => { setSelectedCategory(cat); setSearchTerm(''); }}
-                  className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-bold border transition-all duration-300 flex items-center justify-between ${selectedCategory === cat
-                    ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-transparent shadow-[0_0_12px_rgba(99,102,241,0.3)]'
+                <button key={cat} onClick={() => { setSelectedCategory(cat); setSearchTerm(''); setStatusFilter('all'); }}
+                  className={`w-full text-left px-3.5 py-2 rounded-lg text-xs font-bold border transition-all duration-200 flex items-center justify-between ${selectedCategory === cat
+                    ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-transparent shadow-md'
                     : 'bg-white/60 border-white/20 text-slate-600 hover:bg-white dark:bg-boxdark/60 dark:border-white/5 dark:text-slate-300 dark:hover:bg-meta-4'}`}>
-                  <span>{CATEGORY_DISPLAY_MAP[cat] || cat}</span>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-black ${selectedCategory === cat ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500 dark:bg-meta-4 dark:text-slate-400'}`}>{categoryCounts[cat] || 0}</span>
+                  <span className="truncate">{CATEGORY_DISPLAY_MAP[cat] || cat}</span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-black ${selectedCategory === cat ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500 dark:bg-meta-4 dark:text-slate-400'}`}>{categoryCounts[cat] || 0}</span>
                 </button>
               ))}
             </div>
           </div>
         </div>
-      </div>
+      </aside>
 
-      {/* MAIN PANEL */}
-      <div className="flex-1 min-w-0">
-        <div className="glass-premium dark:bg-boxdark/90 rounded-2xl shadow-xl border border-white/20 dark:border-white/5 p-6 min-h-[calc(100vh-220px)]">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 pb-6 border-b border-slate-100/50 dark:border-white/5 gap-4">
+      {/* ── MAIN PANEL ── */}
+      <section className="flex-1 min-w-0">
+        <div className="glass-premium dark:bg-boxdark/90 rounded-2xl shadow-xl border border-white/20 dark:border-white/5 p-6 min-h-[calc(100vh-180px)]">
+          {/* Header */}
+          <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 pb-5 border-b border-slate-100/60 dark:border-white/5">
             <div>
-              <h2 className="text-3xl font-black text-slate-800 dark:text-white tracking-tight mb-2">{CATEGORY_DISPLAY_MAP[selectedCategory] || selectedCategory}</h2>
-              <div className="flex items-center gap-3">
-                <span className="inline-flex items-center gap-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-wider border border-blue-200 dark:border-blue-500/30">
-                  {totalCategoryStock} Units
-                </span>
-                <span className="inline-flex items-center gap-1.5 bg-slate-100 dark:bg-meta-4 text-slate-500 dark:text-slate-400 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-wider border border-slate-200 dark:border-white/5">
-                  {uniqueItems} Items
-                </span>
-              </div>
+              <h2 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">{CATEGORY_DISPLAY_MAP[selectedCategory] || selectedCategory}</h2>
+              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mt-0.5">
+                {TRS_CATEGORIES.includes(selectedCategory) ? 'TRS Group' : 'DHT Group'} · {filtered.length} of {inCategory.length} {inCategory.length === 1 ? 'tool' : 'tools'}
+              </p>
             </div>
-            <div className="flex gap-3 items-center">
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
+            <div className="flex gap-2.5 items-center w-full xl:w-auto">
+              <div className="relative flex-1 xl:flex-initial">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">🔍</span>
                 <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-                  placeholder="Search items..." className="pl-9 pr-4 py-2.5 border border-slate-200/60 dark:border-white/5 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/30 bg-white/60 dark:bg-meta-4 dark:text-white transition-all" />
+                  placeholder="Search name, serial, mfr, part no..."
+                  className="pl-9 pr-4 py-2.5 border border-slate-200/60 dark:border-white/5 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/30 bg-white/60 dark:bg-meta-4 dark:text-white w-full xl:w-72" />
               </div>
-              <button onClick={() => setShowAddModal(true)}
-                className="px-5 py-2.5 bg-gradient-to-r from-slate-800 to-slate-700 text-white rounded-xl text-sm font-bold hover:from-slate-700 hover:to-slate-600 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 flex items-center gap-2">
-                <span className="text-lg leading-none">+</span> Add Stock
+              <button onClick={openCreate}
+                className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl text-sm font-bold hover:from-blue-500 hover:to-blue-400 shadow-md transition-all flex items-center gap-1.5 whitespace-nowrap">
+                <span className="text-base leading-none">+</span> Add Tool
               </button>
             </div>
           </div>
 
-          {/* Status legend */}
-          <div className="flex items-center gap-3 mb-6 text-xs">
-            <span className="font-black text-slate-400 uppercase tracking-wider">Status:</span>
-            {[['Available', 'bg-emerald-500', 'text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20'],
-              ['In Use', 'bg-blue-500', 'text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20'],
-              ['Under Maintenance', 'bg-rose-500', 'text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20']
-            ].map(([label, dot, badge]) => (
-              <span key={label} className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-bold ${badge}`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
-                {label}
-              </span>
+          {/* Status filter chips */}
+          <div className="flex flex-wrap gap-2 mt-4 mb-4">
+            {([
+              ['all',         'All',     statusCounts.all],
+              ['available',   'Yard',    statusCounts.available],
+              ['onsite',      'Onsite',  statusCounts.onsite],
+              ['maintenance', 'Service', statusCounts.maintenance],
+            ] as const).map(([key, label, count]) => (
+              <button key={key} onClick={() => setStatusFilter(key)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${statusFilter === key
+                  ? 'bg-slate-800 dark:bg-white text-white dark:text-slate-800 shadow-md'
+                  : 'bg-slate-100 text-slate-500 dark:bg-meta-4 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-meta-4/80'}`}>
+                {label} <span className="ml-1 opacity-70">{count}</span>
+              </button>
             ))}
           </div>
 
-          {/* Stock Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {allSizes.length === 0 ? (
-              <div className="col-span-full py-16 text-center">
-                <div className="text-6xl mb-4 opacity-40">📦</div>
-                <p className="font-bold text-slate-400 text-lg">No inventory found</p>
-                <p className="text-slate-400/60 text-sm mt-1 mb-4">This category has no stock items yet</p>
-                <button onClick={() => setShowAddModal(true)} className="text-blue-600 dark:text-blue-400 font-bold hover:underline">+ Add Initial Stock</button>
-              </div>
-            ) : (
-              allSizes.map(({ tool, size, index }) => {
-                const isTRS = tool.group === 'TRS';
-                const isLow = size.quantity <= 2;
-                // Determine status heuristically (real app would use actual tool.status)
-                const status: OperationalStatus = size.quantity === 0 ? 'In Use'
-                  : size.quantity <= 2 ? 'Available'
-                  : 'Available';
-                return (
-                  <div key={`${tool.id}-${index}`}
-                    onClick={() => { setEditingTool(tool); setEditSizeIndex(index); setEditQuantity(size.quantity); }}
-                    className={`cursor-pointer group relative rounded-2xl border-2 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col bg-white/80 dark:bg-boxdark/60 ${isLow
-                      ? 'border-rose-200 dark:border-rose-500/30'
-                      : isTRS
-                        ? 'border-blue-100 dark:border-blue-500/10 hover:border-blue-300 dark:hover:border-blue-500/30'
-                        : 'border-indigo-100 dark:border-indigo-500/10 hover:border-indigo-300 dark:hover:border-indigo-500/30'}`}
-                  >
-                    {/* Status dot */}
-                    <div className="absolute top-2.5 left-2.5">
-                      <span className={`inline-flex items-center gap-1 text-[9px] font-black px-1.5 py-0.5 rounded-md ${
-                        status === 'Available' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                        : status === 'In Use' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                        : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'
-                      }`}>
-                        <span className={`w-1 h-1 rounded-full ${
-                          status === 'Available' ? 'bg-emerald-500' : status === 'In Use' ? 'bg-blue-500' : 'bg-rose-500'
-                        }`} />
-                        {status}
+          {/* Table */}
+          <div className="overflow-x-auto rounded-xl border border-slate-100 dark:border-white/5">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-slate-50 dark:bg-meta-4/40 border-b border-slate-100 dark:border-white/5">
+                  {([
+                    ['name',           'Name'],
+                    ['serialNumber',   'Serial'],
+                    ['size',           'Size'],
+                    ['manufacturer',   'Manufacturer'],
+                    ['partNo',         'Part No'],
+                    ['country',        'Country'],
+                    ['status',         'Status'],
+                    ['receivedDate',   'Received'],
+                  ] as const).map(([key, label]) => (
+                    <th key={key} onClick={() => onSort(key as keyof ToolRow)}
+                      className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-wider text-slate-400 cursor-pointer select-none hover:text-slate-700 dark:hover:text-white">
+                      <span className="inline-flex items-center gap-1">
+                        {label}
+                        {sortKey === key && (<span className="text-[8px]">{sortDir === 'asc' ? '▲' : '▼'}</span>)}
                       </span>
-                    </div>
-                    <div className={`absolute top-0 right-0 px-3 py-1.5 rounded-bl-xl text-[10px] font-black uppercase tracking-wider ${isTRS
-                      ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400'
-                      : 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400'}`}>
-                      {size.size}
-                    </div>
-                    {isLow && (
-                      <div className="absolute top-7 left-0 px-2 py-1 rounded-r-xl bg-rose-50 dark:bg-rose-900/20 mt-1">
-                        <span className="text-[9px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-wider">Low Stock</span>
-                      </div>
-                    )}
-                    <div className="p-5 flex-1 flex flex-col items-center justify-center mt-4">
-                      <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.15em] mb-1">{tool.name}</h4>
-                      <div className="py-4">
-                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mb-1 text-center">Quantity</div>
-                        <div className={`text-5xl font-black text-center ${isLow ? 'text-rose-600 dark:text-rose-400' : 'text-slate-800 dark:text-white'}`}>
-                          {size.quantity}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="absolute inset-0 bg-slate-900/5 dark:bg-white/5 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center backdrop-blur-[1px]">
-                      <span className="bg-white dark:bg-boxdark text-slate-900 dark:text-white px-5 py-2.5 rounded-full font-bold shadow-2xl transform scale-90 group-hover:scale-100 transition-transform duration-300">Update Stock</span>
-                    </div>
-                  </div>
-                );
-              })
-            )}
+                    </th>
+                  ))}
+                  <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-wider text-slate-400">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="px-4 py-16 text-center">
+                      <div className="text-5xl mb-3 opacity-40">🛠️</div>
+                      <p className="font-bold text-slate-400 text-base">No tools in this view</p>
+                      <button onClick={openCreate} className="mt-3 text-blue-600 dark:text-blue-400 font-bold text-sm hover:underline">+ Add the first tool</button>
+                    </td>
+                  </tr>
+                ) : filtered.map(t => {
+                  const status = STATUS_BADGE[t.status];
+                  return (
+                    <tr key={t.id} onClick={() => setDetailsTool(t)}
+                      className="cursor-pointer transition-colors hover:bg-slate-50/80 dark:hover:bg-meta-4/30">
+                      <td className="px-4 py-3">
+                        <div className="font-bold text-slate-800 dark:text-white">{t.name}</div>
+                        {t.description && t.description !== t.name && (
+                          <div className="text-[11px] text-slate-400 truncate max-w-xs">{t.description}</div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-[11px] text-slate-500 dark:text-slate-400">{t.serialNumber}</td>
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300 font-semibold">{t.size || '—'}</td>
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{t.manufacturer || '—'}</td>
+                      <td className="px-4 py-3 text-slate-500 dark:text-slate-400 font-mono text-[11px]">{t.partNo || '—'}</td>
+                      <td className="px-4 py-3 text-slate-500 dark:text-slate-400">{t.country || '—'}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider ${status.bg}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />
+                          {status.label}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-slate-500 dark:text-slate-400 text-xs tabular-nums">
+                        {t.receivedDate ? new Date(t.receivedDate).toLocaleDateString() : '—'}
+                      </td>
+                      <td className="px-4 py-3 text-right whitespace-nowrap" onClick={e => e.stopPropagation()}>
+                        <button onClick={() => openEdit(t)}
+                          className="px-2.5 py-1 text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md mr-1 transition-colors">
+                          Edit
+                        </button>
+                        <button onClick={() => setConfirmDelete(t)}
+                          className="px-2.5 py-1 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-md transition-colors">
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Edit Quantity Modal */}
-      {editingTool && editSizeIndex >= 0 && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setEditingTool(null)}>
-          <div className="bg-white dark:bg-boxdark rounded-2xl p-8 w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
-            <div className="text-center mb-6">
-              <h3 className="text-xl font-black text-slate-800 dark:text-white mb-1">Update Stock</h3>
-              <p className="text-sm text-slate-400 font-bold">{editingTool.name} — {editingTool.sizes[editSizeIndex].size}</p>
+      {/* ── Add / Edit Modal ── */}
+      {showFormModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => !saving && setShowFormModal(false)}>
+          <div className="bg-white dark:bg-boxdark rounded-2xl w-full max-w-3xl shadow-2xl max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="sticky top-0 bg-white dark:bg-boxdark px-8 pt-6 pb-4 border-b border-slate-100 dark:border-white/5 z-10">
+              <h3 className="text-2xl font-black text-slate-800 dark:text-white">{editingId ? 'Edit Tool' : 'Add Tool'}</h3>
+              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mt-1">
+                {editingId ? `Editing ${form.serialNumber}` : 'Create a new tool asset'}
+              </p>
             </div>
-            <div className="flex items-center justify-center gap-6 mb-8">
-              <button onClick={() => setEditQuantity(Math.max(0, editQuantity - 1))}
-                className="w-14 h-14 rounded-2xl border-2 border-slate-200 dark:border-white/10 text-xl font-bold hover:bg-slate-50 dark:hover:bg-meta-4 transition-all text-slate-700 dark:text-white">−</button>
-              <span className="text-5xl font-black text-slate-800 dark:text-white w-24 text-center tabular-nums">{editQuantity}</span>
-              <button onClick={() => setEditQuantity(editQuantity + 1)}
-                className="w-14 h-14 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-700 text-white text-xl font-bold hover:from-slate-700 hover:to-slate-600 shadow-xl transition-all">+</button>
+            <div className="px-8 py-6 space-y-6">
+              {/* CORE */}
+              <div>
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Core</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField label="Name *" value={form.name} onChange={v => updateForm('name', v)} placeholder="e.g. CRTi2 Active Set 750T" />
+                  <FormField label="Serial Number *" value={form.serialNumber} onChange={v => updateForm('serialNumber', v)} placeholder="e.g. OTEC-CRT-0750-005" mono />
+                  <div>
+                    <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5 tracking-wider">Type *</label>
+                    <select value={form.type} onChange={e => updateForm('type', e.target.value as 'TRS' | 'DHT')}
+                      className="w-full p-3 bg-slate-50 dark:bg-meta-4 rounded-xl font-bold text-sm border border-slate-200 dark:border-white/5 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:text-white">
+                      <option value="TRS">TRS</option>
+                      <option value="DHT">DHT</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5 tracking-wider">Category</label>
+                    <select value={form.category || ''} onChange={e => updateForm('category', e.target.value)}
+                      className="w-full p-3 bg-slate-50 dark:bg-meta-4 rounded-xl font-bold text-sm border border-slate-200 dark:border-white/5 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:text-white">
+                      <option value="">— None —</option>
+                      <optgroup label="TRS">
+                        {TRS_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                      </optgroup>
+                      <optgroup label="DHT">
+                        {DHT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                      </optgroup>
+                    </select>
+                  </div>
+                  <FormField label="Size" value={form.size || ''} onChange={v => updateForm('size', v)} placeholder='e.g. 7 5/8" or 750T' />
+                  <div>
+                    <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5 tracking-wider">Status</label>
+                    <select value={form.status} onChange={e => updateForm('status', e.target.value as ToolRow['status'])}
+                      className="w-full p-3 bg-slate-50 dark:bg-meta-4 rounded-xl font-bold text-sm border border-slate-200 dark:border-white/5 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:text-white">
+                      <option value="available">Available (Yard)</option>
+                      <option value="onsite">Onsite</option>
+                      <option value="maintenance">Maintenance / Service</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* PROCUREMENT */}
+              <div>
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Procurement</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField label="Manufacturer" value={form.manufacturer || ''} onChange={v => updateForm('manufacturer', v)} placeholder="e.g. McCoy" />
+                  <FormField label="Manufacturer SN" value={form.manufacturerSn || ''} onChange={v => updateForm('manufacturerSn', v)} mono />
+                  <FormField label="Part Number" value={form.partNo || ''} onChange={v => updateForm('partNo', v)} mono />
+                  <FormField label="Country" value={form.country || ''} onChange={v => updateForm('country', v)} placeholder="e.g. USA" />
+                  <FormField label="HS Code" value={form.hsCode || ''} onChange={v => updateForm('hsCode', v)} mono />
+                  <FormField label="COO Number" value={form.cooNumber || ''} onChange={v => updateForm('cooNumber', v)} mono />
+                  <div>
+                    <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5 tracking-wider">Net Weight (kg)</label>
+                    <input type="number" step="0.001" value={form.netWeight ?? ''} onChange={e => updateForm('netWeight', e.target.value === '' ? null : Number(e.target.value))}
+                      className="w-full p-3 bg-slate-50 dark:bg-meta-4 rounded-xl font-bold text-sm border border-slate-200 dark:border-white/5 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:text-white" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5 tracking-wider">Received Date</label>
+                    <input type="date" value={form.receivedDate || ''} onChange={e => updateForm('receivedDate', e.target.value)}
+                      className="w-full p-3 bg-slate-50 dark:bg-meta-4 rounded-xl font-bold text-sm border border-slate-200 dark:border-white/5 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:text-white" />
+                  </div>
+                  <FormField label="Invoice Number" value={form.invoiceNumber || ''} onChange={v => updateForm('invoiceNumber', v)} mono />
+                  <FormField label="PO Number" value={form.poNumber || ''} onChange={v => updateForm('poNumber', v)} mono />
+                  <FormField label="UOM" value={form.uom || ''} onChange={v => updateForm('uom', v)} placeholder="e.g. EACH" />
+                  <label className="flex items-center gap-2 mt-7 cursor-pointer">
+                    <input type="checkbox" checked={form.catalogue} onChange={e => updateForm('catalogue', e.target.checked)}
+                      className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+                    <span className="text-xs font-bold text-slate-600 dark:text-slate-300">In Catalogue</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* DESCRIPTION */}
+              <div>
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Description / Notes</h4>
+                <textarea value={form.description || ''} onChange={e => updateForm('description', e.target.value)} rows={3}
+                  placeholder="Free-text notes about this tool..."
+                  className="w-full p-3 bg-slate-50 dark:bg-meta-4 rounded-xl font-medium text-sm border border-slate-200 dark:border-white/5 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:text-white resize-y" />
+              </div>
             </div>
-            <div className="flex gap-3">
-              <button onClick={() => setEditingTool(null)} className="flex-1 py-3.5 font-bold text-slate-500 hover:bg-slate-50 dark:hover:bg-meta-4 rounded-xl transition-colors">Cancel</button>
-              <button onClick={handleUpdateQuantity} disabled={saving}
-                className="flex-1 py-3.5 font-bold bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl shadow-lg disabled:opacity-50">
-                {saving ? 'Saving...' : 'Save'}
+            <div className="sticky bottom-0 bg-white dark:bg-boxdark px-8 py-4 border-t border-slate-100 dark:border-white/5 flex gap-3 z-10">
+              <button onClick={() => setShowFormModal(false)} disabled={saving}
+                className="flex-1 py-3 font-bold text-slate-500 hover:bg-slate-50 dark:hover:bg-meta-4 rounded-xl transition-colors disabled:opacity-50">
+                Cancel
+              </button>
+              <button onClick={handleSubmit} disabled={saving}
+                className="flex-1 py-3 font-bold bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl shadow-lg disabled:opacity-50">
+                {saving ? 'Saving...' : (editingId ? 'Save Changes' : 'Create Tool')}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Add Stock Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowAddModal(false)}>
-          <div className="bg-white dark:bg-boxdark rounded-2xl p-8 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <h3 className="text-2xl font-black text-slate-800 dark:text-white mb-6">Add Stock</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-black uppercase text-slate-400 mb-1.5 tracking-wider">Name / Category</label>
-                <input type="text" value={newTool.name} onChange={e => setNewTool({ ...newTool, name: e.target.value })}
-                  className="w-full p-3 bg-slate-50 dark:bg-meta-4 rounded-xl font-bold border border-slate-200 dark:border-white/5 focus:outline-none focus:ring-2 focus:ring-blue-500/30" placeholder="e.g. CRT" />
+      {/* ── Delete Confirmation ── */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => !saving && setConfirmDelete(null)}>
+          <div className="bg-white dark:bg-boxdark rounded-2xl p-7 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="text-center mb-5">
+              <div className="w-14 h-14 rounded-full bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl">⚠️</span>
               </div>
-              <div className="space-y-2">
-                <label className="block text-xs font-black uppercase text-slate-400 tracking-wider">Size Variants</label>
-                {newTool.sizes.map((s, i) => (
-                  <div key={i} className="flex gap-2">
-                    <input type="text" value={s.size} onChange={e => handleUpdateSize(i, 'size', e.target.value)}
-                      className="flex-1 p-3 bg-slate-50 dark:bg-meta-4 rounded-xl font-bold text-sm border border-slate-200 dark:border-white/5 focus:outline-none focus:ring-2 focus:ring-blue-500/30" placeholder='Size (e.g. 5")' />
-                    <input type="number" value={s.quantity} onChange={e => handleUpdateSize(i, 'quantity', e.target.value)}
-                      className="w-24 p-3 bg-slate-50 dark:bg-meta-4 rounded-xl font-bold text-sm border border-slate-200 dark:border-white/5 focus:outline-none focus:ring-2 focus:ring-blue-500/30" placeholder="Qty" />
-                    {newTool.sizes.length > 1 && (
-                      <button onClick={() => handleRemoveSize(i)} className="text-rose-500 font-bold px-3 hover:bg-rose-50 rounded-xl transition-colors">✕</button>
-                    )}
-                  </div>
-                ))}
-                <button onClick={handleAddSize} className="text-blue-600 dark:text-blue-400 font-bold text-sm hover:underline">+ Add Size Variant</button>
+              <h3 className="text-xl font-black text-slate-800 dark:text-white mb-1">Delete Tool?</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                <span className="font-bold text-slate-700 dark:text-white">{confirmDelete.name}</span><br />
+                <span className="font-mono text-xs">{confirmDelete.serialNumber}</span>
+              </p>
+              <p className="text-xs text-rose-500 font-bold mt-3">This action cannot be undone.</p>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setConfirmDelete(null)} disabled={saving}
+                className="flex-1 py-3 font-bold text-slate-500 hover:bg-slate-50 dark:hover:bg-meta-4 rounded-xl">
+                Cancel
+              </button>
+              <button onClick={handleDelete} disabled={saving}
+                className="flex-1 py-3 font-bold bg-gradient-to-r from-rose-600 to-rose-500 text-white rounded-xl shadow-lg disabled:opacity-50">
+                {saving ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Detail Drawer ── */}
+      {detailsTool && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setDetailsTool(null)}>
+          <div className="bg-white dark:bg-boxdark rounded-2xl w-full max-w-2xl shadow-2xl max-h-[88vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="px-7 py-5 border-b border-slate-100 dark:border-white/5">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-xl font-black text-slate-800 dark:text-white">{detailsTool.name}</h3>
+                  <p className="font-mono text-xs text-slate-500 dark:text-slate-400 mt-0.5">{detailsTool.serialNumber}</p>
+                </div>
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${STATUS_BADGE[detailsTool.status].bg}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${STATUS_BADGE[detailsTool.status].dot}`} />
+                  {STATUS_BADGE[detailsTool.status].label}
+                </span>
               </div>
-              <div className="flex gap-3 pt-4 border-t border-slate-100 dark:border-white/5">
-                <button onClick={() => setShowAddModal(false)} className="flex-1 py-3.5 font-bold text-slate-500 hover:bg-slate-50 dark:hover:bg-meta-4 rounded-xl transition-colors">Cancel</button>
-                <button onClick={handleCreateTool} disabled={saving}
-                  className="flex-1 py-3.5 font-bold bg-gradient-to-r from-slate-800 to-slate-700 text-white rounded-xl shadow-lg disabled:opacity-50">
-                  {saving ? 'Creating...' : 'Create'}
-                </button>
-              </div>
+            </div>
+            <div className="px-7 py-5 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+              <DetailRow label="Type" value={detailsTool.type} />
+              <DetailRow label="Category" value={detailsTool.category} />
+              <DetailRow label="Size" value={detailsTool.size} />
+              <DetailRow label="Manufacturer" value={detailsTool.manufacturer} />
+              <DetailRow label="Manufacturer SN" value={detailsTool.manufacturerSn} mono />
+              <DetailRow label="Part No" value={detailsTool.partNo} mono />
+              <DetailRow label="Country" value={detailsTool.country} />
+              <DetailRow label="HS Code" value={detailsTool.hsCode} mono />
+              <DetailRow label="COO Number" value={detailsTool.cooNumber} mono />
+              <DetailRow label="Net Weight" value={detailsTool.netWeight ? `${detailsTool.netWeight} kg` : null} />
+              <DetailRow label="Received" value={detailsTool.receivedDate ? new Date(detailsTool.receivedDate).toLocaleDateString() : null} />
+              <DetailRow label="Invoice" value={detailsTool.invoiceNumber} mono />
+              <DetailRow label="PO" value={detailsTool.poNumber} mono />
+              <DetailRow label="UOM" value={detailsTool.uom} />
+              <DetailRow label="Catalogue" value={detailsTool.catalogue ? 'Yes' : 'No'} />
+              <DetailRow label="Rig" value={detailsTool.rig?.name} />
+              {detailsTool.description && (
+                <div className="sm:col-span-2">
+                  <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Description</div>
+                  <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{detailsTool.description}</p>
+                </div>
+              )}
+            </div>
+            <div className="px-7 py-4 border-t border-slate-100 dark:border-white/5 flex gap-3 justify-end">
+              <button onClick={() => setDetailsTool(null)} className="px-5 py-2.5 font-bold text-slate-500 hover:bg-slate-50 dark:hover:bg-meta-4 rounded-xl text-sm">Close</button>
+              <button onClick={() => { openEdit(detailsTool); setDetailsTool(null); }}
+                className="px-5 py-2.5 font-bold bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl shadow-md text-sm">
+                Edit Tool
+              </button>
             </div>
           </div>
         </div>
@@ -461,37 +687,148 @@ const OperationalInventory = () => {
   );
 };
 
+// ─── Small reusable form pieces ─────────────────────────────────────────────
+
+const FormField = ({ label, value, onChange, placeholder, mono = false }: {
+  label: string; value: string; onChange: (v: string) => void; placeholder?: string; mono?: boolean;
+}) => (
+  <div>
+    <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5 tracking-wider">{label}</label>
+    <input type="text" value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)}
+      className={`w-full p-3 bg-slate-50 dark:bg-meta-4 rounded-xl font-bold text-sm border border-slate-200 dark:border-white/5 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:text-white ${mono ? 'font-mono' : ''}`} />
+  </div>
+);
+
+const DetailRow = ({ label, value, mono = false }: { label: string; value: any; mono?: boolean }) => (
+  <div>
+    <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-0.5">{label}</div>
+    <div className={`text-sm font-semibold text-slate-700 dark:text-slate-200 ${mono ? 'font-mono text-xs' : ''}`}>
+      {value || <span className="text-slate-300 dark:text-slate-600 font-normal">—</span>}
+    </div>
+  </div>
+);
+
 // ─── ConsumablesInventory ─────────────────────────────────────────────────────
 
 const ConsumablesInventory = () => {
-  const [consumables, setConsumables] = useState<Consumable[]>(MOCK_CONSUMABLES);
+  const [consumables, setConsumables] = useState<Consumable[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [editingItem, setEditingItem] = useState<Consumable | null>(null);
-  const [editQty, setEditQty] = useState(0);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [newItem, setNewItem] = useState<Omit<Consumable, 'id'>>({ name: '', category: '', quantity: 0, unit: 'pcs', reorderLevel: 5 });
+  const [showFormModal, setShowFormModal] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<ConsumableForm>(blankConsumable());
+  const [confirmDelete, setConfirmDelete] = useState<Consumable | null>(null);
   const [catFilter, setCatFilter] = useState('All');
 
-  const categories = useMemo(() => ['All', ...Array.from(new Set(consumables.map(c => c.category)))], [consumables]);
+  const fetchConsumables = async () => {
+    try {
+      setLoading(true);
+      const list = await apiClient.inventory.getAll();
+      // Exclude TRS/DHT tool aggregates written by the import script.
+      const consumablesOnly = (list as any[]).filter(
+        i => i.category !== 'TRS' && i.category !== 'DHT'
+      );
+      setConsumables(consumablesOnly);
+      setError(null);
+    } catch (e: any) {
+      setError(e?.message || 'Failed to load inventory');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchConsumables(); }, []);
+
+  const categories = useMemo(
+    () => ['All', ...Array.from(new Set(consumables.map(c => c.category))).sort()],
+    [consumables]
+  );
 
   const filtered = useMemo(() => consumables.filter(c =>
     (catFilter === 'All' || c.category === catFilter) &&
-    (!searchTerm || c.name.toLowerCase().includes(searchTerm.toLowerCase()) || c.category.toLowerCase().includes(searchTerm.toLowerCase()))
+    (!searchTerm
+      || c.itemName.toLowerCase().includes(searchTerm.toLowerCase())
+      || c.category.toLowerCase().includes(searchTerm.toLowerCase())
+      || c.location?.toLowerCase().includes(searchTerm.toLowerCase()))
   ), [consumables, catFilter, searchTerm]);
 
-  const lowCount = consumables.filter(c => c.quantity <= c.reorderLevel).length;
+  const lowCount = consumables.filter(c => c.quantity <= c.minStock).length;
 
-  const handleSaveEdit = () => {
-    if (!editingItem) return;
-    setConsumables(prev => prev.map(c => c.id === editingItem.id ? { ...c, quantity: editQty } : c));
-    setEditingItem(null);
+  const updateForm = <K extends keyof ConsumableForm>(k: K, v: ConsumableForm[K]) =>
+    setForm(prev => ({ ...prev, [k]: v }));
+
+  const openCreate = () => {
+    setEditingId(null);
+    setForm(blankConsumable());
+    setShowFormModal(true);
   };
 
-  const handleAdd = () => {
-    if (!newItem.name) return;
-    setConsumables(prev => [...prev, { ...newItem, id: `c-${Date.now()}` }]);
-    setShowAddModal(false);
-    setNewItem({ name: '', category: '', quantity: 0, unit: 'pcs', reorderLevel: 5 });
+  const openEdit = (c: Consumable) => {
+    setEditingId(c.id);
+    setForm({
+      itemName: c.itemName,
+      category: c.category,
+      subCategory: c.subCategory,
+      quantity: c.quantity,
+      unit: c.unit,
+      minStock: c.minStock,
+      location: c.location,
+      description: c.description,
+    });
+    setShowFormModal(true);
+  };
+
+  const handleSubmit = async () => {
+    if (!form.itemName.trim()) return alert('Item name is required');
+    if (!form.category.trim()) return alert('Category is required');
+    // Coerce empty strings to null so backend clears the column. Using
+    // undefined would cause axios/JSON to drop the field entirely, leaving
+    // the old value in place — same bug we hit on the tools form.
+    const orNull = (v: string | null | undefined) => {
+      const s = (v ?? '').trim();
+      return s === '' ? null : s;
+    };
+    const payload: any = {
+      itemName: form.itemName.trim(),
+      category: form.category.trim(),
+      subCategory: orNull(form.subCategory),
+      quantity: form.quantity,
+      unit: orNull(form.unit),
+      minStock: form.minStock,
+      location: orNull(form.location),
+      description: orNull(form.description),
+    };
+    try {
+      setSaving(true);
+      if (editingId) {
+        const updated = await apiClient.inventory.update(editingId, payload);
+        setConsumables(prev => prev.map(c => (c.id === editingId ? { ...c, ...updated } : c)));
+      } else {
+        const created = await apiClient.inventory.create(payload);
+        setConsumables(prev => [...prev, created]);
+      }
+      setShowFormModal(false);
+    } catch (e: any) {
+      alert(e?.response?.data?.message || e?.message || 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirmDelete) return;
+    try {
+      setSaving(true);
+      await apiClient.inventory.delete(confirmDelete.id);
+      setConsumables(prev => prev.filter(c => c.id !== confirmDelete.id));
+      setConfirmDelete(null);
+    } catch (e: any) {
+      alert(e?.response?.data?.message || e?.message || 'Failed to delete');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -518,7 +855,7 @@ const ConsumablesInventory = () => {
                 placeholder="Search consumables..."
                 className="pl-9 pr-4 py-2.5 border border-slate-200/60 dark:border-white/5 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/30 bg-white/60 dark:bg-meta-4 dark:text-white w-48" />
             </div>
-            <button onClick={() => setShowAddModal(true)}
+            <button onClick={openCreate}
               className="px-5 py-2.5 bg-gradient-to-r from-slate-800 to-slate-700 text-white rounded-xl text-sm font-bold hover:from-slate-700 hover:to-slate-600 shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2">
               <span className="text-lg leading-none">+</span> Add Item
             </button>
@@ -540,6 +877,11 @@ const ConsumablesInventory = () => {
 
       {/* Table */}
       <div className="glass-premium dark:bg-boxdark/90 rounded-2xl shadow-xl border border-white/20 dark:border-white/5 overflow-hidden">
+        {error && (
+          <div className="px-5 py-3 bg-rose-50 text-rose-700 text-sm font-semibold border-b border-rose-200">
+            {error}
+          </div>
+        )}
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-slate-50 dark:bg-meta-4/50 border-b border-slate-100 dark:border-white/5">
@@ -548,20 +890,32 @@ const ConsumablesInventory = () => {
               <th className="text-right px-5 py-3.5 text-[10px] font-black uppercase tracking-wider text-slate-400">Qty</th>
               <th className="text-center px-5 py-3.5 text-[10px] font-black uppercase tracking-wider text-slate-400">Unit</th>
               <th className="text-right px-5 py-3.5 text-[10px] font-black uppercase tracking-wider text-slate-400">Reorder At</th>
+              <th className="text-left px-5 py-3.5 text-[10px] font-black uppercase tracking-wider text-slate-400">Location</th>
               <th className="text-center px-5 py-3.5 text-[10px] font-black uppercase tracking-wider text-slate-400">Status</th>
-              <th className="px-5 py-3.5"></th>
+              <th className="px-5 py-3.5 text-right text-[10px] font-black uppercase tracking-wider text-slate-400">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-            {filtered.length === 0 ? (
-              <tr><td colSpan={7} className="px-5 py-12 text-center text-slate-400">No items found</td></tr>
+            {loading ? (
+              <tr><td colSpan={8} className="px-5 py-12 text-center text-slate-400 font-bold">Loading...</td></tr>
+            ) : filtered.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="px-5 py-16 text-center">
+                  <div className="text-5xl mb-3 opacity-40">📦</div>
+                  <p className="font-bold text-slate-400 text-base">No consumables yet</p>
+                  <button onClick={openCreate} className="mt-3 text-blue-600 dark:text-blue-400 font-bold text-sm hover:underline">+ Add the first item</button>
+                </td>
+              </tr>
             ) : filtered.map(item => {
-              const isLow = item.quantity <= item.reorderLevel;
+              const isLow = item.quantity <= item.minStock;
               return (
                 <tr key={item.id} className={`transition-colors hover:bg-slate-50/80 dark:hover:bg-meta-4/30 ${isLow ? 'bg-rose-50/40 dark:bg-rose-900/10' : ''}`}>
                   <td className="px-5 py-3.5 font-semibold text-slate-800 dark:text-white">
                     {isLow && <span className="inline-block w-1.5 h-1.5 rounded-full bg-rose-500 mr-2 animate-pulse" />}
-                    {item.name}
+                    {item.itemName}
+                    {item.description && (
+                      <div className="text-[11px] text-slate-400 truncate max-w-xs">{item.description}</div>
+                    )}
                   </td>
                   <td className="px-5 py-3.5">
                     <span className="text-xs font-bold bg-slate-100 dark:bg-meta-4 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-md">{item.category}</span>
@@ -569,8 +923,9 @@ const ConsumablesInventory = () => {
                   <td className={`px-5 py-3.5 text-right font-black text-lg tabular-nums ${isLow ? 'text-rose-600 dark:text-rose-400' : 'text-slate-800 dark:text-white'}`}>
                     {item.quantity}
                   </td>
-                  <td className="px-5 py-3.5 text-center text-slate-400 text-xs font-bold uppercase">{item.unit}</td>
-                  <td className="px-5 py-3.5 text-right text-slate-400 text-sm font-medium tabular-nums">{item.reorderLevel}</td>
+                  <td className="px-5 py-3.5 text-center text-slate-400 text-xs font-bold uppercase">{item.unit || '—'}</td>
+                  <td className="px-5 py-3.5 text-right text-slate-400 text-sm font-medium tabular-nums">{item.minStock}</td>
+                  <td className="px-5 py-3.5 text-slate-500 dark:text-slate-400 text-xs">{item.location || '—'}</td>
                   <td className="px-5 py-3.5 text-center">
                     {isLow ? (
                       <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-lg bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400">
@@ -586,9 +941,15 @@ const ConsumablesInventory = () => {
                       </span>
                     )}
                   </td>
-                  <td className="px-5 py-3.5 text-right">
-                    <button onClick={() => { setEditingItem(item); setEditQty(item.quantity); }}
-                      className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline">Update</button>
+                  <td className="px-5 py-3.5 text-right whitespace-nowrap">
+                    <button onClick={() => openEdit(item)}
+                      className="px-2.5 py-1 text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md mr-1 transition-colors">
+                      Edit
+                    </button>
+                    <button onClick={() => setConfirmDelete(item)}
+                      className="px-2.5 py-1 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-md transition-colors">
+                      Delete
+                    </button>
                   </td>
                 </tr>
               );
@@ -597,65 +958,75 @@ const ConsumablesInventory = () => {
         </table>
       </div>
 
-      {/* Edit quantity modal */}
-      {editingItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setEditingItem(null)}>
-          <div className="bg-white dark:bg-boxdark rounded-2xl p-8 w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
-            <h3 className="text-xl font-black text-slate-800 dark:text-white mb-1 text-center">Update Quantity</h3>
-            <p className="text-sm text-slate-400 font-bold text-center mb-6">{editingItem.name}</p>
-            <div className="flex items-center justify-center gap-6 mb-8">
-              <button onClick={() => setEditQty(Math.max(0, editQty - 1))}
-                className="w-14 h-14 rounded-2xl border-2 border-slate-200 dark:border-white/10 text-xl font-bold hover:bg-slate-50 dark:hover:bg-meta-4 transition-all text-slate-700 dark:text-white">−</button>
-              <span className="text-5xl font-black text-slate-800 dark:text-white w-24 text-center tabular-nums">{editQty}</span>
-              <button onClick={() => setEditQty(editQty + 1)}
-                className="w-14 h-14 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-700 text-white text-xl font-bold shadow-xl">+</button>
+      {/* Add / Edit modal */}
+      {showFormModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => !saving && setShowFormModal(false)}>
+          <div className="bg-white dark:bg-boxdark rounded-2xl w-full max-w-2xl shadow-2xl max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="sticky top-0 bg-white dark:bg-boxdark px-8 pt-6 pb-4 border-b border-slate-100 dark:border-white/5 z-10">
+              <h3 className="text-2xl font-black text-slate-800 dark:text-white">{editingId ? 'Edit Consumable' : 'Add Consumable'}</h3>
+              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mt-1">
+                {editingId ? `Editing ${form.itemName}` : 'Create a new consumable item'}
+              </p>
             </div>
-            {editQty <= editingItem.reorderLevel && (
-              <p className="text-xs text-rose-500 font-bold text-center mb-4">⚠ Below reorder level ({editingItem.reorderLevel} {editingItem.unit})</p>
-            )}
-            <div className="flex gap-3">
-              <button onClick={() => setEditingItem(null)} className="flex-1 py-3.5 font-bold text-slate-500 hover:bg-slate-50 dark:hover:bg-meta-4 rounded-xl">Cancel</button>
-              <button onClick={handleSaveEdit}
-                className="flex-1 py-3.5 font-bold bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl shadow-lg">Save</button>
+            <div className="px-8 py-6 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField label="Item Name *" value={form.itemName} onChange={v => updateForm('itemName', v)} placeholder="e.g. Teflon Tape" />
+                <FormField label="Category *" value={form.category} onChange={v => updateForm('category', v)} placeholder="e.g. PPE, Lubricants" />
+                <FormField label="Sub-Category" value={form.subCategory ?? ''} onChange={v => updateForm('subCategory', v)} placeholder="optional" />
+                <FormField label="Unit" value={form.unit ?? ''} onChange={v => updateForm('unit', v)} placeholder="e.g. pcs, kg, litre" />
+                <div>
+                  <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5 tracking-wider">Quantity</label>
+                  <input type="number" value={form.quantity}
+                    onChange={e => updateForm('quantity', Number(e.target.value))}
+                    className="w-full p-3 bg-slate-50 dark:bg-meta-4 rounded-xl font-bold text-sm border border-slate-200 dark:border-white/5 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:text-white" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5 tracking-wider">Reorder Level</label>
+                  <input type="number" value={form.minStock}
+                    onChange={e => updateForm('minStock', Number(e.target.value))}
+                    className="w-full p-3 bg-slate-50 dark:bg-meta-4 rounded-xl font-bold text-sm border border-slate-200 dark:border-white/5 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:text-white" />
+                </div>
+                <FormField label="Location" value={form.location ?? ''} onChange={v => updateForm('location', v)} placeholder="e.g. Warehouse A, Shelf 3" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5 tracking-wider">Description</label>
+                <textarea value={form.description ?? ''} onChange={e => updateForm('description', e.target.value)} rows={3}
+                  placeholder="Notes, supplier info, brand…"
+                  className="w-full p-3 bg-slate-50 dark:bg-meta-4 rounded-xl text-sm border border-slate-200 dark:border-white/5 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:text-white" />
+              </div>
+            </div>
+            <div className="sticky bottom-0 bg-white dark:bg-boxdark px-8 py-4 border-t border-slate-100 dark:border-white/5 flex justify-end gap-3">
+              <button onClick={() => setShowFormModal(false)} disabled={saving}
+                className="px-6 py-2.5 font-bold text-slate-500 hover:bg-slate-50 dark:hover:bg-meta-4 rounded-xl">Cancel</button>
+              <button onClick={handleSubmit} disabled={saving}
+                className="px-8 py-2.5 font-bold bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl shadow-lg disabled:opacity-50">
+                {saving ? 'Saving…' : editingId ? 'Save Changes' : 'Create Item'}
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Add item modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowAddModal(false)}>
-          <div className="bg-white dark:bg-boxdark rounded-2xl p-8 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
-            <h3 className="text-2xl font-black text-slate-800 dark:text-white mb-6">Add Consumable</h3>
-            <div className="space-y-4">
-              {[
-                { label: 'Item Name', key: 'name', placeholder: 'e.g. Teflon Tape' },
-                { label: 'Category', key: 'category', placeholder: 'e.g. PPE, Lubricants' },
-                { label: 'Unit', key: 'unit', placeholder: 'e.g. pcs, kg, litre' },
-              ].map(({ label, key, placeholder }) => (
-                <div key={key}>
-                  <label className="block text-xs font-black uppercase text-slate-400 mb-1.5 tracking-wider">{label}</label>
-                  <input type="text" value={(newItem as any)[key]} placeholder={placeholder}
-                    onChange={e => setNewItem({ ...newItem, [key]: e.target.value })}
-                    className="w-full p-3 bg-slate-50 dark:bg-meta-4 rounded-xl font-bold border border-slate-200 dark:border-white/5 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:text-white" />
-                </div>
-              ))}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-black uppercase text-slate-400 mb-1.5 tracking-wider">Quantity</label>
-                  <input type="number" value={newItem.quantity} onChange={e => setNewItem({ ...newItem, quantity: Number(e.target.value) })}
-                    className="w-full p-3 bg-slate-50 dark:bg-meta-4 rounded-xl font-bold border border-slate-200 dark:border-white/5 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:text-white" />
-                </div>
-                <div>
-                  <label className="block text-xs font-black uppercase text-slate-400 mb-1.5 tracking-wider">Reorder Level</label>
-                  <input type="number" value={newItem.reorderLevel} onChange={e => setNewItem({ ...newItem, reorderLevel: Number(e.target.value) })}
-                    className="w-full p-3 bg-slate-50 dark:bg-meta-4 rounded-xl font-bold border border-slate-200 dark:border-white/5 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:text-white" />
-                </div>
+      {/* Delete confirmation modal */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => !saving && setConfirmDelete(null)}>
+          <div className="bg-white dark:bg-boxdark rounded-2xl p-8 w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="text-center">
+              <div className="w-12 h-12 mx-auto rounded-full bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center mb-4">
+                <span className="text-2xl">⚠️</span>
               </div>
-              <div className="flex gap-3 pt-4 border-t border-slate-100 dark:border-white/5">
-                <button onClick={() => setShowAddModal(false)} className="flex-1 py-3.5 font-bold text-slate-500 hover:bg-slate-50 dark:hover:bg-meta-4 rounded-xl">Cancel</button>
-                <button onClick={handleAdd} className="flex-1 py-3.5 font-bold bg-gradient-to-r from-slate-800 to-slate-700 text-white rounded-xl shadow-lg">Add</button>
-              </div>
+              <h3 className="text-xl font-black text-slate-800 dark:text-white mb-1">Delete Consumable?</h3>
+              <p className="text-sm font-bold text-slate-500 dark:text-slate-400">{confirmDelete.itemName}</p>
+              <p className="text-xs text-slate-400 mt-1">{confirmDelete.category}</p>
+              <p className="text-xs text-rose-500 font-bold mt-3">This action cannot be undone.</p>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setConfirmDelete(null)} disabled={saving}
+                className="flex-1 py-3 font-bold text-slate-500 hover:bg-slate-50 dark:hover:bg-meta-4 rounded-xl">Cancel</button>
+              <button onClick={handleDelete} disabled={saving}
+                className="flex-1 py-3 font-bold bg-gradient-to-r from-rose-600 to-rose-500 text-white rounded-xl shadow-lg disabled:opacity-50">
+                {saving ? 'Deleting…' : 'Delete'}
+              </button>
             </div>
           </div>
         </div>

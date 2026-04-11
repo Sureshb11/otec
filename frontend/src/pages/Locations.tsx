@@ -6,80 +6,150 @@ interface Location {
   id: string;
   name: string;
   country: string;
-  region?: string;
-  coordinates?: string;
-  description?: string;
+  region: string | null;
+  coordinates: string | null;
+  description: string | null;
+  customerId: string | null;
+  customer?: { id: string; name: string };
   isActive: boolean;
 }
 
+interface Customer {
+  id: string;
+  name: string;
+}
+
+type LocationForm = {
+  name: string;
+  country: string;
+  region: string;
+  coordinates: string;
+  description: string;
+  customerId: string;
+  isActive: boolean;
+};
+
+const blankForm = (): LocationForm => ({
+  name: '', country: '', region: '', coordinates: '', description: '', customerId: '', isActive: true,
+});
+
+const orNull = (v: string | null | undefined) => {
+  const s = (v ?? '').trim();
+  return s === '' ? null : s;
+};
+
 const Locations = () => {
-  const [searchTerm, setSearchTerm] = useState('');
   const [locations, setLocations] = useState<Location[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [newLocation, setNewLocation] = useState({ name: '', country: '', region: '', coordinates: '', description: '' });
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showFormModal, setShowFormModal] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<LocationForm>(blankForm());
   const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<Location | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
-  // Fetch locations from API
-  useEffect(() => {
-    const fetchLocations = async () => {
-      try {
-        setLoading(true);
-        const data = await apiClient.locations.getAll();
-        if (Array.isArray(data)) {
-          setLocations(data);
-        } else {
-          console.error('API returned invalid data:', data);
-          setLocations([]);
-          setError('Invalid server response');
-        }
-      } catch (err) {
-        console.error('Failed to fetch locations:', err);
-        setError('Failed to load locations. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchLocations();
-  }, []);
+  const fetchAll = async () => {
+    try {
+      setLoading(true);
+      const [locs, custs] = await Promise.all([
+        apiClient.locations.getAll(),
+        apiClient.customers.getAll().catch(() => []),
+      ]);
+      setLocations(Array.isArray(locs) ? locs : []);
+      setCustomers(Array.isArray(custs) ? custs : []);
+    } catch (err) {
+      console.error('Failed to fetch locations:', err);
+      setError('Failed to load locations. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // Create new location
-  const handleCreateLocation = async () => {
-    if (!newLocation.name || !newLocation.country) {
+  useEffect(() => { fetchAll(); }, []);
+
+  const openAdd = () => {
+    setEditingId(null);
+    setForm(blankForm());
+    setShowFormModal(true);
+  };
+
+  const openEdit = (l: Location) => {
+    setEditingId(l.id);
+    setForm({
+      name: l.name || '',
+      country: l.country || '',
+      region: l.region || '',
+      coordinates: l.coordinates || '',
+      description: l.description || '',
+      customerId: l.customerId || '',
+      isActive: l.isActive,
+    });
+    setShowFormModal(true);
+  };
+
+  const handleSubmit = async () => {
+    if (!form.name.trim() || !form.country.trim()) {
       alert('Please fill in name and country');
       return;
     }
+    const payload: any = {
+      name: form.name.trim(),
+      country: form.country.trim(),
+      region: orNull(form.region),
+      coordinates: orNull(form.coordinates),
+      description: orNull(form.description),
+      customerId: form.customerId || null,
+      isActive: form.isActive,
+    };
     try {
       setSaving(true);
-      const created = await apiClient.locations.create(newLocation);
-      setLocations(prev => [...prev, created]);
-      setNewLocation({ name: '', country: '', region: '', coordinates: '', description: '' });
-      setShowAddModal(false);
+      const enrich = (loc: Location): Location => {
+        if (loc.customerId) {
+          const c = customers.find(x => x.id === loc.customerId);
+          if (c) return { ...loc, customer: { id: c.id, name: c.name } };
+        }
+        return { ...loc, customer: undefined };
+      };
+      if (editingId) {
+        const updated = await apiClient.locations.update(editingId, payload);
+        setLocations(prev => prev.map(l => l.id === editingId ? enrich(updated) : l));
+      } else {
+        const created = await apiClient.locations.create(payload);
+        setLocations(prev => [...prev, enrich(created)]);
+      }
+      setShowFormModal(false);
+      setEditingId(null);
+      setForm(blankForm());
     } catch (err: any) {
-      console.error('Failed to create location:', err);
-      alert(err?.response?.data?.message || 'Failed to create location');
+      console.error('Failed to save location:', err);
+      alert(err?.response?.data?.message || 'Failed to save location');
     } finally {
       setSaving(false);
     }
   };
 
-  // Delete location
-  const handleDeleteLocation = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this location?')) return;
+  const handleDelete = async () => {
+    if (!confirmDelete) return;
     try {
-      await apiClient.locations.delete(id);
-      setLocations(prev => prev.filter(l => l.id !== id));
+      setDeleting(true);
+      await apiClient.locations.delete(confirmDelete.id);
+      setLocations(prev => prev.filter(l => l.id !== confirmDelete.id));
+      setConfirmDelete(null);
     } catch (err: any) {
       console.error('Failed to delete location:', err);
       alert(err?.response?.data?.message || 'Failed to delete location');
+    } finally {
+      setDeleting(false);
     }
   };
 
-  const filteredLocations = locations.filter(location =>
-    location.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    location.country.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (location.region && location.region.toLowerCase().includes(searchTerm.toLowerCase()))
+  const filteredLocations = locations.filter(l =>
+    l.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    l.country.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (l.region && l.region.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   if (loading) {
@@ -110,7 +180,7 @@ const Locations = () => {
           </div>
           <div className="flex items-center space-x-3 xl:ml-auto">
             <button
-              onClick={() => setShowAddModal(true)}
+              onClick={openAdd}
               className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-600 text-white rounded-xl text-sm font-bold shadow-[0_0_15px_rgba(25,86,168,0.3)] hover:shadow-[0_0_25px_rgba(25,86,168,0.5)] transition-all duration-300 transform hover:-translate-y-0.5 flex items-center space-x-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -122,37 +192,71 @@ const Locations = () => {
         </div>
       }
     >
-      {/* Add Location Modal */}
-      {showAddModal && (
+      {/* Add/Edit Location Modal */}
+      {showFormModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowAddModal(false)} />
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowFormModal(false)} />
           <div className="relative glass-premium dark:bg-boxdark/95 rounded-2xl p-8 w-full max-w-md shadow-2xl border border-white/20 dark:border-white/5 animate-slideUp">
-            <h2 className="text-xl font-black text-slate-900 dark:text-white mb-6 tracking-tight">Add New Location</h2>
+            <h2 className="text-xl font-black text-slate-900 dark:text-white mb-6 tracking-tight">
+              {editingId ? 'Edit Location' : 'Add New Location'}
+            </h2>
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider">Name *</label>
-                <input type="text" value={newLocation.name} onChange={(e) => setNewLocation({ ...newLocation, name: e.target.value })} className="w-full px-4 py-3 border border-slate-200 dark:border-strokedark rounded-xl bg-white/50 dark:bg-boxdark dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 transition-all" placeholder="e.g., North Kuwait" />
+                <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full px-4 py-3 border border-slate-200 dark:border-strokedark rounded-xl bg-white/50 dark:bg-boxdark dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 transition-all" placeholder="e.g., North Kuwait" />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider">Country *</label>
-                <input type="text" value={newLocation.country} onChange={(e) => setNewLocation({ ...newLocation, country: e.target.value })} className="w-full px-4 py-3 border border-slate-200 dark:border-strokedark rounded-xl bg-white/50 dark:bg-boxdark dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 transition-all" placeholder="Kuwait" />
+                <input type="text" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} className="w-full px-4 py-3 border border-slate-200 dark:border-strokedark rounded-xl bg-white/50 dark:bg-boxdark dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 transition-all" placeholder="Kuwait" />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider">Region</label>
-                <input type="text" value={newLocation.region} onChange={(e) => setNewLocation({ ...newLocation, region: e.target.value })} className="w-full px-4 py-3 border border-slate-200 dark:border-strokedark rounded-xl bg-white/50 dark:bg-boxdark dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 transition-all" placeholder="Northern Region" />
+                <input type="text" value={form.region} onChange={(e) => setForm({ ...form, region: e.target.value })} className="w-full px-4 py-3 border border-slate-200 dark:border-strokedark rounded-xl bg-white/50 dark:bg-boxdark dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 transition-all" placeholder="Northern Region" />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider">Coordinates</label>
-                <input type="text" value={newLocation.coordinates} onChange={(e) => setNewLocation({ ...newLocation, coordinates: e.target.value })} className="w-full px-4 py-3 border border-slate-200 dark:border-strokedark rounded-xl bg-white/50 dark:bg-boxdark dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 transition-all" placeholder="29.3759° N" />
+                <input type="text" value={form.coordinates} onChange={(e) => setForm({ ...form, coordinates: e.target.value })} className="w-full px-4 py-3 border border-slate-200 dark:border-strokedark rounded-xl bg-white/50 dark:bg-boxdark dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 transition-all" placeholder="29.3759° N" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider">Customer</label>
+                <select value={form.customerId} onChange={(e) => setForm({ ...form, customerId: e.target.value })} className="w-full px-4 py-3 border border-slate-200 dark:border-strokedark rounded-xl bg-white/50 dark:bg-boxdark dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 transition-all">
+                  <option value="">— None —</option>
+                  {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider">Description</label>
-                <textarea value={newLocation.description} onChange={(e) => setNewLocation({ ...newLocation, description: e.target.value })} className="w-full px-4 py-3 border border-slate-200 dark:border-strokedark rounded-xl bg-white/50 dark:bg-boxdark dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 transition-all" placeholder="Location description..." rows={3} />
+                <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="w-full px-4 py-3 border border-slate-200 dark:border-strokedark rounded-xl bg-white/50 dark:bg-boxdark dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 transition-all" placeholder="Location description..." rows={3} />
               </div>
+              <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
+                <input type="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} className="w-4 h-4 rounded border-slate-300" />
+                Active
+              </label>
             </div>
             <div className="flex justify-end gap-3 mt-8">
-              <button onClick={() => setShowAddModal(false)} className="px-5 py-2.5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-meta-4 rounded-xl font-semibold transition-colors">Cancel</button>
-              <button onClick={handleCreateLocation} disabled={saving} className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-600 text-white rounded-xl font-bold shadow-[0_0_15px_rgba(25,86,168,0.3)] hover:shadow-[0_0_25px_rgba(25,86,168,0.5)] transition-all disabled:opacity-50">{saving ? 'Creating...' : 'Create Location'}</button>
+              <button onClick={() => setShowFormModal(false)} className="px-5 py-2.5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-meta-4 rounded-xl font-semibold transition-colors">Cancel</button>
+              <button onClick={handleSubmit} disabled={saving} className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-600 text-white rounded-xl font-bold shadow-[0_0_15px_rgba(25,86,168,0.3)] hover:shadow-[0_0_25px_rgba(25,86,168,0.5)] transition-all disabled:opacity-50">
+                {saving ? 'Saving...' : (editingId ? 'Save Changes' : 'Create Location')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setConfirmDelete(null)} />
+          <div className="relative glass-premium dark:bg-boxdark/95 rounded-2xl p-8 w-full max-w-sm shadow-2xl border border-white/20 dark:border-white/5">
+            <h2 className="text-xl font-black text-slate-900 dark:text-white mb-2 tracking-tight">Delete Location?</h2>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
+              <span className="font-bold">{confirmDelete.name}</span> will be permanently removed. This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setConfirmDelete(null)} className="flex-1 px-5 py-2.5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-meta-4 rounded-xl font-semibold transition-colors">Cancel</button>
+              <button onClick={handleDelete} disabled={deleting} className="flex-1 px-5 py-2.5 bg-gradient-to-r from-rose-600 to-rose-500 text-white rounded-xl font-bold transition-all disabled:opacity-50">
+                {deleting ? 'Deleting...' : 'Delete'}
+              </button>
             </div>
           </div>
         </div>
@@ -172,9 +276,9 @@ const Locations = () => {
                 <th className="px-6 py-4 text-left text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.15em]">Name</th>
                 <th className="px-6 py-4 text-left text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.15em]">Country</th>
                 <th className="px-6 py-4 text-left text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.15em]">Region</th>
-                <th className="px-6 py-4 text-left text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.15em]">Coordinates</th>
+                <th className="px-6 py-4 text-left text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.15em]">Customer</th>
                 <th className="px-6 py-4 text-left text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.15em]">Status</th>
-                <th className="relative px-6 py-4"><span className="sr-only">Actions</span></th>
+                <th className="px-6 py-4 text-right text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.15em]">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-white/5">
@@ -183,16 +287,17 @@ const Locations = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900 dark:text-white">{location.name}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">{location.country}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">{location.region || '--'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">{location.coordinates || '--'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">{location.customer?.name || '--'}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2.5 py-1 inline-flex text-[10px] leading-4 font-black uppercase tracking-wider rounded-lg ${location.isActive ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-500/20' : 'bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-400 border border-rose-200/50 dark:border-rose-500/20'}`}>
                       {location.isActive ? 'Active' : 'Inactive'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right">
-                    <button onClick={() => handleDeleteLocation(location.id)} className="text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-all duration-200 p-1 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-500/10">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                    </button>
+                    <div className="flex items-center justify-end gap-2">
+                      <button onClick={() => openEdit(location)} className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 px-3 py-1.5 rounded-lg transition-colors">Edit</button>
+                      <button onClick={() => setConfirmDelete(location)} className="text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 px-3 py-1.5 rounded-lg transition-colors">Delete</button>
+                    </div>
                   </td>
                 </tr>
               ))}
