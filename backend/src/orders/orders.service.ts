@@ -39,7 +39,7 @@ export class OrdersService {
         const { items, ...orderData } = createOrderDto;
         const order = this.ordersRepository.create({
             ...orderData,
-            status: OrderStatus.DRAFT,
+            status: orderData.status || OrderStatus.BOOKED,
         });
         const savedOrder = await this.ordersRepository.save(order);
 

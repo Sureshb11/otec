@@ -23,7 +23,7 @@ export enum OrderStatus {
 
 // Defines valid state transitions for the order lifecycle
 export const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
-    [OrderStatus.DRAFT]: [OrderStatus.BOOKED, OrderStatus.CANCELLED],
+    [OrderStatus.DRAFT]: [OrderStatus.BOOKED, OrderStatus.ACTIVE, OrderStatus.CANCELLED],
     [OrderStatus.BOOKED]: [OrderStatus.ACTIVE, OrderStatus.CANCELLED],
     [OrderStatus.ACTIVE]: [OrderStatus.JOB_DONE],
     [OrderStatus.JOB_DONE]: [OrderStatus.RETURNED],
