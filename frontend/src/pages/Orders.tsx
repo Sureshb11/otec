@@ -106,13 +106,13 @@ const emptyTracking = (): MachineTracking => ({
   lastUpdated:      nowStr(),
 });
 
-/** Map backend status + local tracking → Kanban column. */
-const getColId = (apiStatus: string, t: MachineTracking): KanbanColId => {
+/** Map backend status + local tracking → Kanban column. Returns null for statuses not on the board. */
+const getColId = (apiStatus: string, t: MachineTracking): KanbanColId | null => {
   switch (apiStatus) {
     case 'booked':   return 'booked';
     case 'active':   return t.reachedOnsite.status ? 'onsite' : 'in-transit';
     case 'job_done': return 'job-done';
-    default:         return 'booked'; // returned / cancelled → hidden
+    default:         return null; // returned / cancelled / draft → not on board
   }
 };
 
@@ -703,7 +703,12 @@ const Orders = () => {
   const allOrders   = Array.isArray(orders) ? orders : [];
   const getTracking = (id: string) => trackingMap[id] ?? emptyTracking();
 
-  const filteredOrders = allOrders.filter((o: any) =>
+  // Only show orders that belong on the Kanban board (exclude returned, cancelled, draft)
+  const boardOrders = allOrders.filter((o: any) =>
+    getColId(o.status, getTracking(o.id)) !== null
+  );
+
+  const filteredOrders = boardOrders.filter((o: any) =>
     !search ||
     (o.customer?.name || '').toLowerCase().includes(search) ||
     (o.orderNumber    || '').toLowerCase().includes(search) ||
