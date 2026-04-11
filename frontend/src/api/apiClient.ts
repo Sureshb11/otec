@@ -261,6 +261,10 @@ export const apiClient = {
       const response = await api.patch(`/orders/${id}`, data);
       return response.data;
     },
+    updateStatus: async (id: string, status: string) => {
+      const response = await api.patch(`/orders/${id}/status`, { status });
+      return response.data;
+    },
     delete: async (id: string) => {
       await api.delete(`/orders/${id}`);
     },

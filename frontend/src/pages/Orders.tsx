@@ -666,7 +666,7 @@ const Orders = () => {
   });
 
   const updateStatusMutation = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: string }) => apiClient.orders.update(id, { status }),
+    mutationFn: ({ id, status }: { id: string; status: string }) => apiClient.orders.updateStatus(id, status),
     onSuccess:  () => queryClient.invalidateQueries({ queryKey: ['orders'] }),
     onError:    () => alert('Failed to update order status.'),
   });
