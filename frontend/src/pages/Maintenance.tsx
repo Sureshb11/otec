@@ -216,12 +216,16 @@ export const MaintenanceOverview = () => {
       {/* KPI row */}
       <div className="grid grid-cols-3 gap-4 mb-6">
         {[
-          { label: 'Overdue', count: overdue, color: 'from-red-500 to-red-600', icon: '🔴', light: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-500/20' },
-          { label: 'Due Soon', count: dueSoon, color: 'from-amber-400 to-amber-500', icon: '🟡', light: 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-500/20' },
-          { label: 'Up to Date', count: ok, color: 'from-emerald-500 to-emerald-600', icon: '🟢', light: 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-500/20' },
-        ].map(({ label, count, color, icon, light }) => (
+          { label: 'Overdue', count: overdue, color: 'from-red-500 to-red-600', kpi: 'overdue', light: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-500/20' },
+          { label: 'Due Soon', count: dueSoon, color: 'from-amber-400 to-amber-500', kpi: 'due-soon', light: 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-500/20' },
+          { label: 'Up to Date', count: ok, color: 'from-emerald-500 to-emerald-600', kpi: 'ok', light: 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-500/20' },
+        ].map(({ label, count, color, kpi, light }) => (
           <div key={label} className={`glass-premium dark:bg-boxdark/90 rounded-2xl border shadow-xl p-5 flex items-center gap-4 ${light}`}>
-            <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center shadow-lg text-xl`}>{icon}</div>
+            <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center shadow-lg`}>
+              {kpi === 'overdue' && <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+              {kpi === 'due-soon' && <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+              {kpi === 'ok' && <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+            </div>
             <div>
               <div className="text-3xl font-black text-slate-800 dark:text-white">{count}</div>
               <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">{label}</div>
@@ -498,7 +502,7 @@ export const MaintenanceToolDetail = () => {
 
             {tool.history.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-48 gap-3">
-                <div className="text-5xl opacity-20">🔧</div>
+                <div className="opacity-20"><svg className="w-12 h-12 mx-auto text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg></div>
                 <p className="text-slate-400 font-bold">No maintenance records yet</p>
                 <button onClick={() => setShowLogModal(true)} className="text-blue-600 dark:text-blue-400 text-sm font-bold hover:underline">Log the first service</button>
               </div>

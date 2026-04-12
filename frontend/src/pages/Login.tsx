@@ -30,93 +30,106 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex bg-gradient-to-br from-[#0d1b3e] via-[#122b5e] to-[#1956a8] animate-gradient-x relative overflow-hidden">
+    <div className="min-h-screen flex bg-gradient-to-br from-[#0a1628] via-[#0f2347] to-[#1956a8] relative overflow-hidden">
       {/* Decorative Background Elements */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-blue-500/15 blur-[120px] animate-float"></div>
-        <div className="absolute top-[60%] right-[-10%] w-[50%] h-[50%] rounded-full bg-[#1956a8]/25 blur-[150px] animate-float" style={{ animationDelay: '2s' }}></div>
-        <div className="absolute bottom-[-5%] left-[30%] w-[30%] h-[30%] rounded-full bg-blue-400/10 blur-[100px] animate-float" style={{ animationDelay: '4s' }}></div>
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-blue-500/10 blur-[120px] animate-float" />
+        <div className="absolute top-[60%] right-[-10%] w-[50%] h-[50%] rounded-full bg-[#1956a8]/20 blur-[150px] animate-float" style={{ animationDelay: '2s' }} />
+        <div className="absolute bottom-[-5%] left-[30%] w-[30%] h-[30%] rounded-full bg-blue-400/8 blur-[100px] animate-float" style={{ animationDelay: '4s' }} />
 
-        {/* Subtle geometric background pattern */}
+        {/* Dot grid */}
         <div className="absolute inset-0 opacity-[0.03]" style={{
           backgroundImage: `radial-gradient(circle at 1px 1px, rgba(255,255,255,0.5) 1px, transparent 0)`,
           backgroundSize: '40px 40px'
-        }}></div>
-        <div className="absolute inset-0 opacity-[0.02]" style={{
+        }} />
+        {/* Grid lines */}
+        <div className="absolute inset-0 opacity-[0.015]" style={{
           backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
           backgroundSize: '80px 80px'
-        }}></div>
+        }} />
       </div>
 
       {/* Left Side - Brand & Presentation */}
       <div className="hidden lg:flex lg:w-1/2 relative z-10 items-center justify-center p-12">
-        <div className="max-w-xl text-center flex flex-col items-center space-y-5 animate-slideUp">
-          <div className="relative inline-block mb-3">
-            <img src="/logo-full-transparent.png" alt="OTEC Oil Technology" className="relative z-10 w-[340px] max-w-full h-auto drop-shadow-[0_0_20px_rgba(255,255,255,0.2)]" />
+        <div className="max-w-xl text-center flex flex-col items-center space-y-6 animate-slideUp">
+          <div className="relative inline-block mb-2">
+            <img src="/logo-full-transparent.png" alt="OTEC Oil Technology" className="relative z-10 w-[340px] max-w-full h-auto drop-shadow-[0_0_30px_rgba(255,255,255,0.15)]" />
           </div>
 
-          <h1 className="text-4xl lg:text-5xl font-black text-white tracking-tight drop-shadow-2xl pt-2 leading-tight">
+          <h1 className="text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight">
             Assets Management <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-white">System</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-300 via-blue-100 to-white">System</span>
           </h1>
 
-          {/* Trust Indicators - Pill Style */}
-          <div className="flex flex-row items-center justify-center space-x-3 pt-6 w-full max-w-md mx-auto">
-            <div className="flex items-center space-x-2 px-5 py-2.5 rounded-full bg-white/[0.08] backdrop-blur-sm border border-white/[0.12] text-blue-100/90 hover:bg-white/[0.15] hover:text-white transition-all duration-300 cursor-default">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
-              <span className="text-xs font-bold uppercase tracking-widest">Secure</span>
-            </div>
-            <div className="flex items-center space-x-2 px-5 py-2.5 rounded-full bg-white/[0.08] backdrop-blur-sm border border-white/[0.12] text-blue-100/90 hover:bg-white/[0.15] hover:text-white transition-all duration-300 cursor-default">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-              <span className="text-xs font-bold uppercase tracking-widest">Fast</span>
-            </div>
-            <div className="flex items-center space-x-2 px-5 py-2.5 rounded-full bg-white/[0.08] backdrop-blur-sm border border-white/[0.12] text-blue-100/90 hover:bg-white/[0.15] hover:text-white transition-all duration-300 cursor-default">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064" /></svg>
-              <span className="text-xs font-bold uppercase tracking-widest">Reliable</span>
-            </div>
+          <p className="text-blue-200/50 text-sm max-w-sm leading-relaxed font-medium">
+            Streamline your oilfield tool tracking, rental operations, and maintenance scheduling in one unified platform.
+          </p>
+
+          {/* Trust Indicators */}
+          <div className="flex flex-row items-center justify-center gap-3 pt-4 w-full max-w-md mx-auto">
+            {[
+              { icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z', label: 'Secure' },
+              { icon: 'M13 10V3L4 14h7v7l9-11h-7z', label: 'Fast' },
+              { icon: 'M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064', label: 'Reliable' },
+            ].map(({ icon, label }) => (
+              <div key={label} className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/[0.06] backdrop-blur-sm border border-white/[0.08] text-blue-200/70 hover:bg-white/[0.12] hover:text-white transition-all duration-300 cursor-default">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={icon} /></svg>
+                <span className="text-xs font-bold uppercase tracking-widest">{label}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
       {/* Right Side - Login Form */}
-      <div className="flex-1 flex items-center justify-center p-8 lg:p-12 z-10">
-        <div className="w-full max-w-md animate-slideUp" style={{ animationDelay: '0.15s' }}>
+      <div className="flex-1 flex items-center justify-center p-6 sm:p-8 lg:p-12 z-10">
+        <div className="w-full max-w-[420px] animate-slideUp" style={{ animationDelay: '0.15s' }}>
           {/* Logo for Mobile */}
-          <div className="lg:hidden text-center mb-10 w-full flex justify-center">
-            <img src="/logo-full-transparent.png" alt="OTEC Oil Technology" className="w-[320px] h-auto drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]" />
+          <div className="lg:hidden text-center mb-8 w-full flex justify-center">
+            <img src="/logo-full-transparent.png" alt="OTEC Oil Technology" className="w-[280px] h-auto drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]" />
           </div>
 
-          <div className="rounded-3xl p-10 relative group bg-white/[0.06] backdrop-blur-xl border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+          <div className="rounded-3xl p-8 sm:p-10 relative group bg-white/[0.05] backdrop-blur-2xl border border-white/[0.07] shadow-[0_8px_40px_rgba(0,0,0,0.5)]">
             {/* Ambient hover glow */}
-            <div className="absolute inset-0 bg-gradient-to-b from-white/[0.03] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 rounded-3xl pointer-events-none"></div>
+            <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 rounded-3xl pointer-events-none" />
 
-            <div className="text-center mb-10">
-              <h2 className="text-2xl font-bold text-white mb-2 tracking-wide">
+            {/* Header */}
+            <div className="text-center mb-8">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center mx-auto mb-5 shadow-[0_0_25px_rgba(59,130,246,0.4)]">
+                <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+              <h2 className="text-2xl font-black text-white tracking-tight">
                 Welcome Back
               </h2>
-              <p className="text-blue-200/70 text-sm font-medium">
-                Authenticate to manage operations
+              <p className="text-blue-300/50 text-sm font-medium mt-1.5">
+                Sign in to access your dashboard
               </p>
             </div>
 
-            <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
+            <form className="space-y-5" onSubmit={handleSubmit(onSubmit)}>
+              {/* Error Alert */}
               {error && (
-                <div className="rounded-lg bg-red-500/10 border border-red-500/30 p-4 animate-slideUp">
-                  <div className="flex items-center space-x-2">
-                    <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <div className="text-sm text-red-300 font-medium">{error}</div>
+                <div className="rounded-xl bg-red-500/10 border border-red-500/20 p-4 animate-slideUp">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-red-500/20 flex items-center justify-center flex-shrink-0">
+                      <svg className="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div className="text-sm text-red-300 font-semibold">{error}</div>
                   </div>
                 </div>
               )}
 
-              <div className="space-y-5">
+              <div className="space-y-4">
                 {/* Email Field */}
                 <div>
+                  <label className="block text-[11px] font-bold text-blue-200/40 uppercase tracking-widest mb-2">Email Address</label>
                   <div className="relative group/input">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors duration-200">
-                      <svg className="h-5 w-5 text-gray-400 group-focus-within/input:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                      <svg className="h-5 w-5 text-blue-300/30 group-focus-within/input:text-blue-400 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
                       </svg>
                     </div>
@@ -124,20 +137,24 @@ const Login = () => {
                       {...register('email', { required: 'Email is required' })}
                       type="email"
                       autoComplete="email"
-                      className="block w-full pl-12 pr-4 py-3.5 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 bg-white shadow-sm transition-all duration-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 focus:shadow-[0_0_0_4px_rgba(59,130,246,0.1)]"
-                      placeholder="Email address"
+                      className="block w-full pl-12 pr-4 py-3.5 rounded-xl text-white placeholder-blue-200/25 bg-white/[0.06] border border-white/[0.08] shadow-sm transition-all duration-300 hover:bg-white/[0.09] hover:border-white/[0.12] focus:outline-none focus:bg-white/[0.08] focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 focus:shadow-[0_0_0_4px_rgba(59,130,246,0.1)] text-sm font-medium"
+                      placeholder="name@company.com"
                     />
                   </div>
                   {errors.email && (
-                    <p className="mt-2 text-xs font-semibold text-rose-400 tracking-wide">{errors.email.message}</p>
+                    <p className="mt-2 text-xs font-bold text-rose-400 flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01" /></svg>
+                      {errors.email.message}
+                    </p>
                   )}
                 </div>
 
-                {/* Password Field with visibility toggle */}
+                {/* Password Field */}
                 <div>
+                  <label className="block text-[11px] font-bold text-blue-200/40 uppercase tracking-widest mb-2">Password</label>
                   <div className="relative group/input">
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <svg className="h-5 w-5 text-gray-400 group-focus-within/input:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="h-5 w-5 text-blue-300/30 group-focus-within/input:text-blue-400 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                       </svg>
                     </div>
@@ -145,14 +162,13 @@ const Login = () => {
                       {...register('password', { required: 'Password is required' })}
                       type={showPassword ? 'text' : 'password'}
                       autoComplete="current-password"
-                      className="block w-full pl-12 pr-12 py-3.5 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 bg-white shadow-sm transition-all duration-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 focus:shadow-[0_0_0_4px_rgba(59,130,246,0.1)]"
-                      placeholder="Password"
+                      className="block w-full pl-12 pr-12 py-3.5 rounded-xl text-white placeholder-blue-200/25 bg-white/[0.06] border border-white/[0.08] shadow-sm transition-all duration-300 hover:bg-white/[0.09] hover:border-white/[0.12] focus:outline-none focus:bg-white/[0.08] focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 focus:shadow-[0_0_0_4px_rgba(59,130,246,0.1)] text-sm font-medium"
+                      placeholder="Enter your password"
                     />
-                    {/* Password visibility toggle */}
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-blue-500 transition-colors duration-200"
+                      className="absolute inset-y-0 right-0 pr-4 flex items-center text-blue-300/30 hover:text-blue-400 transition-colors duration-200"
                     >
                       {showPassword ? (
                         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -167,50 +183,72 @@ const Login = () => {
                     </button>
                   </div>
                   {errors.password && (
-                    <p className="mt-2 text-xs font-semibold text-rose-400 tracking-wide">{errors.password.message}</p>
+                    <p className="mt-2 text-xs font-bold text-rose-400 flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01" /></svg>
+                      {errors.password.message}
+                    </p>
                   )}
                 </div>
               </div>
 
-              {/* Sign In Button with shimmer */}
+              {/* Remember me + Forgot password row */}
+              <div className="flex items-center justify-between pt-1">
+                <label className="flex items-center gap-2 cursor-pointer group/check">
+                  <input type="checkbox" className="w-4 h-4 rounded border-white/10 bg-white/5 text-blue-500 focus:ring-blue-500/30 focus:ring-offset-0" />
+                  <span className="text-xs font-semibold text-blue-200/40 group-hover/check:text-blue-200/60 transition-colors">Remember me</span>
+                </label>
+                <Link
+                  to="/request-password-reset"
+                  className="text-xs text-blue-400/60 hover:text-blue-300 font-semibold transition-colors duration-200"
+                >
+                  Forgot password?
+                </Link>
+              </div>
+
+              {/* Sign In Button */}
               <div className="pt-2">
                 <button
                   type="submit"
                   disabled={mutation.isLoading}
-                  className="w-full relative overflow-hidden flex justify-center items-center py-4 px-4 rounded-xl text-white font-bold tracking-wider uppercase text-sm bg-gradient-to-r from-[#1956a8] to-[#2563eb] hover:from-[#1e63bf] hover:to-[#3b82f6] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 focus:ring-offset-slate-900 shadow-[0_0_20px_rgba(25,86,168,0.5)] hover:shadow-[0_0_35px_rgba(25,86,168,0.7)] transition-all duration-300 transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed group/btn"
+                  className="w-full relative overflow-hidden flex justify-center items-center py-4 px-4 rounded-xl text-white font-bold tracking-wider uppercase text-sm bg-gradient-to-r from-[#1956a8] to-[#2563eb] hover:from-[#1e63bf] hover:to-[#3b82f6] focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:ring-offset-2 focus:ring-offset-[#0f2347] shadow-[0_0_25px_rgba(25,86,168,0.5)] hover:shadow-[0_0_40px_rgba(25,86,168,0.7)] transition-all duration-300 transform hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 group/btn"
                 >
-                  {/* Auto-shimmer effect */}
-                  <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/25 to-transparent -translate-x-full animate-shimmer z-0"></span>
+                  {/* Shimmer effect */}
+                  <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full animate-shimmer z-0" />
 
-                  <span className="relative z-10 flex items-center">
+                  <span className="relative z-10 flex items-center gap-2">
                     {mutation.isLoading ? (
                       <>
-                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                         </svg>
                         Authenticating...
                       </>
                     ) : (
-                      'Sign In'
+                      <>
+                        Sign In
+                        <svg className="w-4 h-4 group-hover/btn:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                        </svg>
+                      </>
                     )}
                   </span>
                 </button>
               </div>
-
-              <div className="text-center space-y-4 pt-4 border-t border-white/10">
-                <Link
-                  to="/request-password-reset"
-                  className="text-sm text-blue-300 hover:text-blue-200 font-semibold tracking-wide transition-colors duration-200 inline-block"
-                >
-                  Recover Password
-                </Link>
-                <p className="text-xs text-blue-200/40 tracking-wide">
-                  Contact system administrator for provisioning
-                </p>
-              </div>
             </form>
+
+            {/* Footer */}
+            <div className="mt-8 pt-6 border-t border-white/[0.05] text-center">
+              <p className="text-[11px] text-blue-200/25 font-medium tracking-wide">
+                Need access? Contact your system administrator
+              </p>
+            </div>
           </div>
+
+          {/* Version tag */}
+          <p className="text-center text-[10px] text-blue-200/15 font-bold uppercase tracking-widest mt-6">
+            OTEC AMS v1.0
+          </p>
         </div>
       </div>
 
@@ -220,7 +258,7 @@ const Login = () => {
           50% { transform: translateY(-20px) translateX(10px); }
         }
         @keyframes slideUp {
-          0% { opacity: 0; transform: translateY(30px); }
+          0% { opacity: 0; transform: translateY(20px); }
           100% { opacity: 1; transform: translateY(0); }
         }
         @keyframes shimmer {
@@ -228,7 +266,7 @@ const Login = () => {
           100% { transform: translateX(100%); }
         }
         .animate-float { animation: float 6s ease-in-out infinite; }
-        .animate-slideUp { animation: slideUp 0.8s ease-out both; }
+        .animate-slideUp { animation: slideUp 0.6s ease-out both; }
         .animate-shimmer { animation: shimmer 3s ease-in-out infinite; }
       `}</style>
     </div>
