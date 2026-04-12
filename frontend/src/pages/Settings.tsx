@@ -69,18 +69,18 @@ const Settings = () => {
           <div className="space-y-4">
             <div className="flex items-center justify-between p-3 bg-slate-50/80 dark:bg-boxdark-2/60 rounded-xl border border-slate-100/50 dark:border-white/5">
               <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Dashboard Access</span>
-              <span className="text-sm text-green-600 dark:text-green-400">✓ Allowed</span>
+              <span className="text-sm text-green-600 dark:text-green-400 flex items-center gap-1"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg> Allowed</span>
             </div>
             <div className="flex items-center justify-between p-3 bg-slate-50/80 dark:bg-boxdark-2/60 rounded-xl border border-slate-100/50 dark:border-white/5">
               <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Admin Panel Access</span>
               <span className={`text-sm ${useAuthStore.getState().isAdmin() ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                {useAuthStore.getState().isAdmin() ? '✓ Allowed' : '✗ Restricted'}
+                {useAuthStore.getState().isAdmin() ? <span className="flex items-center gap-1"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg> Allowed</span> : <span className="flex items-center gap-1"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg> Restricted</span>}
               </span>
             </div>
             <div className="flex items-center justify-between p-3 bg-slate-50/80 dark:bg-boxdark-2/60 rounded-xl border border-slate-100/50 dark:border-white/5">
               <span className="text-sm font-bold text-slate-700 dark:text-slate-300">User Management</span>
               <span className={`text-sm ${useAuthStore.getState().isAdmin() ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                {useAuthStore.getState().isAdmin() ? '✓ Allowed' : '✗ Restricted'}
+                {useAuthStore.getState().isAdmin() ? <span className="flex items-center gap-1"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg> Allowed</span> : <span className="flex items-center gap-1"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg> Restricted</span>}
               </span>
             </div>
           </div>
