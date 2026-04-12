@@ -471,7 +471,7 @@ const NewOrderModal = ({ customers, locations, rigs, tools, isSaving, onClose, o
   const [locId,      setLocId]     = useState('');
   const [rigId,      setRigId]     = useState('');
   const [startDate,  setStartDate] = useState('');
-  const [endDate,    setEndDate]   = useState('');
+  const [endDate]   = useState('');
   const [toolSearch, setToolSearch]= useState('');
   const [selTools,   setSelTools]  = useState<{ toolId: string; size: string }[]>([]);
 
@@ -602,17 +602,16 @@ const NewOrderModal = ({ customers, locations, rigs, tools, isSaving, onClose, o
           {/* Schedule Section */}
           <div>
             <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Schedule</h4>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider">Start Date</label>
+            <div>
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider">Start Date</label>
+              <div className="relative">
+                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none">
+                  <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                </div>
                 <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
-                  className="w-full border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm bg-white/50 dark:bg-boxdark dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 transition-all" />
+                  className="w-full border border-slate-200 dark:border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm bg-white/50 dark:bg-boxdark dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 transition-all cursor-pointer" />
               </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider">End Date</label>
-                <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
-                  className="w-full border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm bg-white/50 dark:bg-boxdark dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 transition-all" />
-              </div>
+              {!startDate && <p className="text-[10px] text-slate-400 mt-1.5 font-medium">Defaults to today if left empty</p>}
             </div>
           </div>
 
