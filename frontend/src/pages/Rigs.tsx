@@ -218,11 +218,28 @@ const Rigs = () => {
       {showFormModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowFormModal(false)} />
-          <div className="relative glass-premium dark:bg-boxdark/95 rounded-2xl p-8 w-full max-w-md shadow-2xl border border-white/20 dark:border-white/5 animate-slideUp">
-            <h2 className="text-xl font-black text-slate-900 dark:text-white mb-6 tracking-tight">
-              {editingId ? 'Edit Rig' : 'Add New Rig'}
-            </h2>
-            <div className="space-y-4">
+          <div className="relative bg-white dark:bg-boxdark rounded-2xl w-full max-w-md shadow-2xl border border-white/20 dark:border-white/5 overflow-hidden max-h-[92vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white dark:bg-boxdark px-6 py-5 border-b border-slate-100 dark:border-white/5 flex items-center justify-between z-10">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${editingId ? 'bg-slate-100 dark:bg-slate-500/20' : 'bg-blue-100 dark:bg-blue-500/20'}`}>
+                  {editingId ? (
+                    <svg className="w-5 h-5 text-slate-600 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                  ) : (
+                    <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                  )}
+                </div>
+                <div>
+                  <h2 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
+                    {editingId ? 'Edit Rig' : 'Add New Rig'}
+                  </h2>
+                  <p className="text-xs text-slate-400 font-medium">{editingId ? 'Update rig details' : 'Create a new rig record'}</p>
+                </div>
+              </div>
+              <button onClick={() => setShowFormModal(false)} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-meta-4 rounded-xl transition-colors">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider">Rig Name *</label>
                 <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full px-4 py-3 border border-slate-200 dark:border-strokedark rounded-xl bg-white/50 dark:bg-boxdark dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 transition-all" placeholder="e.g., Rig 15" />
@@ -263,9 +280,9 @@ const Rigs = () => {
                 <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="w-full px-4 py-3 border border-slate-200 dark:border-strokedark rounded-xl bg-white/50 dark:bg-boxdark dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 transition-all" placeholder="Rig description..." rows={3} />
               </div>
             </div>
-            <div className="flex justify-end gap-3 mt-8">
-              <button onClick={() => setShowFormModal(false)} className="px-5 py-2.5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-meta-4 rounded-xl font-semibold transition-colors">Cancel</button>
-              <button onClick={handleSubmit} disabled={saving} className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-600 text-white rounded-xl font-bold shadow-[0_0_15px_rgba(25,86,168,0.3)] hover:shadow-[0_0_25px_rgba(25,86,168,0.5)] transition-all disabled:opacity-50">
+            <div className="flex gap-3 px-6 pb-6">
+              <button onClick={() => setShowFormModal(false)} className="flex-1 py-3 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-meta-4 rounded-xl font-bold transition-colors">Cancel</button>
+              <button onClick={handleSubmit} disabled={saving} className="flex-1 py-3 bg-gradient-to-r from-blue-600 to-blue-600 text-white rounded-xl font-bold shadow-[0_0_15px_rgba(25,86,168,0.3)] hover:shadow-[0_0_25px_rgba(25,86,168,0.5)] transition-all disabled:opacity-50">
                 {saving ? 'Saving...' : (editingId ? 'Save Changes' : 'Create Rig')}
               </button>
             </div>
@@ -277,14 +294,20 @@ const Rigs = () => {
       {confirmDelete && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setConfirmDelete(null)} />
-          <div className="relative glass-premium dark:bg-boxdark/95 rounded-2xl p-8 w-full max-w-sm shadow-2xl border border-white/20 dark:border-white/5">
-            <h2 className="text-xl font-black text-slate-900 dark:text-white mb-2 tracking-tight">Delete Rig?</h2>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
-              <span className="font-bold">{confirmDelete.name}</span> will be permanently removed. This action cannot be undone.
-            </p>
+          <div className="relative bg-white dark:bg-boxdark rounded-2xl p-8 w-full max-w-sm shadow-2xl border border-white/20 dark:border-white/5">
+            <div className="text-center mb-5">
+              <div className="w-14 h-14 rounded-full bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center mx-auto mb-4">
+                <svg className="w-7 h-7 text-rose-600 dark:text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+              </div>
+              <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Delete Rig?</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
+                <span className="font-bold text-slate-700 dark:text-white">{confirmDelete.name}</span> will be permanently removed.
+              </p>
+              <p className="text-xs text-rose-500 font-bold mt-2">This action cannot be undone.</p>
+            </div>
             <div className="flex gap-3">
-              <button onClick={() => setConfirmDelete(null)} className="flex-1 px-5 py-2.5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-meta-4 rounded-xl font-semibold transition-colors">Cancel</button>
-              <button onClick={handleDelete} disabled={deleting} className="flex-1 px-5 py-2.5 bg-gradient-to-r from-rose-600 to-rose-500 text-white rounded-xl font-bold transition-all disabled:opacity-50">
+              <button onClick={() => setConfirmDelete(null)} className="flex-1 py-3 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-meta-4 rounded-xl font-bold transition-colors">Cancel</button>
+              <button onClick={handleDelete} disabled={deleting} className="flex-1 py-3 bg-gradient-to-r from-rose-600 to-rose-500 text-white rounded-xl font-bold shadow-lg transition-all disabled:opacity-50">
                 {deleting ? 'Deleting...' : 'Delete'}
               </button>
             </div>

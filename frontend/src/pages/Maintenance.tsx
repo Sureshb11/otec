@@ -107,11 +107,21 @@ const LogMaintenanceModal = ({ tool, onClose, onSave }: LogModalProps) => {
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="bg-white dark:bg-boxdark rounded-2xl shadow-2xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
-        <div className="px-6 py-4 border-b border-slate-100 dark:border-white/5 flex items-center justify-between">
-          <h3 className="text-lg font-black text-slate-800 dark:text-white">Log Maintenance</h3>
-          <p className="text-xs text-slate-400 font-bold">{tool.name} · {tool.serialNumber}</p>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+      <div className="bg-white dark:bg-boxdark rounded-2xl shadow-2xl w-full max-w-lg border border-white/20 dark:border-white/5" onClick={e => e.stopPropagation()}>
+        <div className="px-6 py-5 border-b border-slate-100 dark:border-white/5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center">
+              <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+            </div>
+            <div>
+              <h3 className="text-lg font-black text-slate-800 dark:text-white tracking-tight">Log Maintenance</h3>
+              <p className="text-xs text-slate-400 font-medium">{tool.name} · {tool.serialNumber}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-meta-4 rounded-xl transition-colors">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
         </div>
         <div className="p-6 space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -526,26 +536,41 @@ export const MaintenanceToolDetail = () => {
 
       {/* Set Due Date Modal */}
       {showSetDueModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white dark:bg-boxdark rounded-2xl p-8 w-full max-w-sm shadow-2xl">
-            <h3 className="text-xl font-black text-slate-800 dark:text-white mb-6 text-center">Set Due Date</h3>
-            <div className="mb-6">
-              <label className="block text-xs font-black uppercase text-slate-400 mb-2 tracking-wider">Next Maintenance Date</label>
-              <input type="date" value={newDueDate} onChange={e => setNewDueDate(e.target.value)}
-                className="w-full p-3 bg-slate-50 dark:bg-meta-4 rounded-xl border border-slate-200 dark:border-white/5 text-sm font-bold dark:text-white focus:ring-2 focus:ring-blue-500/30 focus:outline-none" />
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-boxdark rounded-2xl w-full max-w-sm shadow-2xl border border-white/20 dark:border-white/5 overflow-hidden">
+            <div className="px-6 py-5 border-b border-slate-100 dark:border-white/5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center">
+                  <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-800 dark:text-white tracking-tight">Set Due Date</h3>
+                  <p className="text-xs text-slate-400 font-medium">Next maintenance schedule</p>
+                </div>
+              </div>
+              <button onClick={() => setShowSetDueModal(false)} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-meta-4 rounded-xl transition-colors">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
             </div>
-            <div className="mb-4 grid grid-cols-3 gap-2">
-              {[1, 3, 6].map(m => (
-                <button key={m} onClick={() => setNewDueDate(fmtISO(addMonths(today, m)))}
-                  className="py-2 rounded-lg text-xs font-bold bg-slate-100 dark:bg-meta-4 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-meta-4/80 transition-colors">
-                  +{m} month{m > 1 ? 's' : ''}
-                </button>
-              ))}
+            <div className="p-6">
+              <div className="mb-5">
+                <label className="block text-xs font-black uppercase text-slate-400 mb-2 tracking-wider">Next Maintenance Date</label>
+                <input type="date" value={newDueDate} onChange={e => setNewDueDate(e.target.value)}
+                  className="w-full p-3 bg-slate-50 dark:bg-meta-4 rounded-xl border border-slate-200 dark:border-white/5 text-sm font-bold dark:text-white focus:ring-2 focus:ring-blue-500/30 focus:outline-none" />
+              </div>
+              <div className="mb-5 grid grid-cols-3 gap-2">
+                {[1, 3, 6].map(m => (
+                  <button key={m} onClick={() => setNewDueDate(fmtISO(addMonths(today, m)))}
+                    className="py-2.5 rounded-xl text-xs font-bold bg-slate-100 dark:bg-meta-4 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-meta-4/80 transition-colors border border-slate-200 dark:border-white/5">
+                    +{m} month{m > 1 ? 's' : ''}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="flex gap-3">
-              <button onClick={() => setShowSetDueModal(false)} className="flex-1 py-3 font-bold text-slate-500 hover:bg-slate-50 dark:hover:bg-meta-4 rounded-xl">Cancel</button>
+            <div className="flex gap-3 px-6 pb-6">
+              <button onClick={() => setShowSetDueModal(false)} className="flex-1 py-3 font-bold text-slate-500 hover:bg-slate-50 dark:hover:bg-meta-4 rounded-xl transition-colors">Cancel</button>
               <button onClick={handleSetDue}
-                className="flex-1 py-3 font-bold bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl shadow-lg">Save</button>
+                className="flex-1 py-3 font-bold bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl shadow-[0_0_15px_rgba(25,86,168,0.3)] hover:shadow-[0_0_25px_rgba(25,86,168,0.5)] transition-all">Save</button>
             </div>
           </div>
         </div>

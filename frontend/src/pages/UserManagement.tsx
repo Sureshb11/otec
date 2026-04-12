@@ -14,6 +14,8 @@ const UserManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [confirmDeleteUser, setConfirmDeleteUser] = useState<User | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Always try to fetch users - let the backend decide access
   // The backend will return 403 if user doesn't have admin role
@@ -467,12 +469,7 @@ const UserManagement = () => {
                 <Can module="users" action="delete">
                   <button
                     className="text-sm text-rose-500 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300 font-bold flex items-center space-x-1"
-                    onClick={() => {
-                      if (window.confirm(`Are you sure you want to delete ${user.firstName} ${user.lastName}?`)) {
-                        // TODO: Implement delete functionality
-                        console.log('Delete user:', user.id);
-                      }
-                    }}
+                    onClick={() => setConfirmDeleteUser(user)}
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path
@@ -505,6 +502,52 @@ const UserManagement = () => {
       {filteredUsers && filteredUsers.length > 0 && (
         <div className="mt-6 text-sm text-slate-400 dark:text-slate-500 text-center font-medium">
           Showing {filteredUsers.length} of {stats.total} users
+        </div>
+      )}
+
+      {/* Delete User Confirmation Modal */}
+      {confirmDeleteUser && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setConfirmDeleteUser(null)} />
+          <div className="relative bg-white dark:bg-boxdark rounded-2xl p-8 w-full max-w-sm shadow-2xl border border-white/20 dark:border-white/5">
+            <div className="text-center mb-5">
+              <div className="w-14 h-14 rounded-full bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center mx-auto mb-4">
+                <svg className="w-7 h-7 text-rose-600 dark:text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+              </div>
+              <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Delete User?</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
+                <span className="font-bold text-slate-700 dark:text-white">{confirmDeleteUser.firstName} {confirmDeleteUser.lastName}</span> will be permanently removed.
+              </p>
+              <p className="text-xs text-rose-500 font-bold mt-2">This action cannot be undone.</p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmDeleteUser(null)}
+                className="flex-1 py-3 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-meta-4 rounded-xl font-bold transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    setDeleting(true);
+                    await apiClient.users.delete(confirmDeleteUser.id);
+                    setConfirmDeleteUser(null);
+                    window.location.reload();
+                  } catch (err: any) {
+                    console.error('Failed to delete user:', err);
+                    alert(err?.response?.data?.message || 'Failed to delete user');
+                  } finally {
+                    setDeleting(false);
+                  }
+                }}
+                disabled={deleting}
+                className="flex-1 py-3 bg-gradient-to-r from-rose-600 to-rose-500 text-white rounded-xl font-bold shadow-lg transition-all disabled:opacity-50"
+              >
+                {deleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
