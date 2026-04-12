@@ -24,8 +24,8 @@ const UserManagement = () => {
     queryFn: async () => {
       try {
         const authState = useAuthStore.getState();
-        console.log('🔍 Fetching users - Token exists:', !!authState.token);
-        console.log('🔍 Auth state:', {
+        console.log('[Users] Fetching - Token exists:', !!authState.token);
+        console.log('[Users] Auth state:', {
           isAuthenticated: authState.isAuthenticated,
           userEmail: authState.user?.email,
           userRoles: authState.user?.roles,
@@ -33,7 +33,7 @@ const UserManagement = () => {
         // Use apiClient which handles mock/real switching automatically
         return await apiClient.users.getAll();
       } catch (err: any) {
-        console.error('❌ Error fetching users:', {
+        console.error('[Users] Error fetching:', {
           status: err?.response?.status,
           statusText: err?.response?.statusText,
           data: err?.response?.data,
