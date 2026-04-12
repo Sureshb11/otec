@@ -88,6 +88,10 @@ export const apiClient = {
       const response = await api.post(`/permissions/role/${roleId}/defaults`);
       return response.data;
     },
+    syncModules: async (roleId: string) => {
+      const response = await api.post(`/permissions/role/${roleId}/sync-modules`);
+      return response.data;
+    },
     bulkUpdate: async (roleId: string, permissions: any[]) => {
       const response = await api.put(`/permissions/role/${roleId}/bulk`, permissions);
       return response.data;

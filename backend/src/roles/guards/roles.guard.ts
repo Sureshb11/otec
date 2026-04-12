@@ -39,6 +39,9 @@ export class RolesGuard implements CanActivate {
       );
     }
     
+    // super_admin always passes any role check
+    if (userRoles.includes('super_admin')) return true;
+
     const hasRequiredRole = requiredRoles.some((role) => userRoles.includes(role));
     
     if (!hasRequiredRole) {

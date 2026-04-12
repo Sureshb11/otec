@@ -48,7 +48,8 @@ export class RolesService implements OnApplicationBootstrap {
 
   async seedRoles(): Promise<void> {
     const roles = [
-      { name: 'admin', description: 'Administrator with full access' },
+      { name: 'super_admin', description: 'Super Administrator — locked full access, manages all roles including admin' },
+      { name: 'admin', description: 'Administrator with configurable permissions' },
       { name: 'user', description: 'Regular user with limited access' },
       { name: 'manager', description: 'Manager with elevated permissions' },
       { name: 'employee', description: 'Employee with standard access' },

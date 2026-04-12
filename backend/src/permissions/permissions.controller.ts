@@ -8,6 +8,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { PermissionsService } from './permissions.service';
+import { RolesService } from '../roles/roles.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../roles/guards/roles.guard';
 import { Roles } from '../roles/decorators/roles.decorator';
@@ -15,7 +16,10 @@ import { Roles } from '../roles/decorators/roles.decorator';
 @Controller('permissions')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class PermissionsController {
-  constructor(private readonly permissionsService: PermissionsService) {}
+  constructor(
+    private readonly permissionsService: PermissionsService,
+    private readonly rolesService: RolesService,
+  ) {}
 
   @Get('role/:roleId')
   @Roles('admin')
@@ -27,6 +31,17 @@ export class PermissionsController {
   @Roles('admin')
   createDefaultPermissions(@Param('roleId') roleId: string) {
     return this.permissionsService.createDefaultPermissions(roleId);
+  }
+
+  /**
+   * Reconcile a role's permission rows against the canonical MODULES list.
+   * Safe to call repeatedly — preserves any existing toggles.
+   */
+  @Post('role/:roleId/sync-modules')
+  @Roles('admin')
+  async syncModules(@Param('roleId') roleId: string) {
+    const role = await this.rolesService.findOne(roleId);
+    return this.permissionsService.syncModulesForRole(roleId, role?.name);
   }
 
   @Put('role/:roleId/bulk')

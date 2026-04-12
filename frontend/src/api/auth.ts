@@ -12,6 +12,13 @@ export interface RegisterData {
   lastName: string;
 }
 
+export interface PermissionFlags {
+  canView: boolean;
+  canAdd: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+}
+
 export interface AuthResponse {
   access_token: string;
   user: {
@@ -21,6 +28,8 @@ export interface AuthResponse {
     lastName: string;
     roles: string[];
   };
+  /** Merged permission matrix across all user roles. Key = module key (lowercase). Empty for admin (admin bypasses checks). */
+  permissions: Record<string, PermissionFlags>;
 }
 
 export const authApi = {

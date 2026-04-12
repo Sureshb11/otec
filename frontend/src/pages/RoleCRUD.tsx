@@ -112,6 +112,7 @@ const RoleCRUD = () => {
 
   const getRoleStyle = (roleName: string) => {
     const styles: Record<string, { bg: string; icon: string; text: string; border: string }> = {
+      super_admin: { bg: 'bg-purple-50 dark:bg-purple-900/30', icon: '⚡', text: 'text-purple-700 dark:text-purple-400', border: 'border-purple-200 dark:border-purple-800' },
       admin: { bg: 'bg-red-50 dark:bg-red-900/30', icon: '🛡️', text: 'text-red-700 dark:text-red-400', border: 'border-red-200 dark:border-red-800' },
       manager: { bg: 'bg-blue-50 dark:bg-blue-900/30', icon: '👔', text: 'text-blue-700 dark:text-blue-400', border: 'border-blue-200 dark:border-blue-800' },
       employee: { bg: 'bg-green-50 dark:bg-green-900/30', icon: '👷', text: 'text-green-700 dark:text-green-400', border: 'border-green-200 dark:border-green-800' },
@@ -121,6 +122,9 @@ const RoleCRUD = () => {
     };
     return styles[roleName.toLowerCase()] || styles['user'];
   };
+
+  /** Protected roles that cannot be deleted. */
+  const isProtectedRole = (name: string) => ['super_admin', 'admin', 'user'].includes(name.toLowerCase());
 
   if (isLoading) {
     return (
@@ -191,7 +195,7 @@ const RoleCRUD = () => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                       </svg>
                     </button>
-                    {role.name !== 'admin' && role.name !== 'user' && (
+                    {!isProtectedRole(role.name) && (
                       <button
                         onClick={() => handleDelete(role)}
                         className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-meta-4 rounded transition-colors"
@@ -205,7 +209,12 @@ const RoleCRUD = () => {
                   </div>
                 </div>
 
-                <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2 capitalize">{role.name}</h3>
+                <div className="flex items-center gap-2 mb-2">
+                  <h3 className="text-lg font-bold text-slate-800 dark:text-white capitalize">{role.name.replace(/_/g, ' ')}</h3>
+                  {role.name === 'super_admin' && (
+                    <span className="text-[10px] font-bold bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded-full uppercase tracking-wider">Full Access</span>
+                  )}
+                </div>
                 <p className="text-sm text-slate-500 dark:text-bodydark2 line-clamp-3 mb-6">
                   {role.description || 'No description provided for this role.'}
                 </p>

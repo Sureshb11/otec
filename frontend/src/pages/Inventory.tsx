@@ -1,6 +1,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import MainLayout from '../components/MainLayout';
+import Can from '../components/Can';
 import { apiClient } from '../api/apiClient';
 
 // ─── Shared category data ─────────────────────────────────────────────────────
@@ -394,10 +395,12 @@ const OperationalInventory = () => {
                     placeholder="Search name, serial, mfr, part no..."
                     className="pl-9 pr-4 py-2.5 border border-slate-200/60 dark:border-white/5 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/30 bg-white/60 dark:bg-meta-4 dark:text-white w-full xl:w-72" />
                 </div>
-                <button onClick={openCreate}
-                  className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl text-sm font-bold hover:from-blue-500 hover:to-blue-400 shadow-md transition-all flex items-center gap-1.5 whitespace-nowrap">
-                  <span className="text-base leading-none">+</span> Add Tool
-                </button>
+                <Can module="inventory" action="add">
+                  <button onClick={openCreate}
+                    className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl text-sm font-bold hover:from-blue-500 hover:to-blue-400 shadow-md transition-all flex items-center gap-1.5 whitespace-nowrap">
+                    <span className="text-base leading-none">+</span> Add Tool
+                  </button>
+                </Can>
               </div>
             </div>
 
@@ -470,14 +473,18 @@ const OperationalInventory = () => {
                         {t.receivedDate ? new Date(t.receivedDate).toLocaleDateString() : '—'}
                       </td>
                       <td className="px-3 py-2.5 text-right whitespace-nowrap" onClick={e => e.stopPropagation()}>
-                        <button onClick={() => openEdit(t)}
-                          className="px-2.5 py-1 text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md mr-1 transition-colors">
-                          Edit
-                        </button>
-                        <button onClick={() => setConfirmDelete(t)}
-                          className="px-2.5 py-1 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-md transition-colors">
-                          Delete
-                        </button>
+                        <Can module="inventory" action="edit">
+                          <button onClick={() => openEdit(t)}
+                            className="px-2.5 py-1 text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md mr-1 transition-colors">
+                            Edit
+                          </button>
+                        </Can>
+                        <Can module="inventory" action="delete">
+                          <button onClick={() => setConfirmDelete(t)}
+                            className="px-2.5 py-1 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-md transition-colors">
+                            Delete
+                          </button>
+                        </Can>
                       </td>
                     </tr>
                   );

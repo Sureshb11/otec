@@ -24,6 +24,7 @@ import SingleView from './pages/SingleView';
 import { MaintenanceOverview, MaintenanceToolDetail } from './pages/Maintenance';
 import MainLayout from './components/MainLayout';
 import ProtectedRoute from './components/ProtectedRoute';
+import PermissionRoute from './components/PermissionRoute';
 import ErrorBoundary from './components/ErrorBoundary';
 
 function App() {
@@ -56,7 +57,9 @@ function App() {
             path="/operations/tools"
             element={
               <ProtectedRoute>
-                <Tools />
+                <PermissionRoute module="operations">
+                  <Tools />
+                </PermissionRoute>
               </ProtectedRoute>
             }
           />
@@ -64,7 +67,9 @@ function App() {
             path="/orders"
             element={
               <ProtectedRoute>
-                <Orders />
+                <PermissionRoute module="orders">
+                  <Orders />
+                </PermissionRoute>
               </ProtectedRoute>
             }
           />
@@ -80,7 +85,9 @@ function App() {
             path="/orders/:orderId"
             element={
               <ProtectedRoute>
-                <OrderDetails />
+                <PermissionRoute module="orders">
+                  <OrderDetails />
+                </PermissionRoute>
               </ProtectedRoute>
             }
           />
@@ -93,7 +100,9 @@ function App() {
             path="/inventory"
             element={
               <ProtectedRoute>
-                <Inventory />
+                <PermissionRoute module="inventory">
+                  <Inventory />
+                </PermissionRoute>
               </ProtectedRoute>
             }
           />
@@ -101,7 +110,9 @@ function App() {
             path="/clients/customers"
             element={
               <ProtectedRoute>
-                <Customers />
+                <PermissionRoute module="customers">
+                  <Customers />
+                </PermissionRoute>
               </ProtectedRoute>
             }
           />
@@ -109,7 +120,9 @@ function App() {
             path="/clients/locations"
             element={
               <ProtectedRoute>
-                <Locations />
+                <PermissionRoute module="locations">
+                  <Locations />
+                </PermissionRoute>
               </ProtectedRoute>
             }
           />
@@ -117,7 +130,9 @@ function App() {
             path="/clients/rigs"
             element={
               <ProtectedRoute>
-                <Rigs />
+                <PermissionRoute module="rigs">
+                  <Rigs />
+                </PermissionRoute>
               </ProtectedRoute>
             }
           />
@@ -125,7 +140,9 @@ function App() {
             path="/reports"
             element={
               <ProtectedRoute>
-                <Reports />
+                <PermissionRoute module="reports">
+                  <Reports />
+                </PermissionRoute>
               </ProtectedRoute>
             }
           />
@@ -143,7 +160,9 @@ function App() {
             path="/maintenance"
             element={
               <ProtectedRoute>
-                <MaintenanceOverview />
+                <PermissionRoute module="maintenance">
+                  <MaintenanceOverview />
+                </PermissionRoute>
               </ProtectedRoute>
             }
           />
@@ -151,7 +170,9 @@ function App() {
             path="/maintenance/:toolId"
             element={
               <ProtectedRoute>
-                <MaintenanceToolDetail />
+                <PermissionRoute module="maintenance">
+                  <MaintenanceToolDetail />
+                </PermissionRoute>
               </ProtectedRoute>
             }
           />
@@ -168,20 +189,24 @@ function App() {
           <Route
             path="/users"
             element={
-              <ProtectedRoute requiredRole="admin">
-                <MainLayout>
-                  <UserManagement />
-                </MainLayout>
+              <ProtectedRoute>
+                <PermissionRoute module="users">
+                  <MainLayout>
+                    <UserManagement />
+                  </MainLayout>
+                </PermissionRoute>
               </ProtectedRoute>
             }
           />
           <Route
             path="/roles"
             element={
-              <ProtectedRoute requiredRole="admin">
-                <MainLayout>
-                  <RoleCRUD />
-                </MainLayout>
+              <ProtectedRoute>
+                <PermissionRoute module="roles">
+                  <MainLayout>
+                    <RoleCRUD />
+                  </MainLayout>
+                </PermissionRoute>
               </ProtectedRoute>
             }
           />
