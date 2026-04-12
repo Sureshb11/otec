@@ -16,7 +16,7 @@ const Login = () => {
   const mutation = useMutation({
     mutationFn: authApi.login,
     onSuccess: (data) => {
-      setAuth(data.user, data.access_token);
+      setAuth(data.user, data.access_token, data.permissions);
       navigate('/dashboard');
     },
     onError: (error: any) => {

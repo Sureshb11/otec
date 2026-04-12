@@ -1,6 +1,7 @@
 import { ReactNode, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
+import { usePermissions } from '../hooks/usePermissions';
 import UserAvatarMenu from './UserAvatarMenu';
 import ThemeToggler from './ThemeToggler';
 
@@ -17,7 +18,8 @@ interface MainLayoutProps {
 }
 
 const MainLayout = ({ children, headerContent }: MainLayoutProps) => {
-    const { isAdmin } = useAuthStore();
+    useAuthStore();
+    const { can } = usePermissions();
     const [showOperationsMenu, setShowOperationsMenu] = useState(false);
     const [showClientsMenu, setShowClientsMenu] = useState(false);
     const [showMaintenanceMenu, setShowMaintenanceMenu] = useState(false);
@@ -85,6 +87,7 @@ const MainLayout = ({ children, headerContent }: MainLayoutProps) => {
 
                         <ul className="space-y-1">
                             {/* Dashboard */}
+                            {can('dashboard', 'view') && (
                             <li>
                                 <NavLink
                                     to="/dashboard"
@@ -93,8 +96,10 @@ const MainLayout = ({ children, headerContent }: MainLayoutProps) => {
                                     icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>}
                                 />
                             </li>
+                            )}
 
                             {/* Operations (Tools only — Inventory is now top-level) */}
+                            {can('operations', 'view') && (
                             <li>
                                 <button
                                     onClick={() => setShowOperationsMenu(!showOperationsMenu)}
@@ -116,8 +121,10 @@ const MainLayout = ({ children, headerContent }: MainLayoutProps) => {
                                     </ul>
                                 </div>
                             </li>
+                            )}
 
                             {/* Orders */}
+                            {can('orders', 'view') && (
                             <li>
                                 <NavLink
                                     to="/orders"
@@ -126,8 +133,10 @@ const MainLayout = ({ children, headerContent }: MainLayoutProps) => {
                                     icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>}
                                 />
                             </li>
+                            )}
 
                             {/* Inventory — top-level */}
+                            {can('inventory', 'view') && (
                             <li>
                                 <NavLink
                                     to="/inventory"
@@ -136,8 +145,10 @@ const MainLayout = ({ children, headerContent }: MainLayoutProps) => {
                                     icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>}
                                 />
                             </li>
+                            )}
 
                             {/* Maintenance — top-level */}
+                            {can('maintenance', 'view') && (
                             <li>
                                 <button
                                     onClick={() => setShowMaintenanceMenu(!showMaintenanceMenu)}
@@ -158,8 +169,10 @@ const MainLayout = ({ children, headerContent }: MainLayoutProps) => {
                                     </ul>
                                 </div>
                             </li>
+                            )}
 
                             {/* Clients */}
+                            {can('customers', 'view') && (
                             <li>
                                 <button
                                     onClick={() => setShowClientsMenu(!showClientsMenu)}
@@ -182,8 +195,10 @@ const MainLayout = ({ children, headerContent }: MainLayoutProps) => {
                                     </ul>
                                 </div>
                             </li>
+                            )}
 
                             {/* Reports */}
+                            {can('reports', 'view') && (
                             <li>
                                 <NavLink
                                     to="/reports"
@@ -192,15 +207,17 @@ const MainLayout = ({ children, headerContent }: MainLayoutProps) => {
                                     icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>}
                                 />
                             </li>
+                            )}
                         </ul>
 
-                        {isAdmin() && (
+                        {(can('users', 'view') || can('roles', 'view')) && (
                             <div className="mt-8">
                                 <div className="mb-4 px-4 flex items-center gap-2">
                                     <span className="text-[10px] font-bold text-slate-600 uppercase tracking-[0.25em]">Administration</span>
                                     <div className="flex-1 h-px bg-gradient-to-r from-slate-700 to-transparent"></div>
                                 </div>
                                 <ul className="space-y-1">
+                                    {can('users', 'view') && (
                                     <li>
                                         <NavLink
                                             to="/users"
@@ -213,6 +230,8 @@ const MainLayout = ({ children, headerContent }: MainLayoutProps) => {
                                             )}
                                         />
                                     </li>
+                                    )}
+                                    {can('roles', 'view') && (
                                     <li>
                                         <NavLink
                                             to="/roles"
@@ -225,6 +244,7 @@ const MainLayout = ({ children, headerContent }: MainLayoutProps) => {
                                             )}
                                         />
                                     </li>
+                                    )}
                                 </ul>
                             </div>
                         )}

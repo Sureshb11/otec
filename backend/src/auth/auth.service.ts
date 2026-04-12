@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException, NotFoundException, BadRequestExcepti
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
 import { RolesService } from '../roles/roles.service';
+import { PermissionsService } from '../permissions/permissions.service';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 
@@ -11,6 +12,7 @@ export class AuthService {
     private usersService: UsersService,
     private jwtService: JwtService,
     private rolesService: RolesService,
+    private permissionsService: PermissionsService,
   ) { }
 
   async validateUser(email: string, password: string): Promise<any> {
@@ -40,11 +42,36 @@ export class AuthService {
 
   async login(user: any) {
     const userWithRoles = await this.usersService.findOne(user.id);
+    const roleNames = userWithRoles.roles?.map((role) => role.name) || [];
+
     const payload = {
       email: user.email,
       sub: user.id,
-      roles: userWithRoles.roles?.map((role) => role.name) || [],
+      roles: roleNames,
     };
+
+    // Merge permissions from all of the user's roles.
+    // For each module, if ANY role grants a capability, the user has it.
+    // super_admin bypasses all checks — empty map signals "full access" on frontend.
+    const isSuperAdmin = roleNames.includes('super_admin');
+    const permissionsMap: Record<string, { canView: boolean; canAdd: boolean; canEdit: boolean; canDelete: boolean }> = {};
+
+    if (!isSuperAdmin) {
+      for (const role of userWithRoles.roles || []) {
+        const rolePerms = await this.permissionsService.findByRoleId(role.id);
+        for (const perm of rolePerms) {
+          const key = perm.moduleName.toLowerCase();
+          if (!permissionsMap[key]) {
+            permissionsMap[key] = { canView: false, canAdd: false, canEdit: false, canDelete: false };
+          }
+          if (perm.canView) permissionsMap[key].canView = true;
+          if (perm.canAdd) permissionsMap[key].canAdd = true;
+          if (perm.canEdit) permissionsMap[key].canEdit = true;
+          if (perm.canDelete) permissionsMap[key].canDelete = true;
+        }
+      }
+    }
+
     return {
       access_token: this.jwtService.sign(payload),
       user: {
@@ -52,8 +79,9 @@ export class AuthService {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
-        roles: userWithRoles.roles?.map((role) => role.name) || [],
+        roles: roleNames,
       },
+      permissions: permissionsMap,
     };
   }
 

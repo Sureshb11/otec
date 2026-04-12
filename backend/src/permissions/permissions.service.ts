@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Permission } from './permission.entity';
+import { MODULES, ACTION_COLUMN, PermissionAction } from './modules.config';
 
 @Injectable()
 export class PermissionsService {
@@ -91,6 +92,58 @@ export class PermissionsService {
     );
 
     return this.permissionsRepository.save(newPermissions);
+  }
+
+  /**
+   * Reconcile a role's permissions against the canonical MODULES list.
+   *
+   * - Inserts a row for any module that's missing (all flags false by default,
+   *   except admin which gets every flag true).
+   * - Preserves existing toggles for modules that are already present.
+   * - Removes rows for legacy modules that no longer exist in the canonical list.
+   *
+   * Returns the full reconciled permission set, sorted by moduleName.
+   */
+  async syncModulesForRole(roleId: string, roleName?: string): Promise<Permission[]> {
+    const isAdmin = roleName?.toLowerCase() === 'super_admin';
+    const existing = await this.permissionsRepository.find({ where: { roleId } });
+    const existingByKey = new Map(
+      existing.map((p) => [p.moduleName.toLowerCase(), p]),
+    );
+
+    const canonicalKeys = new Set(MODULES.map((m) => m.key));
+
+    // 1) Drop legacy rows that no longer match a canonical module.
+    const stale = existing.filter(
+      (p) => !canonicalKeys.has(p.moduleName.toLowerCase()),
+    );
+    if (stale.length > 0) {
+      await this.permissionsRepository.delete(stale.map((p) => p.id));
+    }
+
+    // 2) Insert missing rows.
+    const toInsert: Partial<Permission>[] = [];
+    for (const mod of MODULES) {
+      if (existingByKey.has(mod.key)) continue;
+      toInsert.push({
+        roleId,
+        moduleName: mod.key,
+        feature: mod.label,
+        canView: isAdmin || false,
+        canAdd: isAdmin || false,
+        canEdit: isAdmin || false,
+        canDelete: isAdmin || false,
+      });
+    }
+    if (toInsert.length > 0) {
+      const created = toInsert.map((p) => this.permissionsRepository.create(p));
+      await this.permissionsRepository.save(created);
+    }
+
+    return this.permissionsRepository.find({
+      where: { roleId },
+      order: { moduleName: 'ASC' },
+    });
   }
 
   async createDefaultPermissions(roleId: string): Promise<Permission[]> {

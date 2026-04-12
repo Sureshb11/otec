@@ -157,69 +157,86 @@ const RoleManagement = () => {
 
       {/* Role Assignment Modal */}
       {showRoleModal && selectedUser && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-lg bg-white dark:bg-boxdark">
-            <div className="mt-3">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-                Manage Roles for {selectedUser.firstName} {selectedUser.lastName}
-              </h3>
-              <div className="space-y-3">
-                {roles?.map((role) => {
-                  const hasRole = selectedUser.roles.some(r => r.id === role.id);
-                  return (
-                    <label
-                      key={role.id}
-                      className="flex items-center p-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-meta-4 cursor-pointer border-gray-200 dark:border-strokedark"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={hasRole}
-                        onChange={() => handleRoleToggle(role.id)}
-                        className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                        disabled={updateUserRoles.isLoading}
-                      />
-                      <div className="ml-3 flex-1">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-gray-900 dark:text-white capitalize">
-                            {role.name}
-                          </span>
-                          <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${role.name === 'admin'
-                              ? 'bg-red-100 text-red-800'
-                              : role.name === 'manager'
-                                ? 'bg-yellow-100 text-yellow-800'
-                                : role.name === 'employee'
-                                  ? 'bg-green-100 text-green-800'
-                                  : role.name === 'driver'
-                                    ? 'bg-primary-100 text-primary-800'
-                                    : role.name === 'vendor'
-                                      ? 'bg-orange-100 text-orange-800'
-                                      : 'bg-blue-100 text-blue-800'
-                              }`}
-                          >
-                            {hasRole ? 'Assigned' : 'Not Assigned'}
-                          </span>
-                        </div>
-                        <p className="text-xs text-gray-500 dark:text-bodydark2 mt-1">{role.description}</p>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => { setShowRoleModal(false); setSelectedUser(null); }} />
+          <div className="relative bg-white dark:bg-boxdark rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-white/20 dark:border-white/5">
+            <div className="px-6 py-5 border-b border-slate-100 dark:border-white/5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center">
+                  <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">Manage Roles</h3>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">{selectedUser.firstName} {selectedUser.lastName}</p>
+                </div>
+              </div>
+              <button onClick={() => { setShowRoleModal(false); setSelectedUser(null); }} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-meta-4 rounded-xl transition-colors">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+
+            <div className="p-6 space-y-3 max-h-[60vh] overflow-y-auto">
+              {roles?.map((role) => {
+                const hasRole = selectedUser.roles.some(r => r.id === role.id);
+                const roleColors: Record<string, { bg: string; text: string }> = {
+                  super_admin: { bg: 'bg-purple-100 dark:bg-purple-500/20', text: 'text-purple-700 dark:text-purple-400' },
+                  admin: { bg: 'bg-rose-100 dark:bg-rose-500/20', text: 'text-rose-700 dark:text-rose-400' },
+                  manager: { bg: 'bg-blue-100 dark:bg-blue-500/20', text: 'text-blue-700 dark:text-blue-400' },
+                  employee: { bg: 'bg-emerald-100 dark:bg-emerald-500/20', text: 'text-emerald-700 dark:text-emerald-400' },
+                  driver: { bg: 'bg-indigo-100 dark:bg-indigo-500/20', text: 'text-indigo-700 dark:text-indigo-400' },
+                  vendor: { bg: 'bg-orange-100 dark:bg-orange-500/20', text: 'text-orange-700 dark:text-orange-400' },
+                  user: { bg: 'bg-slate-100 dark:bg-slate-500/20', text: 'text-slate-700 dark:text-slate-400' },
+                };
+                const colors = roleColors[role.name.toLowerCase()] || roleColors.user;
+                return (
+                  <label
+                    key={role.id}
+                    className={`flex items-center p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
+                      hasRole
+                        ? 'border-blue-500/30 bg-blue-50/50 dark:bg-blue-500/5 dark:border-blue-500/20'
+                        : 'border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/10 hover:bg-slate-50 dark:hover:bg-meta-4'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={hasRole}
+                      onChange={() => handleRoleToggle(role.id)}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300 rounded"
+                      disabled={updateUserRoles.isLoading}
+                    />
+                    <div className="ml-3 flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-bold text-slate-800 dark:text-white capitalize">
+                          {role.name.replace(/_/g, ' ')}
+                        </span>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider ${
+                          hasRole ? `${colors.bg} ${colors.text}` : 'bg-slate-100 dark:bg-meta-4 text-slate-400 dark:text-slate-500'
+                        }`}>
+                          {hasRole ? 'Assigned' : 'Not Assigned'}
+                        </span>
                       </div>
-                    </label>
-                  );
-                })}
-              </div>
-              <div className="mt-6 flex justify-end space-x-3">
-                <button
-                  onClick={() => {
-                    setShowRoleModal(false);
-                    setSelectedUser(null);
-                  }}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-bodydark1 bg-white dark:bg-boxdark border border-gray-300 dark:border-strokedark rounded-lg hover:bg-gray-50 dark:hover:bg-meta-4"
-                >
-                  Cancel
-                </button>
-                {updateUserRoles.isLoading && (
-                  <span className="text-sm text-gray-500 dark:text-bodydark2">Saving...</span>
-                )}
-              </div>
+                      {role.description && (
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">{role.description}</p>
+                      )}
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+
+            <div className="px-6 py-4 border-t border-slate-100 dark:border-white/5 flex items-center justify-between">
+              {updateUserRoles.isLoading && (
+                <span className="text-xs font-bold text-blue-600 dark:text-blue-400 flex items-center gap-2">
+                  <svg className="animate-spin h-3.5 w-3.5" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                  Saving...
+                </span>
+              )}
+              <button
+                onClick={() => { setShowRoleModal(false); setSelectedUser(null); }}
+                className="ml-auto px-5 py-2.5 text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-meta-4 rounded-xl transition-colors"
+              >
+                Done
+              </button>
             </div>
           </div>
         </div>

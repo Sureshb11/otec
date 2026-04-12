@@ -112,6 +112,7 @@ const RoleCRUD = () => {
 
   const getRoleStyle = (roleName: string) => {
     const styles: Record<string, { bg: string; icon: string; text: string; border: string }> = {
+      super_admin: { bg: 'bg-purple-50 dark:bg-purple-900/30', icon: '⚡', text: 'text-purple-700 dark:text-purple-400', border: 'border-purple-200 dark:border-purple-800' },
       admin: { bg: 'bg-red-50 dark:bg-red-900/30', icon: '🛡️', text: 'text-red-700 dark:text-red-400', border: 'border-red-200 dark:border-red-800' },
       manager: { bg: 'bg-blue-50 dark:bg-blue-900/30', icon: '👔', text: 'text-blue-700 dark:text-blue-400', border: 'border-blue-200 dark:border-blue-800' },
       employee: { bg: 'bg-green-50 dark:bg-green-900/30', icon: '👷', text: 'text-green-700 dark:text-green-400', border: 'border-green-200 dark:border-green-800' },
@@ -121,6 +122,9 @@ const RoleCRUD = () => {
     };
     return styles[roleName.toLowerCase()] || styles['user'];
   };
+
+  /** Protected roles that cannot be deleted. */
+  const isProtectedRole = (name: string) => ['super_admin', 'admin', 'user'].includes(name.toLowerCase());
 
   if (isLoading) {
     return (
@@ -191,7 +195,7 @@ const RoleCRUD = () => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                       </svg>
                     </button>
-                    {role.name !== 'admin' && role.name !== 'user' && (
+                    {!isProtectedRole(role.name) && (
                       <button
                         onClick={() => handleDelete(role)}
                         className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-meta-4 rounded transition-colors"
@@ -205,7 +209,12 @@ const RoleCRUD = () => {
                   </div>
                 </div>
 
-                <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2 capitalize">{role.name}</h3>
+                <div className="flex items-center gap-2 mb-2">
+                  <h3 className="text-lg font-bold text-slate-800 dark:text-white capitalize">{role.name.replace(/_/g, ' ')}</h3>
+                  {role.name === 'super_admin' && (
+                    <span className="text-[10px] font-bold bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded-full uppercase tracking-wider">Full Access</span>
+                  )}
+                </div>
                 <p className="text-sm text-slate-500 dark:text-bodydark2 line-clamp-3 mb-6">
                   {role.description || 'No description provided for this role.'}
                 </p>
@@ -230,15 +239,26 @@ const RoleCRUD = () => {
       {/* Create Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" onClick={() => setShowCreateModal(false)} />
-          <div className="bg-white dark:bg-boxdark rounded-xl shadow-xl max-w-md w-full relative z-10 overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100 dark:border-strokedark bg-slate-50 dark:bg-meta-4">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Create New Role</h3>
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowCreateModal(false)} />
+          <div className="relative bg-white dark:bg-boxdark rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-white/20 dark:border-white/5">
+            <div className="px-6 py-5 border-b border-slate-100 dark:border-white/5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center">
+                  <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">Create New Role</h3>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">Define a new access role for your team</p>
+                </div>
+              </div>
+              <button onClick={() => setShowCreateModal(false)} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-meta-4 rounded-xl transition-colors">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
             </div>
 
-            <form onSubmit={handleCreateSubmit(handleCreate)} className="p-6 space-y-4">
+            <form onSubmit={handleCreateSubmit(handleCreate)} className="p-6 space-y-5">
               <div>
-                <label className="block text-xs font-bold text-slate-500 dark:text-bodydark2 uppercase tracking-widest mb-1">Role Name <span className="text-red-500">*</span></label>
+                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Role Name <span className="text-red-500">*</span></label>
                 <input
                   type="text"
                   {...registerCreate('name', {
@@ -246,36 +266,36 @@ const RoleCRUD = () => {
                     minLength: { value: 2, message: 'Minimum 2 characters' },
                     pattern: { value: /^[a-zA-Z0-9_-]+$/, message: 'Alphanumeric, underscores & hyphens only' }
                   })}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-strokedark bg-transparent dark:text-white focus:border-sky-500 focus:ring-1 focus:ring-sky-500 outline-none transition-colors"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-strokedark bg-white/50 dark:bg-boxdark dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 outline-none transition-all"
                   placeholder="e.g. supervisor"
                 />
-                {createErrors.name && <p className="mt-1 text-xs text-red-600 font-medium">{createErrors.name?.message}</p>}
+                {createErrors.name && <p className="mt-1.5 text-xs text-red-600 font-bold">{createErrors.name?.message}</p>}
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-500 dark:text-bodydark2 uppercase tracking-widest mb-1">Description</label>
+                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Description</label>
                 <textarea
                   {...registerCreate('description')}
                   rows={3}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-strokedark bg-transparent dark:text-white focus:border-sky-500 focus:ring-1 focus:ring-sky-500 outline-none transition-colors resize-none"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-strokedark bg-white/50 dark:bg-boxdark dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 outline-none transition-all resize-none"
                   placeholder="Describe the responsibilities..."
                 />
               </div>
 
-              <div className="flex gap-3 pt-2">
+              <div className="flex gap-3 pt-1">
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="flex-1 py-2.5 text-sm font-bold text-slate-600 dark:text-bodydark1 bg-white dark:bg-boxdark border border-slate-300 dark:border-strokedark rounded-lg hover:bg-slate-50 dark:hover:bg-meta-4 transition-colors"
+                  className="flex-1 py-3 text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-meta-4 rounded-xl transition-colors"
                 >
-                  CANCEL
+                  Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={createMutation.isLoading}
-                  className="flex-1 py-2.5 text-sm font-bold text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors shadow-sm"
+                  className="flex-1 py-3 text-sm font-bold text-white bg-gradient-to-r from-blue-600 to-blue-600 rounded-xl shadow-[0_0_15px_rgba(25,86,168,0.3)] hover:shadow-[0_0_25px_rgba(25,86,168,0.5)] transition-all disabled:opacity-50"
                 >
-                  {createMutation.isLoading ? 'CREATING...' : 'CREATE ROLE'}
+                  {createMutation.isLoading ? 'Creating...' : 'Create Role'}
                 </button>
               </div>
             </form>
@@ -286,47 +306,57 @@ const RoleCRUD = () => {
       {/* Edit Modal */}
       {showEditModal && editingRole && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" onClick={() => setShowEditModal(false)} />
-          <div className="bg-white dark:bg-boxdark rounded-xl shadow-xl max-w-md w-full relative z-10 overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100 dark:border-strokedark bg-slate-50 dark:bg-meta-4">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Edit Role</h3>
-              <p className="text-xs text-slate-500 dark:text-bodydark2 mt-0.5">Editing <span className="font-bold">{editingRole?.name}</span></p>
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowEditModal(false)} />
+          <div className="relative bg-white dark:bg-boxdark rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-white/20 dark:border-white/5">
+            <div className="px-6 py-5 border-b border-slate-100 dark:border-white/5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-500/20 flex items-center justify-center">
+                  <svg className="w-5 h-5 text-slate-600 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">Edit Role</h3>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">Editing <span className="font-bold text-slate-600 dark:text-slate-300">{editingRole?.name.replace(/_/g, ' ')}</span></p>
+                </div>
+              </div>
+              <button onClick={() => setShowEditModal(false)} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-meta-4 rounded-xl transition-colors">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
             </div>
 
-            <form onSubmit={handleUpdateSubmit(handleUpdate)} className="p-6 space-y-4">
+            <form onSubmit={handleUpdateSubmit(handleUpdate)} className="p-6 space-y-5">
               <div>
-                <label className="block text-xs font-bold text-slate-500 dark:text-bodydark2 uppercase tracking-widest mb-1">Role Name</label>
+                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Role Name</label>
                 <input
                   type="text"
-                  value={editingRole?.name}
+                  value={editingRole?.name.replace(/_/g, ' ')}
                   disabled
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-strokedark bg-slate-100 dark:bg-meta-4 text-slate-500 dark:text-bodydark1 font-medium cursor-not-allowed"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-strokedark bg-slate-50 dark:bg-meta-4 text-slate-400 dark:text-slate-500 font-medium cursor-not-allowed capitalize"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-500 dark:text-bodydark2 uppercase tracking-widest mb-1">Description</label>
+                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Description</label>
                 <textarea
                   {...registerUpdate('description')}
                   rows={3}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-strokedark bg-transparent dark:text-white focus:border-sky-500 focus:ring-1 focus:ring-sky-500 outline-none transition-colors resize-none"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-strokedark bg-white/50 dark:bg-boxdark dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 outline-none transition-all resize-none"
                 />
               </div>
 
-              <div className="flex gap-3 pt-2">
+              <div className="flex gap-3 pt-1">
                 <button
                   type="button"
                   onClick={() => setShowEditModal(false)}
-                  className="flex-1 py-2.5 text-sm font-bold text-slate-600 dark:text-bodydark1 bg-white dark:bg-boxdark border border-slate-300 dark:border-strokedark rounded-lg hover:bg-slate-50 dark:hover:bg-meta-4 transition-colors"
+                  className="flex-1 py-3 text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-meta-4 rounded-xl transition-colors"
                 >
-                  CANCEL
+                  Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={updateMutation.isLoading}
-                  className="flex-1 py-2.5 text-sm font-bold text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors shadow-sm"
+                  className="flex-1 py-3 text-sm font-bold text-white bg-gradient-to-r from-blue-600 to-blue-600 rounded-xl shadow-[0_0_15px_rgba(25,86,168,0.3)] hover:shadow-[0_0_25px_rgba(25,86,168,0.5)] transition-all disabled:opacity-50"
                 >
-                  {updateMutation.isLoading ? 'SAVING...' : 'SAVE CHANGES'}
+                  {updateMutation.isLoading ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </form>

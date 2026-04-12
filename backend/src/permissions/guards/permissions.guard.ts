@@ -28,8 +28,16 @@ export class PermissionsGuard implements CanActivate {
             throw new ForbiddenException('Access denied. User not authenticated.');
         }
 
-        // Extract role IDs from the user
+        // Extract role info from the user
         const userRoles = Array.isArray(user.roles) ? user.roles : [];
+
+        // super_admin bypasses all permission checks
+        const isSuperAdmin = userRoles.some((role: any) => {
+            const name = typeof role === 'string' ? role : role.name;
+            return name === 'super_admin';
+        });
+        if (isSuperAdmin) return true;
+
         const roleIds = userRoles.map((role: any) =>
             typeof role === 'string' ? role : role.id || role,
         );
