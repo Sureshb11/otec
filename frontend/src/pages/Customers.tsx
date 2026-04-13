@@ -83,6 +83,15 @@ const Customers = () => {
       alert('Please fill in name and email');
       return;
     }
+    // Check for duplicate name (case-insensitive, excluding current record)
+    const duplicate = customers.find(c =>
+      c.name.trim().toLowerCase() === form.name.trim().toLowerCase() &&
+      c.id !== editingId
+    );
+    if (duplicate) {
+      alert(`A customer named "${form.name.trim()}" already exists.`);
+      return;
+    }
     const payload: any = {
       name: form.name.trim(),
       email: form.email.trim(),

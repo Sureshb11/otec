@@ -1,4 +1,4 @@
-import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
+import { Injectable, OnApplicationBootstrap, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Role } from './role.entity';
@@ -27,9 +27,14 @@ export class RolesService implements OnApplicationBootstrap {
   }
 
   async create(roleData: Partial<Role>): Promise<Role> {
+    const normalizedName = roleData.name.toLowerCase();
+    const existing = await this.findByName(normalizedName);
+    if (existing) {
+      throw new ConflictException(`Role "${normalizedName}" already exists.`);
+    }
     const role = this.rolesRepository.create({
       ...roleData,
-      name: roleData.name.toLowerCase()
+      name: normalizedName,
     });
     return this.rolesRepository.save(role);
   }

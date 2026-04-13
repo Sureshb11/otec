@@ -100,6 +100,15 @@ const Rigs = () => {
       alert('Please fill in the rig name');
       return;
     }
+    // Check for duplicate rig name (case-insensitive, excluding current record)
+    const duplicate = rigs.find(r =>
+      r.name.trim().toLowerCase() === form.name.trim().toLowerCase() &&
+      r.id !== editingId
+    );
+    if (duplicate) {
+      alert(`A rig named "${form.name.trim()}" already exists.`);
+      return;
+    }
     const payload: any = {
       name: form.name.trim(),
       type: form.type,

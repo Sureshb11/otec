@@ -224,20 +224,24 @@ function App() {
           <Route
             path="/roles/:roleId/permissions"
             element={
-              <ProtectedRoute requiredRole="admin">
-                <MainLayout>
-                  <RolePermissions />
-                </MainLayout>
+              <ProtectedRoute>
+                <PermissionRoute module="roles" action="edit">
+                  <MainLayout>
+                    <RolePermissions />
+                  </MainLayout>
+                </PermissionRoute>
               </ProtectedRoute>
             }
           />
           <Route
             path="/users/create"
             element={
-              <ProtectedRoute requiredRole="admin">
-                <MainLayout>
-                  <CreateUser />
-                </MainLayout>
+              <ProtectedRoute>
+                <PermissionRoute module="users" action="add">
+                  <MainLayout>
+                    <CreateUser />
+                  </MainLayout>
+                </PermissionRoute>
               </ProtectedRoute>
             }
           />

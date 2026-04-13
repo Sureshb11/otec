@@ -114,7 +114,31 @@ const JobReportModal = ({ reportData: initialData, onClose, onConfirm }: JobRepo
 
   // ── Print ──
   const handlePrint = () => {
-    window.print();
+    const printContent = document.getElementById('job-report-print');
+    if (!printContent) { window.print(); return; }
+    const win = window.open('', '_blank', 'width=900,height=700');
+    if (!win) { window.print(); return; }
+    win.document.write(`
+      <html><head><title>Job Report #${data.reportNumber}</title>
+      <style>
+        body { font-family: sans-serif; padding: 24px; color: #1e293b; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #e2e8f0; padding: 6px 12px; font-size: 12px; }
+        th { background: #f8fafc; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; }
+        h1 { font-size: 20px; font-weight: 900; margin: 0; }
+        h3 { font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; color: #94a3b8; margin: 16px 0 8px; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+        .label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #94a3b8; margin-bottom: 2px; }
+        .value { font-size: 13px; font-weight: 600; }
+        .hr { border: none; border-top: 2px solid #e2e8f0; margin: 12px 0; }
+        .sign-box { height: 48px; border-bottom: 2px dashed #cbd5e1; margin-bottom: 8px; }
+      </style>
+      </head><body>${printContent.innerHTML}</body></html>
+    `);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); win.close(); }, 300);
   };
 
   // ── Confirm (close job) ──

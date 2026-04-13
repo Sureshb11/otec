@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Tool, ToolStatus } from './tool.entity';
@@ -50,6 +50,25 @@ export class ToolsService {
 
     async remove(id: string): Promise<void> {
         const tool = await this.findOne(id);
-        await this.toolsRepository.remove(tool);
+        if (tool.status === ToolStatus.ONSITE) {
+            throw new BadRequestException(
+                'Cannot delete a tool that is currently onsite. Return the tool to yard first via the Orders workflow.'
+            );
+        }
+        if (tool.status === ToolStatus.MAINTENANCE) {
+            throw new BadRequestException(
+                'Cannot delete a tool that is currently in maintenance/service. Complete or cancel the maintenance first.'
+            );
+        }
+        try {
+            await this.toolsRepository.remove(tool);
+        } catch (err: any) {
+            if (err?.code === '23503') {
+                throw new BadRequestException(
+                    'Cannot delete this tool because it is referenced in existing orders. Remove it from all orders first.'
+                );
+            }
+            throw err;
+        }
     }
 }

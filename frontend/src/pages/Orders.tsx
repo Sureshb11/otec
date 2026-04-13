@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useLocation } from 'react-router-dom';
 import { apiClient } from '../api/apiClient';
 import MainLayout from '../components/MainLayout';
 import Can from '../components/Can';
@@ -194,9 +195,10 @@ interface OrderCardProps {
   onTrackingChange: (orderId: string, t: MachineTracking) => void;
   hasHardcopy?: boolean;
   onDelete?: (id: string) => void;
+  onReturn?: (id: string) => void;
 }
 
-const OrderCard = ({ order, colId, tracking, onDragStart, onTrackingChange, hasHardcopy, onDelete }: OrderCardProps) => {
+const OrderCard = ({ order, colId, tracking, onDragStart, onTrackingChange, hasHardcopy, onDelete, onReturn }: OrderCardProps) => {
   const col           = COLUMNS.find(c => c.id === colId)!;
   const isInTransit   = colId === 'in-transit';
   const isOnsite      = colId === 'onsite';
@@ -449,6 +451,26 @@ const OrderCard = ({ order, colId, tracking, onDragStart, onTrackingChange, hasH
             )}
           </div>
         )}
+
+        {/* Job Done: Return Tools button */}
+        {colId === 'job-done' && (
+          <div className="border-t border-slate-100 dark:border-white/5 pt-2.5 mt-1 flex items-center justify-between gap-2">
+            {hasHardcopy && (
+              <span className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-medium">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                </svg>
+                Doc attached
+              </span>
+            )}
+            <button
+              onClick={(e) => { e.stopPropagation(); onReturn?.(order.id); }}
+              className="ml-auto text-xs bg-purple-600 text-white px-3 py-1.5 rounded-lg hover:bg-purple-700 font-bold transition-colors"
+            >
+              Return Tools
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -609,6 +631,7 @@ const NewOrderModal = ({ customers, locations, rigs, tools, isSaving, onClose, o
                   <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                 </div>
                 <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+                  min={new Date().toISOString().split('T')[0]}
                   className="w-full border border-slate-200 dark:border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm bg-white/50 dark:bg-boxdark dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 transition-all cursor-pointer" />
               </div>
               {!startDate && <p className="text-[10px] text-slate-400 mt-1.5 font-medium">Defaults to today if left empty</p>}
@@ -683,6 +706,7 @@ const NewOrderModal = ({ customers, locations, rigs, tools, isSaving, onClose, o
 
 const Orders = () => {
   const queryClient = useQueryClient();
+  const location = useLocation();
 
   const { data: orders    = [], isLoading } = useQuery({ queryKey: ['orders'],    queryFn: apiClient.orders.getAll,    refetchInterval: 30000 });
   const { data: customers = [] }            = useQuery({ queryKey: ['customers'], queryFn: apiClient.customers.getAll });
@@ -727,7 +751,7 @@ const Orders = () => {
   };
   const [dragId,           setDragId]           = useState<string | null>(null);
   const [dragOver,         setDragOver]         = useState<KanbanColId | null>(null);
-  const [showModal,        setShowModal]        = useState(false);
+  const [showModal,        setShowModal]        = useState(() => !!(location.state as any)?.openNewOrder);
   const [reportOrder,      setReportOrder]      = useState<any | null>(null);   // order awaiting job-done confirmation
   const [reportTracking,   setReportTracking]   = useState<MachineTracking | null>(null);
   // Map of orderId → hardcopy filename, persisted across re-renders
@@ -771,11 +795,24 @@ const Orders = () => {
     const curr      = getTracking(dragId);
     let t: MachineTracking = { ...curr, lastUpdated: nowStr() };
 
+    const currentColId = getColId(order.status, curr);
+
     switch (targetColId) {
       case 'booked':
         t = emptyTracking();
         break;
-      case 'in-transit':
+      case 'in-transit': {
+        // Block if moving back from Onsite and operation has already started
+        if (currentColId === 'onsite' && curr.operationStarted.status) {
+          alert('Cannot move back to In-Transit: operation has already started on this order.');
+          setDragId(null); setDragOver(null); return;
+        }
+        // Confirm before dispatching from Booked
+        if (currentColId === 'booked') {
+          if (!window.confirm(`Dispatch order #${order.orderNumber} to In-Transit? This will mark the order as active.`)) {
+            setDragId(null); setDragOver(null); return;
+          }
+        }
         t = {
           ...t,
           leftYard:         curr.leftYard.status ? curr.leftYard : { status: true, timestamp: nowStr(), markedBy: '', markedByRole: '' },
@@ -784,6 +821,7 @@ const Orders = () => {
           isActive: true,
         };
         break;
+      }
       case 'onsite':
         t = {
           ...t,
@@ -829,34 +867,38 @@ const Orders = () => {
     if (reportData.hardcopyFileName) {
       setHardcopyMap(prev => ({ ...prev, [reportOrder.id]: reportData.hardcopyFileName! }));
     }
-    // Chain: active → job_done → returned
-    // The "returned" transition releases tools (marks available, clears rig, logs hours)
+    // Move to job_done — keep it visible in the "Job Done & Return" column
+    // Tools are released when the order is explicitly returned from that column
     const orderId = reportOrder.id;
-    const chainToReturned = () => {
-      apiClient.orders.updateStatus(orderId, 'returned')
-        .then(() => queryClient.invalidateQueries({ queryKey: ['orders'] }))
-        .catch(() => console.error('Failed to auto-transition to returned'));
-    };
-
     if (reportOrder.status !== 'job_done') {
       apiClient.orders.updateStatus(orderId, 'job_done')
-        .then(() => chainToReturned())
+        .then(() => queryClient.invalidateQueries({ queryKey: ['orders'] }))
         .catch(() => alert('Failed to update order status to Job Done.'));
     } else {
-      chainToReturned();
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
     }
-    // Clean up tracking data for this order
-    setTrackingMap(prev => {
-      const next = { ...prev };
-      delete next[orderId];
-      return next;
-    });
     setReportOrder(null);
     setReportTracking(null);
   };
 
   const handleTrackingChange = (orderId: string, t: MachineTracking) =>
     setTrackingMap(prev => ({ ...prev, [orderId]: t }));
+
+  const handleReturn = (orderId: string) => {
+    const order = allOrders.find((o: any) => o.id === orderId);
+    if (!order) return;
+    if (!window.confirm(`Return tools for order #${order.orderNumber}? This will release tools back to yard.`)) return;
+    apiClient.orders.updateStatus(orderId, 'returned')
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: ['orders'] });
+        setTrackingMap(prev => {
+          const next = { ...prev };
+          delete next[orderId];
+          return next;
+        });
+      })
+      .catch(() => alert('Failed to return order.'));
+  };
 
   if (isLoading) {
     return (
@@ -983,6 +1025,7 @@ const Orders = () => {
                     onTrackingChange={handleTrackingChange}
                     hasHardcopy={!!hardcopyMap[order.id]}
                     onDelete={handleDelete}
+                    onReturn={handleReturn}
                   />
                 ))
               )}
