@@ -21,7 +21,7 @@ import Rigs from './pages/Rigs';
 import Reports from './pages/Reports';
 import RequestPasswordReset from './pages/RequestPasswordReset';
 import ResetPassword from './pages/ResetPassword';
-import SingleView from './pages/SingleView';
+import ToolBoard from './pages/SingleView';
 import { MaintenanceOverview, MaintenanceToolDetail } from './pages/Maintenance';
 import MainLayout from './components/MainLayout';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -147,12 +147,12 @@ function App() {
               </ProtectedRoute>
             }
           />
-          {/* Single View — TV dashboard, no MainLayout wrapper (full-screen) */}
+          {/* Tool Board — TV display, no MainLayout wrapper (full-screen) */}
           <Route
-            path="/dashboard/single-view"
+            path="/dashboard/tool-board"
             element={
               <ProtectedRoute>
-                <SingleView />
+                <ToolBoard />
               </ProtectedRoute>
             }
           />
