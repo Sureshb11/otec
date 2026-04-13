@@ -8,6 +8,7 @@ import RoleManagement from './pages/RoleManagement';
 import RoleCRUD from './pages/RoleCRUD';
 import RolePermissions from './pages/RolePermissions';
 import CreateUser from './pages/CreateUser';
+import EditUser from './pages/EditUser';
 import Settings from './pages/Settings';
 import Orders from './pages/Orders';
 import CustomerDetails from './pages/CustomerDetails';
@@ -237,6 +238,18 @@ function App() {
                 <MainLayout>
                   <CreateUser />
                 </MainLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/users/:id/edit"
+            element={
+              <ProtectedRoute>
+                <PermissionRoute module="users" action="edit">
+                  <MainLayout>
+                    <EditUser />
+                  </MainLayout>
+                </PermissionRoute>
               </ProtectedRoute>
             }
           />
