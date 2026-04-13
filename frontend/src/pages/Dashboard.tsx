@@ -37,7 +37,7 @@ const Dashboard = () => {
   });
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>('CRT');
   const [baseTime] = useState(() => new Date()); // captured once at mount
 
   // Fetch real data from API
@@ -86,11 +86,7 @@ const Dashboard = () => {
             totalCustomers: Array.isArray(customersData) ? customersData.length : 0,
           });
 
-          // Auto-select first category
-          const categories = [...new Set(mapped.map(t => t.category))];
-          if (categories.length > 0 && !selectedCategory) {
-            setSelectedCategory(categories[0]);
-          }
+          // CRT is pre-selected by default via useState
         }
       } catch (err) {
         console.error('Dashboard fetch error:', err);
