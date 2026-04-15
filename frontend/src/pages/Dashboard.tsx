@@ -148,9 +148,14 @@ const Dashboard = () => {
         if (Array.isArray(ordersData)) {
           const map: Record<string, string> = {};
           ordersData.forEach((order: any) => {
-            if (order.status === 'active' && order.activatedAt && Array.isArray(order.items)) {
+            if (order.status === 'active' && Array.isArray(order.items)) {
+              // Use activatedAt if available, fall back to createdAt
+              const timestamp = order.activatedAt || order.createdAt;
+              if (!timestamp) return;
               order.items.forEach((item: any) => {
-                map[item.toolId] = order.activatedAt;
+                // Map by both toolId and nested tool.id to handle different API response shapes
+                const tid = item.toolId || item.tool?.id;
+                if (tid) map[tid] = timestamp;
               });
             }
           });
