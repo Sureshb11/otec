@@ -13,6 +13,18 @@ const Reports = () => {
   const [selectedReportType, setSelectedReportType] = useState<string>('orders');
   const [fromDate, setFromDate] = useState<string>('');
   const [toDate, setToDate] = useState<string>('');
+  const [showColumnMenu, setShowColumnMenu] = useState<boolean>(false);
+  const [columns, setColumns] = useState({
+    orderNo: true,
+    bookedDate: true,
+    transitDate: true,
+    startedDate: true,
+    returnedDate: true,
+    customer: true,
+    rig: true,
+    status: true,
+    amount: true
+  });
   const [tools, setTools] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
@@ -315,7 +327,29 @@ const Reports = () => {
                   <p><strong>Filter:</strong> {fromDate || 'Start'} to {toDate || 'End'}</p>
                 </div>
               </div>
-              <div className="flex gap-4 print:hidden">
+              <div className="flex gap-4 print:hidden items-end relative">
+                  <div className="relative">
+                    <button 
+                      onClick={() => setShowColumnMenu(!showColumnMenu)}
+                      className="p-2 mb-1 rounded-lg border border-slate-200 dark:border-strokedark dark:bg-boxdark hover:bg-slate-50 dark:hover:bg-meta-4 focus:ring-2 focus:ring-primary-500 focus:outline-none transition-all flex items-center justify-center gap-2 text-sm font-bold text-slate-600 dark:text-slate-300"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" /></svg>
+                      Columns
+                    </button>
+                    {showColumnMenu && (
+                      <div className="absolute top-full right-0 lg:left-0 lg:right-auto z-50 mt-2 w-48 bg-white dark:bg-boxdark border border-slate-200 dark:border-strokedark rounded-xl shadow-xl overflow-hidden">
+                        <div className="p-3 bg-slate-50 dark:bg-meta-4 border-b border-slate-200 dark:border-strokedark text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-300">Visible Fields</div>
+                        <div className="p-2 max-h-64 overflow-y-auto flex flex-col gap-1">
+                          {Object.entries(columns).map(([key, val]) => (
+                            <label key={key} className="flex items-center gap-3 px-3 py-2 hover:bg-slate-50 dark:hover:bg-meta-4 rounded-lg cursor-pointer">
+                              <input type="checkbox" checked={val} onChange={() => setColumns(p => ({ ...p, [key]: !p[key as keyof typeof columns] }))} className="rounded text-primary-500 focus:ring-primary-500 bg-transparent border-slate-300 dark:border-strokedark" />
+                              <span className="text-sm font-medium text-slate-700 dark:text-slate-200 capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                   <div className="flex flex-col">
                     <label className="text-xs font-bold mb-1 text-slate-500 dark:text-slate-400">From Date</label>
                     <input type="date" className="p-2 rounded-lg border border-slate-200 dark:border-strokedark dark:bg-boxdark focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all" value={fromDate} onChange={e => setFromDate(e.target.value)} />
@@ -330,39 +364,45 @@ const Reports = () => {
             <div className="overflow-x-auto print:overflow-visible">
               <table className="w-full text-left text-sm print:text-[11px] print:leading-tight border-collapse">
                 <thead>
-                  <tr className="border-b-2 border-slate-200 dark:border-slate-700 print:border-black text-slate-600 dark:text-slate-300 print:text-black">
-                    <th className="py-4 px-4 print:py-2 print:px-2 font-black tracking-widest uppercase">Order No</th>
-                    <th className="py-4 px-4 print:py-2 print:px-2 font-black tracking-widest uppercase">Date</th>
-                    <th className="py-4 px-4 print:py-2 print:px-2 font-black tracking-widest uppercase">Customer</th>
-                    <th className="py-4 px-4 print:py-2 print:px-2 font-black tracking-widest uppercase">Location/Rig</th>
-                    <th className="py-4 px-4 print:py-2 print:px-2 font-black tracking-widest uppercase">Status</th>
-                    <th className="py-4 px-4 print:py-2 print:px-2 font-black tracking-widest uppercase text-right">Amount</th>
+                  <tr className="border-b-2 border-slate-200 dark:border-slate-700 print:border-black text-slate-600 dark:text-slate-300 print:text-black whitespace-nowrap">
+                    {columns.orderNo && <th className="py-4 px-4 print:py-2 print:px-2 font-black tracking-widest uppercase text-[10px]">Order No</th>}
+                    {columns.bookedDate && <th className="py-4 px-4 print:py-2 print:px-2 font-black tracking-widest uppercase text-[10px]">Booked Date</th>}
+                    {columns.transitDate && <th className="py-4 px-4 print:py-2 print:px-2 font-black tracking-widest uppercase text-[10px]">Transit Date</th>}
+                    {columns.startedDate && <th className="py-4 px-4 print:py-2 print:px-2 font-black tracking-widest uppercase text-[10px]">Started Date</th>}
+                    {columns.returnedDate && <th className="py-4 px-4 print:py-2 print:px-2 font-black tracking-widest uppercase text-[10px]">Return Date</th>}
+                    {columns.customer && <th className="py-4 px-4 print:py-2 print:px-2 font-black tracking-widest uppercase text-[10px]">Customer</th>}
+                    {columns.rig && <th className="py-4 px-4 print:py-2 print:px-2 font-black tracking-widest uppercase text-[10px]">Location/Rig</th>}
+                    {columns.status && <th className="py-4 px-4 print:py-2 print:px-2 font-black tracking-widest uppercase text-[10px]">Status</th>}
+                    {columns.amount && <th className="py-4 px-4 print:py-2 print:px-2 font-black tracking-widest uppercase text-right text-[10px]">Amount</th>}
                   </tr>
                 </thead>
                 <tbody className="print:text-black">
                   {filteredDetailedOrders.map(order => (
-                    <tr key={order.id} className="border-b border-slate-100 dark:border-slate-800/50 print:border-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors">
-                      <td className="py-3 px-4 print:py-1.5 print:px-2 font-bold text-slate-700 dark:text-slate-200 print:text-black">{order.orderNumber}</td>
-                      <td className="py-3 px-4 print:py-1.5 print:px-2 text-slate-500 dark:text-slate-400 print:text-black whitespace-nowrap">{new Date(order.createdAt || order.startDate).toLocaleDateString()}</td>
-                      <td className="py-3 px-4 print:py-1.5 print:px-2 font-medium text-slate-700 dark:text-slate-300 print:text-black">{order.customer?.name || '—'}</td>
-                      <td className="py-3 px-4 print:py-1.5 print:px-2 text-slate-500 dark:text-slate-400 print:text-black">{order.rig?.name || order.location?.name || '—'}</td>
-                      <td className="py-3 px-4 print:py-1.5 print:px-2 print:text-black">
-                        <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-wider print:border print:border-slate-300 print:bg-transparent print:text-black ${
+                    <tr key={order.id} className="border-b border-slate-100 dark:border-slate-800/50 print:border-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors text-[13px] print:text-[10px]">
+                      {columns.orderNo && <td className="py-3 px-4 print:py-1.5 print:px-2 font-bold text-slate-700 dark:text-slate-200 print:text-black whitespace-nowrap">{order.orderNumber}</td>}
+                      {columns.bookedDate && <td className="py-3 px-4 print:py-1.5 print:px-2 text-slate-500 dark:text-slate-400 print:text-black whitespace-nowrap">{order.createdAt ? new Date(order.createdAt).toLocaleDateString() : '—'}</td>}
+                      {columns.transitDate && <td className="py-3 px-4 print:py-1.5 print:px-2 text-slate-500 dark:text-slate-400 print:text-black whitespace-nowrap">{order.startDate ? new Date(order.startDate).toLocaleDateString() : '—'}</td>}
+                      {columns.startedDate && <td className="py-3 px-4 print:py-1.5 print:px-2 text-slate-500 dark:text-slate-400 print:text-black whitespace-nowrap">{order.activatedAt ? new Date(order.activatedAt).toLocaleDateString() : '—'}</td>}
+                      {columns.returnedDate && <td className="py-3 px-4 print:py-1.5 print:px-2 text-slate-500 dark:text-slate-400 print:text-black whitespace-nowrap">{order.returnedAt ? new Date(order.returnedAt).toLocaleDateString() : '—'}</td>}
+                      {columns.customer && <td className="py-3 px-4 print:py-1.5 print:px-2 font-medium text-slate-700 dark:text-slate-300 print:text-black min-w-[120px]">{order.customer?.name || '—'}</td>}
+                      {columns.rig && <td className="py-3 px-4 print:py-1.5 print:px-2 text-slate-500 dark:text-slate-400 print:text-black min-w-[100px]">{order.rig?.name || order.location?.name || '—'}</td>}
+                      {columns.status && <td className="py-3 px-4 print:py-1.5 print:px-2 print:text-black">
+                        <span className={`px-2 py-1 rounded text-[9px] font-black uppercase tracking-wider print:border print:border-slate-300 print:bg-transparent print:text-black ${
                           order.status === 'job_done' || order.status === 'returned' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' :
                           order.status === 'active' ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400' : 
                           'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
                         }`}>
                           {order.status.replace('_', ' ')}
                         </span>
-                      </td>
-                      <td className="py-3 px-4 print:py-1.5 print:px-2 text-right font-bold text-slate-700 dark:text-slate-200 print:text-black">
+                      </td>}
+                      {columns.amount && <td className="py-3 px-4 print:py-1.5 print:px-2 text-right font-bold text-slate-700 dark:text-slate-200 print:text-black whitespace-nowrap">
                         {Number(order.totalAmount || 0) > 0 ? Number(order.totalAmount).toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : '—'}
-                      </td>
+                      </td>}
                     </tr>
                   ))}
                   {filteredDetailedOrders.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="text-center py-12 text-slate-500 dark:text-slate-400 print:text-black font-medium">
+                      <td colSpan={10} className="text-center py-12 text-slate-500 dark:text-slate-400 print:text-black font-medium">
                         No orders found for the selected period.
                       </td>
                     </tr>
