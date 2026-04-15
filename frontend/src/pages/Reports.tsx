@@ -376,8 +376,8 @@ const Reports = () => {
             </div>
           </div>
         ) : (
-        {/* Dynamic Dashboard Section */}
         <div className="glass-premium dark:bg-boxdark/90 rounded-3xl border border-white/20 dark:border-white/5 shadow-2xl overflow-hidden relative print:hidden">
+          {/* Dynamic Dashboard Section */}
           <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[50%] bg-blue-500/10 blur-[100px] pointer-events-none"></div>
           
           <div className="p-8 relative z-10">
