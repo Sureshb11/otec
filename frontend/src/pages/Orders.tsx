@@ -198,7 +198,10 @@ interface OrderCardProps {
   onReturn?: (id: string) => void;
 }
 
+import { Link, useNavigate } from 'react-router-dom';
+
 const OrderCard = ({ order, colId, tracking, onDragStart, onTrackingChange, hasHardcopy, onDelete, onReturn }: OrderCardProps) => {
+  const navigate = useNavigate();
   const col           = COLUMNS.find(c => c.id === colId)!;
   const isInTransit   = colId === 'in-transit';
   const isOnsite      = colId === 'onsite';
@@ -218,7 +221,8 @@ const OrderCard = ({ order, colId, tracking, onDragStart, onTrackingChange, hasH
     <div
       draggable
       onDragStart={() => onDragStart(order.id)}
-      className="bg-white dark:bg-boxdark rounded-xl shadow-sm border border-slate-100 dark:border-white/5 hover:shadow-md transition-all duration-200 cursor-grab active:cursor-grabbing select-none"
+      onClick={() => navigate(`/orders/${order.id}`)}
+      className="bg-white dark:bg-boxdark rounded-xl shadow-sm border border-slate-100 dark:border-white/5 hover:shadow-md transition-all duration-200 cursor-pointer active:cursor-grabbing select-none"
     >
       {/* Accent bar */}
       <div className={`h-1 rounded-t-xl ${col.topBar}`} />
@@ -242,7 +246,7 @@ const OrderCard = ({ order, colId, tracking, onDragStart, onTrackingChange, hasH
             {colId === 'booked' && (
               <button 
                 onClick={(e) => { e.stopPropagation(); onDelete?.(order.id); }} 
-                className="text-slate-400 hover:text-red-500 transition-colors ml-2"
+                className="text-slate-400 hover:text-red-500 transition-colors ml-2 z-10 relative"
                 title="Delete Order"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
