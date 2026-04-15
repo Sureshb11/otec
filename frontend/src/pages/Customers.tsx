@@ -354,10 +354,8 @@ const Customers = () => {
             <tbody className="divide-y divide-slate-100 dark:divide-white/5">
               {filteredCustomers.map((customer) => (
                 <tr key={customer.id} className="hover:bg-blue-50/30 dark:hover:bg-blue-500/5 transition-colors duration-200 group">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-700 dark:text-blue-400">
-                    <Link to={`/customers/${customer.id}`} className="hover:underline decoration-blue-400/50 underline-offset-4">
-                      {customer.name}
-                    </Link>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-700 dark:text-slate-200">
+                    {customer.name}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">{customer.email}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">{customer.phone || '--'}</td>

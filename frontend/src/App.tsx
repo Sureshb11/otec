@@ -74,14 +74,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/customers/:customerId"
-            element={
-              <ProtectedRoute>
-                <CustomerDetails />
-              </ProtectedRoute>
-            }
-          />
+
           <Route
             path="/orders/:orderId"
             element={
