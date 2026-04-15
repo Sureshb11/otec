@@ -1090,7 +1090,7 @@ const Orders = () => {
       )}
 
       {selectedPopupOrderId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setSelectedPopupOrderId(null)} />
           <div className="relative bg-white dark:bg-boxdark rounded-2xl w-full max-w-6xl h-[90vh] shadow-2xl overflow-hidden flex flex-col border border-slate-200 dark:border-white/10">
             <OrderDetails orderIdProp={selectedPopupOrderId} isModal={true} onClose={() => setSelectedPopupOrderId(null)} />
