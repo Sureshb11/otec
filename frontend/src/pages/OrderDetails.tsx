@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { formatDistance } from 'date-fns';
 import UserAvatarMenu from '../components/UserAvatarMenu';
 import { apiClient } from '../api/apiClient';
 
@@ -610,12 +611,83 @@ const OrderDetails = () => {
               </div>
             )}
 
-            {activeTab === 'history' && (
-              <div className="bg-white dark:bg-boxdark rounded-lg shadow p-6">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Order History</h2>
-                <p className="text-gray-600 dark:text-bodydark2">No history available</p>
+            {activeTab === 'history' && (() => {
+              const created = order.createdAt ? new Date(order.createdAt) : (order.startDate ? new Date(order.startDate) : null);
+              const activated = order.activatedAt ? new Date(order.activatedAt) : null;
+              const returned = order.returnedAt ? new Date(order.returnedAt) : null;
+              
+              const runDuration = activated ? formatDistance(returned || new Date(), activated) : null;
+              
+              return (
+              <div className="bg-white dark:bg-boxdark rounded-3xl shadow-xl overflow-hidden border border-slate-200 dark:border-strokedark max-w-4xl">
+                <div className="p-8 pb-0 border-b border-slate-100 dark:border-strokedark mb-6">
+                   <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2">Order Lifecycle Timeline</h2>
+                   <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-8 tracking-wide">End-to-end trace of execution timestamps.</p>
+                </div>
+                <div className="p-8 pt-0 relative">
+                   <div className="absolute left-[39px] top-4 bottom-12 w-0.5 bg-slate-200 dark:bg-slate-700"></div>
+                   
+                   {/* Booked / Created */}
+                   {created && (
+                   <div className="flex items-start mb-10 relative">
+                     <div className="w-6 h-6 rounded-full bg-blue-100 border-4 border-white dark:border-boxdark flex items-center justify-center shrink-0 z-10 shadow-sm mt-1">
+                       <div className="w-2.5 h-2.5 bg-blue-500 rounded-full"></div>
+                     </div>
+                     <div className="ml-6 flex-1">
+                       <h3 className="text-lg font-black text-slate-800 dark:text-white tracking-tight">Order Booked & Formulated</h3>
+                       <p className="text-[11px] font-black tracking-widest uppercase text-slate-400 mt-1">{created.toLocaleString()}</p>
+                       <div className="mt-4 p-4 bg-slate-50 dark:bg-[#1E293B]/50 rounded-xl border border-slate-100 dark:border-strokedark/50 inline-block">
+                         <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Order successfully initiated into the system pipeline by operations manager.</span>
+                       </div>
+                     </div>
+                   </div>
+                   )}
+
+                   {/* Activated / In Transit to Onsite */}
+                   {activated && (
+                   <div className="flex items-start mb-10 relative">
+                     <div className="w-6 h-6 rounded-full bg-emerald-100 border-4 border-white dark:border-boxdark flex items-center justify-center shrink-0 z-10 shadow-sm mt-1">
+                       <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse"></div>
+                     </div>
+                     <div className="ml-6 flex-1">
+                       <h3 className="text-lg font-black text-slate-800 dark:text-white tracking-tight">Arrived Onsite & Executing</h3>
+                       <p className="text-[11px] font-black tracking-widest uppercase text-slate-400 mt-1">{activated.toLocaleString()}</p>
+                       <div className="mt-4 px-6 py-4 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-xl inline-flex flex-col shadow-sm">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400/80 mb-1">Live Run Duration</span>
+                          <p className="text-xl font-black text-emerald-700 dark:text-emerald-300">{runDuration}</p>
+                       </div>
+                     </div>
+                   </div>
+                   )}
+
+                   {/* Returned / Concluded */}
+                   {returned && (
+                   <div className="flex items-start relative">
+                     <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 border-4 border-white dark:border-boxdark flex items-center justify-center shrink-0 z-10 shadow-sm mt-1">
+                       <div className="w-2.5 h-2.5 bg-slate-400 dark:bg-slate-500 rounded-full"></div>
+                     </div>
+                     <div className="ml-6 flex-1">
+                       <h3 className="text-lg font-black text-slate-800 dark:text-white tracking-tight">Job Concluded & Assets Returned</h3>
+                       <p className="text-[11px] font-black tracking-widest uppercase text-slate-400 mt-1">{returned.toLocaleString()}</p>
+                       <div className="mt-4 p-4 bg-slate-50 dark:bg-[#1E293B]/50 rounded-xl border border-slate-100 dark:border-strokedark/50 inline-block">
+                         <span className="text-sm font-medium text-slate-600 dark:text-slate-400">All tools logged functionally returned and job cycle successfully closed.</span>
+                       </div>
+                     </div>
+                   </div>
+                   )}
+                   
+                   {!created && !activated && !returned && (
+                     <div className="text-center py-12">
+                       <svg className="w-16 h-16 mx-auto mb-4 text-slate-300 dark:text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                       </svg>
+                       <p className="text-sm font-bold text-slate-500 dark:text-slate-400">Timeline mapping is currently unavailable for this order.</p>
+                     </div>
+                   )}
+                </div>
               </div>
-            )}
+              );
+            })()}
           </div>
         </div>
       </div>
