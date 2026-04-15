@@ -200,10 +200,7 @@ interface OrderCardProps {
   onView?: (id: string) => void;
 }
 
-import { Link, useNavigate } from 'react-router-dom';
-
 const OrderCard = ({ order, colId, tracking, onDragStart, onTrackingChange, hasHardcopy, onDelete, onReturn, onView }: OrderCardProps) => {
-  const navigate = useNavigate();
   const col           = COLUMNS.find(c => c.id === colId)!;
   const isInTransit   = colId === 'in-transit';
   const isOnsite      = colId === 'onsite';

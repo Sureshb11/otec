@@ -11,8 +11,6 @@ import CreateUser from './pages/CreateUser';
 import EditUser from './pages/EditUser';
 import Settings from './pages/Settings';
 import Orders from './pages/Orders';
-import CustomerDetails from './pages/CustomerDetails';
-import OrderDetails from './pages/OrderDetails';
 import Inventory from './pages/Inventory';
 import Tools from './pages/Tools';
 import Customers from './pages/Customers';

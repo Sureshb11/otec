@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import MainLayout from '../components/MainLayout';
 import Can from '../components/Can';
 import { apiClient } from '../api/apiClient';
@@ -124,7 +123,7 @@ const Customers = () => {
     if (!confirmDelete) return;
     try {
       setDeleting(true);
-      const updated = await apiClient.customers.delete(confirmDelete.id);
+      await apiClient.customers.delete(confirmDelete.id);
       setCustomers(prev => prev.map(c => c.id === confirmDelete.id ? { ...c, isActive: false } : c));
       setConfirmDelete(null);
     } catch (err: any) {
