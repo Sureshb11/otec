@@ -418,23 +418,23 @@ const Dashboard = () => {
             </div>
           </div>
 
-          <div className="flex-1 p-6 overflow-y-auto custom-scrollbar bg-transparent relative z-10">
+          <div className="flex-1 p-4 overflow-y-auto custom-scrollbar bg-transparent relative z-10">
             {selectedCategory ? (
               liveInstances.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3">
                   {liveInstances.map((inst) => (
                     <div key={inst.id} className="relative group perspective-1000">
                       {/* Animated Glow Backdrop */}
                       <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 rounded-2xl blur opacity-20 group-hover:opacity-60 transition duration-1000 group-hover:duration-200"></div>
 
                       {/* Main Card Container */}
-                      <div className="relative h-full flex flex-col bg-white dark:bg-[#111827]/90 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-2xl transition-all duration-300 overflow-hidden z-10">
+                      <div className="relative h-full flex flex-col bg-white dark:bg-[#111827]/90 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-lg transition-all duration-300 overflow-hidden z-10">
 
                         {/* Status Bar Top Line */}
                         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 to-teal-500 opacity-90"></div>
 
                         {/* Top Header Row */}
-                        <div className="flex justify-between items-start mb-5">
+                        <div className="flex justify-between items-start mb-3">
                           {/* Tool Status Badge */}
                           <div className="flex items-center gap-2 px-3 py-1 bg-emerald-50 dark:bg-emerald-500/10 rounded-full border border-emerald-100 dark:border-emerald-500/20 w-fit">
                             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
@@ -451,37 +451,37 @@ const Dashboard = () => {
                         </div>
 
                         {/* Tool Identity Section */}
-                        <div className="flex-1 mb-6 relative">
+                        <div className="flex-1 mb-3 relative">
                           {/* Decorative Background Icon */}
-                          <svg className="absolute -right-4 -top-8 w-32 h-32 text-slate-50 dark:text-slate-800/50 -z-10 transform -rotate-12 transition-transform duration-500 group-hover:rotate-0" fill="currentColor" viewBox="0 0 24 24"><path d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+                          <svg className="absolute -right-2 -top-4 w-20 h-20 text-slate-50 dark:text-slate-800/50 -z-10 transform -rotate-12 transition-transform duration-500 group-hover:rotate-0" fill="currentColor" viewBox="0 0 24 24"><path d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
 
-                          <h3 className="font-black text-2xl text-slate-900 dark:text-white tracking-tight leading-none mb-1 shadow-sm mix-blend-luminosity">{inst.name}</h3>
+                          <h3 className="font-black text-lg text-slate-900 dark:text-white tracking-tight leading-tight mb-0.5">{inst.name}</h3>
 
-                          <div className="flex items-center gap-3 mt-2">
-                            <span className="bg-slate-100 dark:bg-[#1E293B] px-2 py-0.5 rounded text-[11px] font-mono font-bold text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">{inst.serialNumber}</span>
-                            <span className="text-xs font-black text-sky-600 dark:text-sky-400">{inst.size} Series</span>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="bg-slate-100 dark:bg-[#1E293B] px-1.5 py-0.5 rounded text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 truncate max-w-[120px]">{inst.serialNumber}</span>
+                            <span className="text-[10px] font-black text-sky-600 dark:text-sky-400">{inst.size} Series</span>
                           </div>
 
                           {/* Location & Rig Data */}
                           {(inst.rigLocation || inst.rigName) && (
-                            <div className="mt-4 flex flex-wrap items-end justify-between gap-2">
-                              <div className="flex flex-col gap-2 items-start">
+                            <div className="mt-2 flex flex-wrap items-center justify-between gap-1.5">
+                              <div className="flex flex-wrap gap-1.5 items-center">
                                 {inst.rigLocation && (
-                                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/50 px-2.5 py-1 rounded-md border border-slate-100 dark:border-slate-700/50">
+                                  <div className="flex items-center gap-1 text-[10px] font-bold text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/50 px-2 py-0.5 rounded border border-slate-100 dark:border-slate-700/50">
                                     <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                                     {inst.rigLocation}
                                   </div>
                                 )}
                                 {inst.rigName && (
-                                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/50 px-2.5 py-1 rounded-md border border-slate-100 dark:border-slate-700/50">
+                                  <div className="flex items-center gap-1 text-[10px] font-bold text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/50 px-2 py-0.5 rounded border border-slate-100 dark:border-slate-700/50">
                                     <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
                                     {inst.rigName}
                                   </div>
                                 )}
                               </div>
 
-                              {/* Pumpjack Animation Wrapper - Moved here next to Location */}
-                              <div className="w-14 h-14 flex flex-col justify-end relative shrink-0 opacity-90 -mb-2">
+                              {/* Pumpjack Animation - Compact */}
+                              <div className="w-10 h-10 flex flex-col justify-end relative shrink-0 opacity-80">
                                 <svg width="100%" height="100%" viewBox="0 0 100 100" className="drop-shadow-sm scale-110 origin-bottom right-0">
                                   {/* Base & Structure */}
                                   <path d="M10 85 h80 v6 c0 2-2 4-4 4 h-72 c-2 0-4-2-4-4 z" fill="#475569" className="dark:fill-slate-600" />
@@ -519,45 +519,37 @@ const Dashboard = () => {
                           )}
                         </div>
 
-                        {/* Premium Runtime Gauge Bottom Section */}
-                        <div className="bg-[#F8FAFC] dark:bg-[#0F172A] -mx-5 -mb-5 p-5 mt-auto border-t border-slate-200 dark:border-slate-800/80 relative overflow-hidden group/gauge">
-                          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-[0.03] pointer-events-none"></div>
-                          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 blur-[30px] rounded-full translate-x-1/3 -translate-y-1/3 group-hover/gauge:bg-blue-400/20 transition-colors duration-700 pointer-events-none"></div>
-
+                        {/* Compact Runtime Gauge */}
+                        <div className="bg-[#F8FAFC] dark:bg-[#0F172A] -mx-3.5 -mb-3.5 px-3.5 py-3 mt-auto border-t border-slate-200 dark:border-slate-800/80 relative overflow-hidden">
                           <div className="flex items-center justify-between relative z-10">
-
                             {/* Time Display */}
                             <div>
-                              <div className="flex items-center gap-1.5 mb-1 text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.2em]">
+                              <div className="flex items-center gap-1 mb-0.5 text-[9px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.15em]">
                                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
                                 Active Runtime
                               </div>
                               <div className="flex items-baseline font-mono tracking-tighter">
-                                <span className="text-4xl font-black text-slate-800 dark:text-white leading-[1.1] tabular-nums drop-shadow-sm">
+                                <span className="text-2xl font-black text-slate-800 dark:text-white leading-none tabular-nums">
                                   {inst.hours.toString().padStart(2, '0')}
                                 </span>
-                                <span className="text-sm font-bold text-slate-400 dark:text-slate-500 ml-1 uppercase tracking-widest mr-3">h</span>
-
-                                <span className="text-2xl font-black text-slate-600 dark:text-slate-300 leading-[1.1] tabular-nums">
+                                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 ml-0.5 uppercase mr-1.5">h</span>
+                                <span className="text-xl font-black text-slate-600 dark:text-slate-300 leading-none tabular-nums">
                                   {inst.minutes.toString().padStart(2, '0')}
                                 </span>
-                                <span className="text-xs font-bold text-slate-400 dark:text-slate-500 ml-0.5 uppercase tracking-widest mr-2">m</span>
-
-                                <span className="text-lg font-black text-slate-400 dark:text-slate-500 leading-[1.1] tabular-nums">
+                                <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 ml-0.5 uppercase mr-1.5">m</span>
+                                <span className="text-base font-black text-slate-400 dark:text-slate-500 leading-none tabular-nums">
                                   {inst.seconds.toString().padStart(2, '0')}
                                 </span>
-                                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 ml-0.5 uppercase tracking-widest">s</span>
+                                <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 ml-0.5 uppercase">s</span>
                               </div>
                             </div>
-
-
                           </div>
                         </div>
                       </div>
 
                       {/* Operational Hours */}
                       {inst.operationalHours > 0 && (
-                        <div className="mt-3 flex items-center justify-between text-xs px-1">
+                        <div className="mt-1.5 flex items-center justify-between text-[10px] px-0.5">
                           <span className="text-slate-400 font-bold uppercase tracking-wider">Lifetime Op. Hours</span>
                           <span className="font-black text-blue-600 dark:text-blue-400">{inst.operationalHours.toFixed(1)} hrs</span>
                         </div>
