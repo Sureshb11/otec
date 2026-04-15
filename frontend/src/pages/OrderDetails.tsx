@@ -4,8 +4,15 @@ import { formatDistance } from 'date-fns';
 import UserAvatarMenu from '../components/UserAvatarMenu';
 import { apiClient } from '../api/apiClient';
 
-const OrderDetails = () => {
-  const { orderId } = useParams<{ orderId: string }>();
+interface OrderDetailsProps {
+  orderIdProp?: string;
+  isModal?: boolean;
+  onClose?: () => void;
+}
+
+const OrderDetails = ({ orderIdProp, isModal, onClose }: OrderDetailsProps) => {
+  const params = useParams<{ orderId: string }>();
+  const orderId = orderIdProp || params.orderId;
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'details' | 'related' | 'history'>('details');
   const [showShippingDetails, setShowShippingDetails] = useState(false);
@@ -57,15 +64,15 @@ const OrderDetails = () => {
   }, [orderId, isNewOrder]);
 
   if (loading) return (
-    <div className="min-h-screen bg-gray-50 dark:bg-boxdark-2 flex items-center justify-center">
+    <div className={`flex items-center justify-center ${isModal ? 'h-[60vh]' : 'min-h-screen bg-gray-50 dark:bg-boxdark-2'}`}>
       <div className="text-slate-400 font-bold text-lg">Loading…</div>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-boxdark-2">
-      <div className="flex">
-        {/* Left Sidebar - Similar to Dashboard but with dark mode */}
+    <div className={isModal ? 'bg-gray-50 dark:bg-boxdark-2 w-full h-full' : 'min-h-screen bg-gray-50 dark:bg-boxdark-2'}>
+      <div className={isModal ? 'flex flex-col h-full relative' : 'flex'}>
+        {!isModal && (
         <div className="w-64 bg-gradient-to-b from-primary-900 via-primary-800 to-primary-900 dark:from-boxdark dark:to-boxdark h-screen shadow-2xl flex flex-col z-50">
           <div className="flex flex-col h-full">
             {/* OTEC Logo */}
@@ -249,9 +256,36 @@ const OrderDetails = () => {
             <UserAvatarMenu />
           </div>
         </div>
+        )}
 
         {/* Main Content */}
-        <div className="flex-1">
+        <div className={`flex-1 flex flex-col ${isModal ? 'h-full overflow-y-auto' : 'min-h-screen overflow-hidden'}`}>
+          {/* Header */}
+          <header className={`bg-white dark:bg-boxdark shadow-sm z-10 shrink-0 ${isModal ? 'sticky top-0 sticky-header z-50' : ''}`}>
+            <div className="px-8 py-5 flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                {isModal ? (
+                <button onClick={onClose} className="p-2 -ml-2 text-gray-400 hover:text-gray-600 dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-meta-4 transition-colors">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+                ) : (
+                <Link to="/orders" className="p-2 -ml-2 text-gray-400 hover:text-gray-600 dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-meta-4 transition-colors">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                  </svg>
+                </Link>
+                )}
+                <div>
+                  <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white flex items-center space-x-3">
+                    {isNewOrder ? 'New Order' : `Order# ${order.orderNumber || orderIdProp}`}
+                  </h1>
+                </div>
+              </div>
+            </div>
+          </header>
+
           {/* Breadcrumb */}
           <div className="bg-white dark:bg-boxdark border-b border-gray-200 dark:border-strokedark px-6 py-3">
             <div className="flex items-center space-x-2 text-sm">

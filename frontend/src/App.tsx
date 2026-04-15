@@ -75,16 +75,7 @@ function App() {
             }
           />
 
-          <Route
-            path="/orders/:orderId"
-            element={
-              <ProtectedRoute>
-                <PermissionRoute module="orders">
-                  <OrderDetails />
-                </PermissionRoute>
-              </ProtectedRoute>
-            }
-          />
+
           <Route
             path="/operations/inventory"
             element={<Navigate to="/inventory" replace />}
