@@ -197,11 +197,12 @@ interface OrderCardProps {
   hasHardcopy?: boolean;
   onDelete?: (id: string) => void;
   onReturn?: (id: string) => void;
+  onView?: (id: string) => void;
 }
 
 import { Link, useNavigate } from 'react-router-dom';
 
-const OrderCard = ({ order, colId, tracking, onDragStart, onTrackingChange, hasHardcopy, onDelete, onReturn }: OrderCardProps) => {
+const OrderCard = ({ order, colId, tracking, onDragStart, onTrackingChange, hasHardcopy, onDelete, onReturn, onView }: OrderCardProps) => {
   const navigate = useNavigate();
   const col           = COLUMNS.find(c => c.id === colId)!;
   const isInTransit   = colId === 'in-transit';
@@ -222,7 +223,7 @@ const OrderCard = ({ order, colId, tracking, onDragStart, onTrackingChange, hasH
     <div
       draggable
       onDragStart={() => onDragStart(order.id)}
-      onClick={() => navigate(`/orders/${order.id}`)}
+      onClick={() => onView?.(order.id)}
       className="bg-white dark:bg-boxdark rounded-xl shadow-sm border border-slate-100 dark:border-white/5 hover:shadow-md transition-all duration-200 cursor-pointer active:cursor-grabbing select-none"
     >
       {/* Accent bar */}
