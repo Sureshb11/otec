@@ -398,16 +398,11 @@ const OrderDetails = () => {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
                         <span className="text-sm font-medium text-gray-700 dark:text-bodydark1">Customer:</span>
-                        <Link
-                          to={`/customers/${order.customer.id}`}
-                          className="text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-300 text-sm flex items-center space-x-1"
+                        <div
+                          className="text-gray-900 dark:text-white text-sm font-bold flex items-center space-x-1"
                         >
                           <span>{order.customer.name}</span>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                        </Link>
+                        </div>
                       </div>
                       <div className="flex items-center space-x-3">
                         <button className="text-sm text-primary-600 hover:text-primary-800 dark:text-primary-400">Add Business</button>
