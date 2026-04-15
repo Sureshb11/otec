@@ -286,6 +286,8 @@ const OrderDetails = ({ orderIdProp, isModal, onClose }: OrderDetailsProps) => {
             </div>
           </header>
 
+          {!isModal && (
+          <>
           {/* Breadcrumb */}
           <div className="bg-white dark:bg-boxdark border-b border-gray-200 dark:border-strokedark px-6 py-3">
             <div className="flex items-center space-x-2 text-sm">
@@ -382,6 +384,18 @@ const OrderDetails = ({ orderIdProp, isModal, onClose }: OrderDetailsProps) => {
               </div>
             </div>
           </div>
+          </>
+          )}
+
+          {/* Modal: compact status badge */}
+          {isModal && (
+            <div className="bg-white dark:bg-boxdark border-b border-gray-200 dark:border-strokedark px-6 py-3 flex items-center gap-3">
+              <span className="px-3 py-1 bg-primary-100 dark:bg-meta-4 text-primary-800 dark:text-white rounded-lg text-xs font-bold uppercase tracking-wide">{order.status}</span>
+              <span className="text-sm text-slate-500 dark:text-slate-400">{order.customer?.name || '—'}</span>
+              <span className="text-sm text-slate-400">•</span>
+              <span className="text-sm text-slate-500 dark:text-slate-400">{order.rig?.name || order.location?.name || '—'}</span>
+            </div>
+          )}
 
           {/* Tabs */}
           <div className="bg-white dark:bg-boxdark border-b border-gray-200 dark:border-strokedark px-6">
@@ -438,10 +452,12 @@ const OrderDetails = ({ orderIdProp, isModal, onClose }: OrderDetailsProps) => {
                           <span>{order.customer.name}</span>
                         </div>
                       </div>
+                      {!isModal && (
                       <div className="flex items-center space-x-3">
                         <button className="text-sm text-primary-600 hover:text-primary-800 dark:text-primary-400">Add Business</button>
                         <button className="text-sm text-primary-600 hover:text-primary-800 dark:text-primary-400">Email</button>
                       </div>
+                      )}
                     </div>
                     <div>
                       <span className="text-sm font-medium text-gray-700 dark:text-bodydark1">Category: </span>
@@ -520,6 +536,8 @@ const OrderDetails = ({ orderIdProp, isModal, onClose }: OrderDetailsProps) => {
                       <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Added Items {orderItems.length}</h3>
                     </div>
                   </div>
+                  {!isModal && (
+                  <>
                   <div className="flex items-center space-x-3 mb-4">
                     <div className="relative flex-1">
                       <input
@@ -543,6 +561,8 @@ const OrderDetails = ({ orderIdProp, isModal, onClose }: OrderDetailsProps) => {
                     <button className="text-primary-600 hover:text-primary-800">Advanced Options</button>
                     <button className="text-primary-600 hover:text-primary-800">Import Items</button>
                   </div>
+                  </>
+                  )}
                   {order.addedItems.length === 0 && (
                     <div className="mt-6 flex flex-col items-center justify-center py-12 text-gray-400">
                       <svg className="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -553,6 +573,8 @@ const OrderDetails = ({ orderIdProp, isModal, onClose }: OrderDetailsProps) => {
                   )}
                 </div>
 
+                {!isModal && (
+                <>
                 {/* Recommended Items */}
                 <div className="bg-white dark:bg-boxdark rounded-lg shadow">
                   <button
@@ -630,6 +652,8 @@ const OrderDetails = ({ orderIdProp, isModal, onClose }: OrderDetailsProps) => {
                     </div>
                   </div>
                 </div>
+                </>
+                )}
               </div>
             )}
 
@@ -721,7 +745,8 @@ const OrderDetails = ({ orderIdProp, isModal, onClose }: OrderDetailsProps) => {
         </div>
       </div>
 
-      {/* Floating Buttons */}
+      {/* Floating Buttons — hidden in modal */}
+      {!isModal && (
       <div className="fixed bottom-6 right-6 flex flex-col space-y-3">
         <button className="w-12 h-12 bg-orange-500 text-white rounded-full shadow-lg hover:bg-orange-600 flex items-center justify-center">
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -734,6 +759,7 @@ const OrderDetails = ({ orderIdProp, isModal, onClose }: OrderDetailsProps) => {
           </svg>
         </button>
       </div>
+      )}
     </div>
   );
 };
