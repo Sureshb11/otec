@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import MainLayout from '../components/MainLayout';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -11,6 +11,8 @@ const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'
 
 const Reports = () => {
   const [selectedReportType, setSelectedReportType] = useState<string>('orders');
+  const [fromDate, setFromDate] = useState<string>('');
+  const [toDate, setToDate] = useState<string>('');
   const [tools, setTools] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
@@ -36,6 +38,7 @@ const Reports = () => {
     { id: 'customers', name: 'Customers Report', icon: 'customers', description: 'Customer activity and insights' },
     { id: 'inventory', name: 'Inventory Report', icon: 'inventory', description: 'Inventory levels and movements' },
     { id: 'maintenance', name: 'Maintenance Report', icon: 'maintenance', description: 'Maintenance schedules and history' },
+    { id: 'detailed_orders', name: 'Detailed Orders', icon: 'detailed_orders', description: 'Filter and print detailed order list by date' },
   ];
 
   // Real aggregate data derived from API responses
@@ -158,6 +161,26 @@ const Reports = () => {
   const currentData = aggregateData[selectedReportType] || aggregateData.orders;
   const currentChartData = chartData[selectedReportType] || chartData.orders;
 
+  const filteredDetailedOrders = useMemo(() => {
+    return orders.filter(o => {
+      if (!fromDate && !toDate) return true;
+      const orderDate = new Date(o.createdAt || o.startDate);
+      // Strip time for fair comparison
+      orderDate.setHours(0,0,0,0);
+
+      const fDate = fromDate ? new Date(fromDate) : null;
+      if (fDate) fDate.setHours(0,0,0,0);
+      
+      const tDate = toDate ? new Date(toDate) : null;
+      if (tDate) tDate.setHours(23,59,59,999);
+
+      if (fDate && tDate) return orderDate >= fDate && orderDate <= tDate;
+      if (fDate) return orderDate >= fDate;
+      if (tDate) return orderDate <= tDate;
+      return true;
+    }).sort((a,b) => new Date(b.createdAt || b.startDate).getTime() - new Date(a.createdAt || a.startDate).getTime());
+  }, [orders, fromDate, toDate]);
+
   const renderChart = () => {
     switch (selectedReportType) {
       case 'orders':
@@ -233,17 +256,20 @@ const Reports = () => {
             </p>
           </div>
           <div className="flex gap-3 xl:ml-auto">
-            <button className="px-5 py-2.5 glass-premium dark:bg-boxdark/80 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 flex items-center gap-2 group border border-white/20">
+            <button className="px-5 py-2.5 glass-premium dark:bg-boxdark/80 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 flex items-center gap-2 group border border-white/20 print:hidden">
               <svg className="w-4 h-4 text-slate-600 dark:text-slate-300 group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
               <span className="font-bold text-sm text-slate-700 dark:text-slate-200">Export CSV</span>
             </button>
-            <button className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl text-sm font-bold shadow-[0_0_15px_rgba(37,99,235,0.3)] hover:shadow-[0_0_25px_rgba(37,99,235,0.5)] transition-all duration-300 transform hover:-translate-y-1 flex items-center space-x-2">
+            <button 
+              onClick={() => window.print()}
+              className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl text-sm font-bold shadow-[0_0_15px_rgba(37,99,235,0.3)] hover:shadow-[0_0_25px_rgba(37,99,235,0.5)] transition-all duration-300 transform hover:-translate-y-1 flex items-center space-x-2 print:hidden"
+            >
               <svg className="w-4 h-4 opacity-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
-              <span className="tracking-wide">Download PDF</span>
+              <span className="tracking-wide">Print Report</span>
             </button>
           </div>
         </div>
@@ -252,7 +278,7 @@ const Reports = () => {
       <div className="space-y-6 animate-fade-in-up">
         
         {/* Report Type Selector Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 print:hidden">
           {reportTypes.map((report) => (
             <button
               key={report.id}
@@ -272,14 +298,86 @@ const Reports = () => {
                 {report.icon === 'customers' && <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>}
                 {report.icon === 'inventory' && <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>}
                 {report.icon === 'maintenance' && <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>}
+                {report.icon === 'detailed_orders' && <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>}
               </div>
               <h3 className="text-xs font-black uppercase tracking-widest">{report.name.replace(' Report', '')}</h3>
             </button>
           ))}
         </div>
 
+        {selectedReportType === 'detailed_orders' ? (
+          <div className="glass-premium dark:bg-boxdark/90 rounded-3xl border border-white/20 dark:border-white/5 shadow-2xl overflow-hidden relative p-8 print:absolute print:inset-0 print:-m-12 print:w-[100vw] print:h-[100vh] print:bg-white print:text-black print:z-[999999] print:shadow-none print:border-none print:overflow-visible">
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-6 print:mb-2 border-b border-white/10 pb-4 print:border-black print:pb-2 gap-4">
+              <div>
+                <h2 className="text-3xl font-black text-slate-900 dark:text-white print:text-black">Detailed Orders Report</h2>
+                <div className="hidden print:block mt-2 text-sm">
+                  <p><strong>Report Date:</strong> {new Date().toLocaleDateString()}</p>
+                  <p><strong>Filter:</strong> {fromDate || 'Start'} to {toDate || 'End'}</p>
+                </div>
+              </div>
+              <div className="flex gap-4 print:hidden">
+                  <div className="flex flex-col">
+                    <label className="text-xs font-bold mb-1 text-slate-500 dark:text-slate-400">From Date</label>
+                    <input type="date" className="p-2 rounded-lg border border-slate-200 dark:border-strokedark dark:bg-boxdark focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all" value={fromDate} onChange={e => setFromDate(e.target.value)} />
+                  </div>
+                  <div className="flex flex-col">
+                    <label className="text-xs font-bold mb-1 text-slate-500 dark:text-slate-400">To Date</label>
+                    <input type="date" className="p-2 rounded-lg border border-slate-200 dark:border-strokedark dark:bg-boxdark focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all" value={toDate} onChange={e => setToDate(e.target.value)} />
+                  </div>
+              </div>
+            </div>
+            
+            <div className="overflow-x-auto print:overflow-visible">
+              <table className="w-full text-left text-sm print:text-[11px] print:leading-tight border-collapse">
+                <thead>
+                  <tr className="border-b-2 border-slate-200 dark:border-slate-700 print:border-black text-slate-600 dark:text-slate-300 print:text-black">
+                    <th className="py-4 px-4 print:py-2 print:px-2 font-black tracking-widest uppercase">Order No</th>
+                    <th className="py-4 px-4 print:py-2 print:px-2 font-black tracking-widest uppercase">Date</th>
+                    <th className="py-4 px-4 print:py-2 print:px-2 font-black tracking-widest uppercase">Customer</th>
+                    <th className="py-4 px-4 print:py-2 print:px-2 font-black tracking-widest uppercase">Location/Rig</th>
+                    <th className="py-4 px-4 print:py-2 print:px-2 font-black tracking-widest uppercase">Status</th>
+                    <th className="py-4 px-4 print:py-2 print:px-2 font-black tracking-widest uppercase text-right">Amount</th>
+                  </tr>
+                </thead>
+                <tbody className="print:text-black">
+                  {filteredDetailedOrders.map(order => (
+                    <tr key={order.id} className="border-b border-slate-100 dark:border-slate-800/50 print:border-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors">
+                      <td className="py-3 px-4 print:py-1.5 print:px-2 font-bold text-slate-700 dark:text-slate-200 print:text-black">{order.orderNumber}</td>
+                      <td className="py-3 px-4 print:py-1.5 print:px-2 text-slate-500 dark:text-slate-400 print:text-black whitespace-nowrap">{new Date(order.createdAt || order.startDate).toLocaleDateString()}</td>
+                      <td className="py-3 px-4 print:py-1.5 print:px-2 font-medium text-slate-700 dark:text-slate-300 print:text-black">{order.customer?.name || '—'}</td>
+                      <td className="py-3 px-4 print:py-1.5 print:px-2 text-slate-500 dark:text-slate-400 print:text-black">{order.rig?.name || order.location?.name || '—'}</td>
+                      <td className="py-3 px-4 print:py-1.5 print:px-2 print:text-black">
+                        <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-wider print:border print:border-slate-300 print:bg-transparent print:text-black ${
+                          order.status === 'job_done' || order.status === 'returned' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' :
+                          order.status === 'active' ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400' : 
+                          'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+                        }`}>
+                          {order.status.replace('_', ' ')}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 print:py-1.5 print:px-2 text-right font-bold text-slate-700 dark:text-slate-200 print:text-black">
+                        {Number(order.totalAmount || 0) > 0 ? Number(order.totalAmount).toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredDetailedOrders.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="text-center py-12 text-slate-500 dark:text-slate-400 print:text-black font-medium">
+                        No orders found for the selected period.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            
+            <div className="hidden print:block mt-8 text-right text-xs pt-4 border-t border-slate-300 font-medium text-black">
+              Printed from OTEC Advanced Management System | {new Date().toLocaleString()}
+            </div>
+          </div>
+        ) : (
         {/* Dynamic Dashboard Section */}
-        <div className="glass-premium dark:bg-boxdark/90 rounded-3xl border border-white/20 dark:border-white/5 shadow-2xl overflow-hidden relative">
+        <div className="glass-premium dark:bg-boxdark/90 rounded-3xl border border-white/20 dark:border-white/5 shadow-2xl overflow-hidden relative print:hidden">
           <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[50%] bg-blue-500/10 blur-[100px] pointer-events-none"></div>
           
           <div className="p-8 relative z-10">
@@ -370,6 +468,7 @@ const Reports = () => {
             </div>
           </div>
         </div>
+        )}
       </div>
     </MainLayout>
   );
