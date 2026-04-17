@@ -94,24 +94,44 @@ export class OrdersService {
             );
         }
 
-        // Apply side-effects based on transition
+        // ─────────────────────────────────────────────────────────────────
+        //  ORDER → TOOL STATUS FLOW
+        //
+        //  DRAFT      → (no tool change)
+        //  BOOKED     → tools: AVAILABLE → IN_TRANSIT   (order placed, tools being prepared)
+        //  ACTIVE     → tools: IN_TRANSIT → ONSITE      (tools at rig, job started, rig assigned)
+        //  JOB_DONE   → tools: ONSITE → AVAILABLE       (job complete, tools back to yard)
+        //  RETURNED   → tools: ensure AVAILABLE         (final confirmation, operational hours recorded)
+        //  CANCELLED  → tools: back to AVAILABLE        (from any active state)
+        // ─────────────────────────────────────────────────────────────────
         order.status = targetStatus;
+
+        if (targetStatus === OrderStatus.BOOKED) {
+            // Tools are "claimed" for this order — mark as IN-TRANSIT so they don't appear as available
+            if (order.items) {
+                for (const item of order.items) {
+                    await this.toolsRepository.update(item.toolId, {
+                        status: ToolStatus.IN_TRANSIT,
+                    });
+                }
+            }
+        }
 
         if (targetStatus === OrderStatus.ACTIVE) {
             order.activatedAt = new Date();
-            // Mark all tools in this order as onsite and assign them to the order's rig
+            // Tools arrive at rig — mark ONSITE and assign rig
             if (order.items) {
                 for (const item of order.items) {
                     await this.toolsRepository.update(item.toolId, {
                         status: ToolStatus.ONSITE,
-                        rigId: order.rigId
+                        rigId: order.rigId,
                     });
                 }
             }
         }
 
         if (targetStatus === OrderStatus.JOB_DONE) {
-            // Job is complete — release tools back to yard, update operational hours, clear rig assignment
+            // Job complete — release tools to yard, accumulate operational hours, clear rig
             if (order.items) {
                 const activatedTime = order.activatedAt ? new Date(order.activatedAt) : null;
                 const hoursWorked = activatedTime
@@ -132,26 +152,36 @@ export class OrdersService {
 
         if (targetStatus === OrderStatus.RETURNED) {
             order.returnedAt = new Date();
-            // Additional return confirmation — tools already released at job_done, just record returnedAt
-            if (order.items && order.activatedAt) {
+            // Final confirmation — ensure tools are available (safety net if JOB_DONE was skipped)
+            if (order.items) {
                 for (const item of order.items) {
-                    // Ensure tools are available (in case job_done was skipped)
-                    await this.toolsRepository.update(item.toolId, {
-                        status: ToolStatus.AVAILABLE,
-                        rigId: null,
-                    });
+                    const tool = await this.toolsRepository.findOne({ where: { id: item.toolId } });
+                    if (tool && tool.status !== ToolStatus.AVAILABLE) {
+                        const activatedTime = order.activatedAt ? new Date(order.activatedAt) : null;
+                        const hoursWorked = activatedTime
+                            ? (new Date().getTime() - activatedTime.getTime()) / (1000 * 60 * 60)
+                            : 0;
+                        await this.toolsRepository.update(item.toolId, {
+                            status: ToolStatus.AVAILABLE,
+                            rigId: null,
+                            operationalHours: Number(tool.operationalHours || 0) + hoursWorked,
+                        });
+                    }
                 }
             }
         }
 
         if (targetStatus === OrderStatus.CANCELLED) {
-            // Release any tools that were marked onsite and release from rig
-            if (order.items && (currentStatus === OrderStatus.ACTIVE)) {
+            // Release tools back to yard from any active state (IN_TRANSIT, ONSITE)
+            if (order.items) {
                 for (const item of order.items) {
-                    await this.toolsRepository.update(item.toolId, {
-                        status: ToolStatus.AVAILABLE,
-                        rigId: null
-                    });
+                    const tool = await this.toolsRepository.findOne({ where: { id: item.toolId } });
+                    if (tool && [ToolStatus.IN_TRANSIT, ToolStatus.ONSITE].includes(tool.status)) {
+                        await this.toolsRepository.update(item.toolId, {
+                            status: ToolStatus.AVAILABLE,
+                            rigId: null,
+                        });
+                    }
                 }
             }
         }

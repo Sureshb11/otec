@@ -14,9 +14,10 @@ export enum ToolType {
 }
 
 export enum ToolStatus {
-    AVAILABLE = 'available',
-    ONSITE = 'onsite',
-    MAINTENANCE = 'maintenance',
+    AVAILABLE = 'available',    // In yard / warehouse (default)
+    IN_TRANSIT = 'in_transit',  // Order booked — tool is being prepared/shipped to site
+    ONSITE = 'onsite',          // Order active — tool is at the rig, working
+    MAINTENANCE = 'maintenance',// Undergoing service / repair
 }
 
 @Entity('tools')
@@ -36,7 +37,7 @@ export class Tool {
     @Column({ nullable: true })
     size: string;
 
-    @Column({ type: 'enum', enum: ToolStatus, default: ToolStatus.AVAILABLE })
+    @Column({ type: 'varchar', default: ToolStatus.AVAILABLE })
     status: ToolStatus;
 
     @Column({ nullable: true })
