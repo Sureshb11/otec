@@ -87,9 +87,7 @@ const COLUMNS: ColConfig[] = [
   },
 ];
 
-const LEFT_YARD_ROLES  = ['Yard Supervisor', 'Logistics Manager', 'Driver', 'Operations Coordinator', 'Other'];
-const ONSITE_ROLES     = ['Rig Supervisor (Client side)', 'OTEC Field Engineer', 'Site Coordinator', 'Driver', 'Operations Coordinator', 'Other'];
-const OPERATION_ROLES  = ['OTEC Field Engineer', 'Rig Supervisor (Client side)', 'Site Coordinator', 'Operations Coordinator', 'Other'];
+const OPERATION_ROLES = ['OTEC Field Engineer', 'Rig Supervisor (Client side)', 'Site Coordinator', 'Operations Coordinator', 'Other'];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -124,64 +122,129 @@ const safeFormat = (d?: string) => {
   try { return format(new Date(d), 'dd MMM yyyy'); } catch { return d; }
 };
 
-// ─── TrackingRow ──────────────────────────────────────────────────────────────
 
-interface TrackingRowProps {
-  label: string;
-  event: TrackingEvent;
-  roles: string[];
-  markLabel?: string;
-  onChange: (updated: TrackingEvent) => void;
+// ─── Standby Hours Calculator ──────────────────────────────────────────────────
+
+const calcStandbyHours = (reachedTs: string, startedTs?: string): string => {
+  if (!reachedTs) return '—';
+  try {
+    // Parse the timestamp format "DD Mon YYYY HH:MM am/pm"
+    const reached = new Date(reachedTs);
+    const end     = startedTs ? new Date(startedTs) : new Date();
+    if (isNaN(reached.getTime())) return '—';
+    const diffMs = end.getTime() - reached.getTime();
+    if (diffMs < 0) return '0h 0m';
+    const hours = Math.floor(diffMs / 3600000);
+    const mins  = Math.floor((diffMs % 3600000) / 60000);
+    return `${hours}h ${mins}m`;
+  } catch { return '—'; }
+};
+
+// ─── Confirm Action Modal ─────────────────────────────────────────────────────
+
+type ActionType = 'dispatch' | 'cancel' | 'reached' | 'start' | 'complete' | 'return';
+
+interface ConfirmActionModalProps {
+  actionType: ActionType;
+  orderNumber: string;
+  customerName: string;
+  onClose: () => void;
+  onConfirm: () => void;
+  isLoading?: boolean;
 }
 
-const TrackingRow = ({ label, event, roles, markLabel = 'Mark', onChange }: TrackingRowProps) => {
-  const [otherText, setOtherText] = useState('');
-  const handleMark   = () => onChange({ status: true,  timestamp: nowStr(), markedBy: roles[0], markedByRole: roles[0] });
-  const handleUnmark = () => onChange({ status: false, timestamp: '',       markedBy: '',       markedByRole: ''       });
+const ACTION_CONFIG: Record<ActionType, { title: string; message: string; confirmLabel: string; iconBg: string; iconColor: string; buttonBg: string; icon: JSX.Element }> = {
+  dispatch: {
+    title: 'Dispatch — Left from Yard',
+    message: 'This will mark the machine as dispatched and move the order to In-Transit.',
+    confirmLabel: 'Dispatch Now',
+    iconBg: 'bg-blue-100 dark:bg-blue-900/30',
+    iconColor: 'text-blue-600 dark:text-blue-400',
+    buttonBg: 'from-blue-600 to-blue-700',
+    icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>,
+  },
+  cancel: {
+    title: 'Cancel Order',
+    message: 'This order will be cancelled and removed from the pipeline. This action cannot be undone.',
+    confirmLabel: 'Cancel Order',
+    iconBg: 'bg-rose-100 dark:bg-rose-900/30',
+    iconColor: 'text-rose-600 dark:text-rose-400',
+    buttonBg: 'from-rose-600 to-rose-500',
+    icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>,
+  },
+  reached: {
+    title: 'Reached Onsite',
+    message: 'Mark the machine as arrived at the rig site. The order will move to Onsite (Standby).',
+    confirmLabel: 'Mark Arrived',
+    iconBg: 'bg-emerald-100 dark:bg-emerald-900/30',
+    iconColor: 'text-emerald-600 dark:text-emerald-400',
+    buttonBg: 'from-emerald-600 to-emerald-700',
+    icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>,
+  },
+  start: {
+    title: 'Start Job',
+    message: 'Start the operation. Once started, the job must be completed before the order can proceed.',
+    confirmLabel: 'Start Job',
+    iconBg: 'bg-emerald-100 dark:bg-emerald-900/30',
+    iconColor: 'text-emerald-600 dark:text-emerald-400',
+    buttonBg: 'from-emerald-600 to-emerald-700',
+    icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+  },
+  complete: {
+    title: 'Complete Job',
+    message: 'Mark the job as complete. The order will move to Job Done & Return.',
+    confirmLabel: 'Complete Job',
+    iconBg: 'bg-purple-100 dark:bg-purple-900/30',
+    iconColor: 'text-purple-600 dark:text-purple-400',
+    buttonBg: 'from-purple-600 to-purple-700',
+    icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+  },
+  return: {
+    title: 'Return Tools',
+    message: 'Release tools back to yard. This will complete the order lifecycle.',
+    confirmLabel: 'Return Tools',
+    iconBg: 'bg-purple-100 dark:bg-purple-900/30',
+    iconColor: 'text-purple-600 dark:text-purple-400',
+    buttonBg: 'from-purple-600 to-purple-700',
+    icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>,
+  },
+};
 
+const ConfirmActionModal = ({ actionType, orderNumber, customerName, onClose, onConfirm, isLoading }: ConfirmActionModalProps) => {
+  const cfg = ACTION_CONFIG[actionType];
   return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          {event.status ? (
-            <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400 font-medium text-xs">
-              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-              </svg>
-              {label}: Done
-            </span>
-          ) : (
-            <span className="text-slate-400 text-xs font-medium">{label}: Pending</span>
-          )}
-        </div>
-        {event.status
-          ? <button onClick={handleUnmark} className="text-xs text-red-500 hover:text-red-700 font-medium">Undo</button>
-          : <button onClick={handleMark}   className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-md hover:bg-blue-700 font-medium transition-colors">{markLabel}</button>
-        }
-      </div>
-      {event.status && (
-        <div className="space-y-1">
-          <p className="text-xs text-slate-500 dark:text-slate-400">{event.timestamp}</p>
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs text-slate-500 dark:text-slate-400 shrink-0">By:</span>
-            <select
-              value={event.markedBy}
-              onChange={e => onChange({ ...event, markedBy: e.target.value })}
-              className="text-xs border border-slate-200 dark:border-white/10 rounded px-1.5 py-0.5 text-slate-700 dark:text-white bg-white dark:bg-boxdark focus:ring-1 focus:ring-blue-400 focus:outline-none"
-            >
-              {roles.map(r => <option key={r}>{r}</option>)}
-            </select>
-            {event.markedBy === 'Other' && (
-              <input
-                value={otherText}
-                onChange={e => { setOtherText(e.target.value); onChange({ ...event, markedByRole: e.target.value }); }}
-                placeholder="Specify…"
-                className="text-xs border border-slate-200 dark:border-white/10 rounded px-1.5 py-0.5 w-24 focus:ring-1 focus:ring-blue-400 focus:outline-none dark:bg-boxdark dark:text-white"
-              />
-            )}
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={e => e.stopPropagation()}>
+      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white dark:bg-boxdark rounded-2xl p-8 w-full max-w-sm shadow-2xl border border-white/20 dark:border-white/5 animate-in fade-in zoom-in-95 duration-200">
+        <div className="text-center mb-6">
+          <div className={`w-16 h-16 rounded-2xl ${cfg.iconBg} flex items-center justify-center mx-auto mb-4 shadow-sm`}>
+            <span className={cfg.iconColor}>{cfg.icon}</span>
+          </div>
+          <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">{cfg.title}</h2>
+          <div className="mt-3 space-y-1">
+            <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
+              #{orderNumber} · {customerName}
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{cfg.message}</p>
           </div>
         </div>
-      )}
+        <div className="flex gap-3">
+          <button onClick={onClose} disabled={isLoading}
+            className="flex-1 py-3 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-meta-4 rounded-xl font-bold transition-colors disabled:opacity-50">
+            Cancel
+          </button>
+          <button onClick={onConfirm} disabled={isLoading}
+            className={`flex-1 py-3 bg-gradient-to-r ${cfg.buttonBg} text-white rounded-xl font-bold shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2`}>
+            {isLoading ? (
+              <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+            ) : null}
+            {cfg.confirmLabel}
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
@@ -192,286 +255,166 @@ interface OrderCardProps {
   order: any;
   colId: KanbanColId;
   tracking: MachineTracking;
-  onDragStart: (id: string) => void;
   onTrackingChange: (orderId: string, t: MachineTracking) => void;
   hasHardcopy?: boolean;
-  onDelete?: (id: string) => void;
-  onReturn?: (id: string) => void;
+  onAction: (orderId: string, action: ActionType) => void;
   onView?: (id: string) => void;
 }
 
-const OrderCard = ({ order, colId, tracking, onDragStart, onTrackingChange, hasHardcopy, onDelete, onReturn, onView }: OrderCardProps) => {
+const OrderCard = ({ order, colId, tracking, hasHardcopy, onAction, onView }: OrderCardProps) => {
   const col           = COLUMNS.find(c => c.id === colId)!;
-  const isInTransit   = colId === 'in-transit';
   const isOnsite      = colId === 'onsite';
-  const isTracked     = isInTransit || isOnsite;
 
   // Onsite sub-state
   const isStandby     = isOnsite && !tracking.operationStarted.status;
   const isActive      = isOnsite &&  tracking.operationStarted.status;
 
-  const [expanded, setExpanded] = useState(isTracked);
-  useEffect(() => { if (isTracked) setExpanded(true); }, [isTracked]);
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  const update = (patch: Partial<MachineTracking>) =>
-    onTrackingChange(order.id, { ...tracking, ...patch, lastUpdated: nowStr() });
+  // Close menu on outside click
+  useEffect(() => {
+    if (!menuOpen) return;
+    const close = () => setMenuOpen(false);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [menuOpen]);
+
+
+  // Get menu items based on column
+  const getMenuItems = (): { label: string; action: ActionType; color: string; icon: JSX.Element }[] => {
+    switch (colId) {
+      case 'booked':
+        return [
+          { label: 'Left from Yard', action: 'dispatch', color: 'text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10',
+            icon: <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg> },
+          { label: 'Cancel Order', action: 'cancel', color: 'text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10',
+            icon: <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg> },
+        ];
+      case 'in-transit':
+        return [
+          { label: 'Reached Onsite', action: 'reached', color: 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10',
+            icon: <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /></svg> },
+        ];
+      case 'onsite':
+        return isStandby
+          ? [{ label: 'Start Job', action: 'start', color: 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10',
+               icon: <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /></svg> }]
+          : [{ label: 'Complete Job', action: 'complete', color: 'text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-500/10',
+               icon: <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> }];
+      case 'job-done':
+        return [
+          { label: 'Return Tools', action: 'return', color: 'text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-500/10',
+            icon: <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg> },
+        ];
+      default: return [];
+    }
+  };
 
   return (
-    <div
-      draggable
-      onDragStart={() => onDragStart(order.id)}
-      onClick={() => onView?.(order.id)}
-      className="bg-white dark:bg-boxdark rounded-xl shadow-sm border border-slate-100 dark:border-white/5 hover:shadow-md transition-all duration-200 cursor-pointer active:cursor-grabbing select-none"
-    >
-      {/* Accent bar */}
+    <div onClick={() => onView?.(order.id)}
+      className="bg-white dark:bg-boxdark rounded-xl shadow-sm border border-slate-100 dark:border-white/5 hover:shadow-md transition-all duration-200 cursor-pointer select-none">
       <div className={`h-1 rounded-t-xl ${col.topBar}`} />
-
       <div className="p-3.5 space-y-2.5">
-
-        {/* Header: order number + sub-status badge */}
+        {/* Header */}
         <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <span className="text-xs font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-md truncate">
-              #{order.orderNumber}
-            </span>
-            {/* Paperclip icon when signed hardcopy is attached */}
+          <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+            <span className="text-xs font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-md truncate">#{order.orderNumber}</span>
             {hasHardcopy && (
               <span title="Signed hardcopy attached" className="text-emerald-500 dark:text-emerald-400 shrink-0">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                </svg>
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
               </span>
             )}
-            {colId === 'booked' && (
-              <button 
-                onClick={(e) => { e.stopPropagation(); onDelete?.(order.id); }} 
-                className="text-slate-400 hover:text-red-500 transition-colors ml-2 z-10 relative"
-                title="Delete Order"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </button>
+            {colId === 'in-transit' && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" /> IN-TRANSIT
+              </span>
+            )}
+            {isStandby && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300">
+                <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse" /> STANDBY
+              </span>
+            )}
+            {isActive && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300">
+                <span className="relative flex h-1.5 w-1.5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" /><span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" /></span> ACTIVE
+              </span>
             )}
           </div>
-
-          {isInTransit && (
-            <span className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full shrink-0 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300">
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
-              IN-TRANSIT
-            </span>
-          )}
-
-          {/* Onsite: show STANDBY or ACTIVE */}
-          {isStandby && (
-            <span className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full shrink-0 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300">
-              <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse" />
-              STANDBY
-            </span>
-          )}
-          {isActive && (
-            <span className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full shrink-0 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300">
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
-              </span>
-              ACTIVE
-            </span>
-          )}
+          {/* Three-dot menu */}
+          <div className="relative shrink-0">
+            <button onClick={(e) => { e.stopPropagation(); setMenuOpen(v => !v); }}
+              className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-meta-4 transition-colors">
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" /></svg>
+            </button>
+            {menuOpen && (
+              <div className="absolute right-0 top-8 z-50 bg-white dark:bg-boxdark rounded-xl shadow-xl border border-slate-200 dark:border-white/10 py-1 min-w-[160px]">
+                {getMenuItems().map(item => (
+                  <button key={item.action}
+                    onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onAction(order.id, item.action); }}
+                    className={`w-full text-left px-3 py-2 text-xs font-bold flex items-center gap-2 transition-colors ${item.color}`}>
+                    {item.icon} {item.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Customer name */}
-        <p className="text-sm font-semibold text-slate-800 dark:text-white leading-tight">
-          {order.customer?.name || 'Unknown Customer'}
-        </p>
+        {/* Customer */}
+        <p className="text-sm font-semibold text-slate-800 dark:text-white leading-tight">{order.customer?.name || 'Unknown Customer'}</p>
 
-        {/* Meta fields */}
+        {/* Meta */}
         <div className="space-y-1">
           <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-            <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16" />
-            </svg>
+            <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16" /></svg>
             <span className="font-medium text-slate-600 dark:text-slate-300 truncate">{order.rig?.name || '—'}</span>
           </div>
           <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-            <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
+            <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
             <span className="truncate">{order.location?.name || '—'}</span>
           </div>
           <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-            <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
+            <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
             <span>{safeFormat(order.startDate)} → {safeFormat(order.endDate)}</span>
           </div>
         </div>
 
-        {/* ── Machine Tracking ── */}
-        {isTracked && (
+        {/* ── Onsite Machine Tracking Summary ── */}
+        {isOnsite && (
           <div className="border-t border-slate-100 dark:border-white/5 pt-2.5">
-
-            {/* Toggle */}
-            <button
-              onClick={() => setExpanded(v => !v)}
-              className="w-full flex items-center justify-between text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-400 transition-colors mb-2"
-            >
-              <div className="flex items-center gap-1.5">
-                <svg className="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                </svg>
-                Machine Tracking
-                <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-normal">
-                  <span className="relative flex h-1.5 w-1.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
-                  </span>
-                  Live
+            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2.5 space-y-1.5">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Machine Tracking</p>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-500 dark:text-slate-400">Left Yard</span>
+                <span className="font-medium text-slate-700 dark:text-slate-200 text-[11px]">{tracking.leftYard.timestamp || '—'}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-500 dark:text-slate-400">Reached Onsite</span>
+                <span className="font-medium text-slate-700 dark:text-slate-200 text-[11px]">{tracking.reachedOnsite.timestamp || '—'}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs border-t border-slate-200 dark:border-white/10 pt-1.5">
+                <span className="text-orange-600 dark:text-orange-400 font-bold">Standby Hours</span>
+                <span className="font-black text-orange-700 dark:text-orange-300 text-[11px]">
+                  {calcStandbyHours(tracking.reachedOnsite.timestamp, tracking.operationStarted.status ? tracking.operationStarted.timestamp : undefined)}
                 </span>
               </div>
-              <svg className={`w-3 h-3 transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-
-            {expanded && (
-              <div className="space-y-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2.5">
-
-                {/* ── In-Transit ── */}
-                {isInTransit && (
-                  <>
-                    <TrackingRow
-                      label="Left Yard"
-                      event={tracking.leftYard}
-                      roles={LEFT_YARD_ROLES}
-                      markLabel="Mark Left"
-                      onChange={ev => update({ leftYard: ev, isActive: true })}
-                    />
-                    <div className="border-t border-slate-200 dark:border-white/10 pt-2">
-                      <TrackingRow
-                        label="Reached Onsite"
-                        event={tracking.reachedOnsite}
-                        roles={ONSITE_ROLES}
-                        markLabel="Mark Arrived"
-                        onChange={ev => update({ reachedOnsite: ev })}
-                      />
-                    </div>
-                  </>
-                )}
-
-                {/* ── Onsite (Standby or Active) ── */}
-                {isOnsite && (
-                  <>
-                    {/* Read-only journey summary */}
-                    <div className="space-y-1.5">
-                      <div className="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400 font-medium">
-                        <svg className="w-3 h-3 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                        Left Yard
-                        {tracking.leftYard.timestamp && (
-                          <span className="ml-auto text-slate-400 dark:text-slate-500 font-normal text-[10px]">{tracking.leftYard.timestamp}</span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400 font-medium">
-                        <svg className="w-3 h-3 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                        Reached Onsite
-                        {tracking.reachedOnsite.timestamp && (
-                          <span className="ml-auto text-slate-400 dark:text-slate-500 font-normal text-[10px]">{tracking.reachedOnsite.timestamp}</span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="border-t border-slate-200 dark:border-white/10 pt-2">
-                      {/* STANDBY → button to start operation */}
-                      {isStandby && (
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-orange-600 dark:text-orange-400 flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse" />
-                            Tools Standby
-                          </span>
-                          <button
-                            onClick={() => update({
-                              operationStarted: { status: true, timestamp: nowStr(), markedBy: OPERATION_ROLES[0], markedByRole: OPERATION_ROLES[0] },
-                              isActive: true,
-                            })}
-                            className="inline-flex items-center gap-1 text-xs bg-emerald-600 text-white px-2.5 py-1 rounded-md hover:bg-emerald-700 font-bold transition-colors"
-                          >
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            Start Operation
-                          </button>
-                        </div>
-                      )}
-
-                      {/* ACTIVE → operation details + stop button */}
-                      {isActive && (
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
-                              <span className="relative flex h-1.5 w-1.5">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
-                              </span>
-                              Tools Active · Operating
-                            </span>
-                            <button
-                              onClick={() => update({ operationStarted: emptyEvent(), isActive: false })}
-                              className="text-xs text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400 font-medium transition-colors"
-                            >
-                              Stop
-                            </button>
-                          </div>
-                          <div className="text-xs text-slate-500 dark:text-slate-400 space-y-0.5">
-                            <p>Started: <span className="font-medium text-slate-700 dark:text-slate-200">{tracking.operationStarted.timestamp}</span></p>
-                            {tracking.operationStarted.markedBy && (
-                              <p>By: <span className="font-medium text-slate-700 dark:text-slate-200">{tracking.operationStarted.markedBy}</span></p>
-                            )}
-                          </div>
-                          {/* Change the "started by" role */}
-                          <select
-                            value={tracking.operationStarted.markedBy}
-                            onChange={e => update({ operationStarted: { ...tracking.operationStarted, markedBy: e.target.value } })}
-                            className="w-full text-xs border border-slate-200 dark:border-white/10 rounded px-1.5 py-0.5 text-slate-700 dark:text-white bg-white dark:bg-boxdark focus:ring-1 focus:ring-blue-400 focus:outline-none"
-                          >
-                            {OPERATION_ROLES.map(r => <option key={r}>{r}</option>)}
-                          </select>
-                        </div>
-                      )}
-                    </div>
-                  </>
-                )}
-
-                <p className="text-xs text-slate-400 dark:text-slate-500 pt-0.5 border-t border-slate-200 dark:border-white/5">
-                  Updated: {tracking.lastUpdated}
-                </p>
-              </div>
-            )}
+              {isActive && tracking.operationStarted.timestamp && (
+                <div className="flex items-center justify-between text-xs border-t border-slate-200 dark:border-white/10 pt-1.5">
+                  <span className="text-emerald-600 dark:text-emerald-400 font-bold">Job Started</span>
+                  <span className="font-medium text-emerald-700 dark:text-emerald-300 text-[11px]">{tracking.operationStarted.timestamp}</span>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
-        {/* Job Done: Return Tools button */}
-        {colId === 'job-done' && (
-          <div className="border-t border-slate-100 dark:border-white/5 pt-2.5 mt-1 flex items-center justify-between gap-2">
-            {hasHardcopy && (
-              <span className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-medium">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                </svg>
-                Doc attached
-              </span>
-            )}
-            <button
-              onClick={(e) => { e.stopPropagation(); onReturn?.(order.id); }}
-              className="ml-auto text-xs bg-purple-600 text-white px-3 py-1.5 rounded-lg hover:bg-purple-700 font-bold transition-colors"
-            >
-              Return Tools
-            </button>
+        {/* Job Done: show hardcopy status */}
+        {colId === 'job-done' && hasHardcopy && (
+          <div className="border-t border-slate-100 dark:border-white/5 pt-2.5">
+            <span className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-medium">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+              Signed hardcopy attached
+            </span>
           </div>
         )}
       </div>
@@ -831,17 +774,6 @@ const Orders = () => {
     onError:    () => alert('Failed to update order status.'),
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: apiClient.orders.delete,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['orders'] }),
-    onError: () => alert('Failed to delete order.'),
-  });
-
-  const handleDelete = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this order?')) {
-      deleteMutation.mutate(id);
-    }
-  };
 
   const [selectedPopupOrderId, setSelectedPopupOrderId] = useState<string | null>(null);
   const [searchTerm,       setSearchTerm]       = useState('');
@@ -855,11 +787,11 @@ const Orders = () => {
       return next;
     });
   };
-  const [dragId,           setDragId]           = useState<string | null>(null);
-  const [dragOver,         setDragOver]         = useState<KanbanColId | null>(null);
+
   const [showModal,        setShowModal]        = useState(() => !!(location.state as any)?.openNewOrder);
-  const [reportOrder,      setReportOrder]      = useState<any | null>(null);   // order awaiting job-done confirmation
+  const [reportOrder,      setReportOrder]      = useState<any | null>(null);
   const [reportTracking,   setReportTracking]   = useState<MachineTracking | null>(null);
+  const [confirmAction,    setConfirmAction]    = useState<{ orderId: string; action: ActionType } | null>(null);
   // Map of orderId → hardcopy filename, persisted across re-renders
   const [hardcopyMap,      setHardcopyMapRaw]   = useState<Record<string, string>>(() => {
     try { return JSON.parse(localStorage.getItem('otec_hardcopy_map') || '{}'); } catch { return {}; }
@@ -892,78 +824,92 @@ const Orders = () => {
   const colOrders = (colId: KanbanColId) =>
     filteredOrders.filter((o: any) => getColId(o.status, getTracking(o.id)) === colId);
 
-  const handleDrop = (targetColId: KanbanColId) => {
-    if (!dragId) return;
-    const order = allOrders.find((o: any) => o.id === dragId);
-    if (!order) { setDragId(null); setDragOver(null); return; }
+  // ── Action Handlers ─────────────────────────────────────────────────────────
 
-    const targetCol = COLUMNS.find(c => c.id === targetColId)!;
-    const curr      = getTracking(dragId);
-    let t: MachineTracking = { ...curr, lastUpdated: nowStr() };
+  const handleAction = (orderId: string, action: ActionType) => {
+    setConfirmAction({ orderId, action });
+  };
 
-    const currentColId = getColId(order.status, curr);
+  const executeAction = () => {
+    if (!confirmAction) return;
+    const { orderId, action } = confirmAction;
+    const order = allOrders.find((o: any) => o.id === orderId);
+    if (!order) { setConfirmAction(null); return; }
+    const curr = getTracking(orderId);
 
-    switch (targetColId) {
-      case 'booked':
-        t = emptyTracking();
-        break;
-      case 'in-transit': {
-        // Block if moving back from Onsite and operation has already started
-        if (currentColId === 'onsite' && curr.operationStarted.status) {
-          alert('Cannot move back to In-Transit: operation has already started on this order.');
-          setDragId(null); setDragOver(null); return;
-        }
-        // Confirm before dispatching from Booked
-        if (currentColId === 'booked') {
-          if (!window.confirm(`Dispatch order #${order.orderNumber} to In-Transit? This will mark the order as active.`)) {
-            setDragId(null); setDragOver(null); return;
-          }
-        }
-        t = {
-          ...t,
-          leftYard:         curr.leftYard.status ? curr.leftYard : { status: true, timestamp: nowStr(), markedBy: '', markedByRole: '' },
-          reachedOnsite:    emptyEvent(),
+    switch (action) {
+      case 'dispatch': {
+        // Booked → In-Transit: mark leftYard, set status active
+        const t: MachineTracking = {
+          ...curr,
+          leftYard: { status: true, timestamp: nowStr(), markedBy: '', markedByRole: '' },
+          reachedOnsite: emptyEvent(),
           operationStarted: emptyEvent(),
           isActive: true,
+          lastUpdated: nowStr(),
         };
+        setTrackingMap(prev => ({ ...prev, [orderId]: t }));
+        updateStatusMutation.mutate({ id: orderId, status: 'active' });
         break;
       }
-      case 'onsite':
-        t = {
-          ...t,
-          leftYard:         curr.leftYard.status      ? curr.leftYard      : { status: true, timestamp: nowStr(), markedBy: '', markedByRole: '' },
-          reachedOnsite:    curr.reachedOnsite.status ? curr.reachedOnsite : { status: true, timestamp: nowStr(), markedBy: '', markedByRole: '' },
-          operationStarted: emptyEvent(), // always start at Standby when dropping to Onsite
+      case 'cancel': {
+        // Booked → Cancelled
+        updateStatusMutation.mutate({ id: orderId, status: 'cancelled' });
+        setTrackingMap(prev => {
+          const next = { ...prev };
+          delete next[orderId];
+          return next;
+        });
+        break;
+      }
+      case 'reached': {
+        // In-Transit → Onsite (Standby): mark reachedOnsite
+        const t: MachineTracking = {
+          ...curr,
+          reachedOnsite: { status: true, timestamp: nowStr(), markedBy: '', markedByRole: '' },
+          operationStarted: emptyEvent(),
           isActive: false,
+          lastUpdated: nowStr(),
         };
-        setTrackingMap(prev => ({ ...prev, [dragId]: t }));
-        if (targetCol.apiStatus && order.status !== targetCol.apiStatus) {
-          updateStatusMutation.mutate({ id: dragId, status: targetCol.apiStatus });
-        }
-        setDragId(null);
-        setDragOver(null);
-        return;
-
-      case 'job-done': {
-        // ── Intercept: show report modal before closing the job ──
-        t = { ...t, isActive: false };
-        setTrackingMap(prev => ({ ...prev, [dragId]: t }));
+        setTrackingMap(prev => ({ ...prev, [orderId]: t }));
+        // Status stays 'active' — column is determined by tracking
+        break;
+      }
+      case 'start': {
+        // Onsite Standby → Onsite Active: mark operationStarted
+        const t: MachineTracking = {
+          ...curr,
+          operationStarted: { status: true, timestamp: nowStr(), markedBy: OPERATION_ROLES[0], markedByRole: OPERATION_ROLES[0] },
+          isActive: true,
+          lastUpdated: nowStr(),
+        };
+        setTrackingMap(prev => ({ ...prev, [orderId]: t }));
+        break;
+      }
+      case 'complete': {
+        // Onsite Active → Job Done: show report modal
+        const t: MachineTracking = { ...curr, isActive: false, lastUpdated: nowStr() };
+        setTrackingMap(prev => ({ ...prev, [orderId]: t }));
         setReportOrder(order);
         setReportTracking(t);
-        setDragId(null);
-        setDragOver(null);
-        return;
+        break;
+      }
+      case 'return': {
+        // Job Done → Returned
+        apiClient.orders.updateStatus(orderId, 'returned')
+          .then(() => {
+            queryClient.invalidateQueries({ queryKey: ['orders'] });
+            setTrackingMap(prev => {
+              const next = { ...prev };
+              delete next[orderId];
+              return next;
+            });
+          })
+          .catch(() => alert('Failed to return order.'));
+        break;
       }
     }
-
-    setTrackingMap(prev => ({ ...prev, [dragId]: t }));
-
-    if (targetCol.apiStatus && order.status !== targetCol.apiStatus) {
-      updateStatusMutation.mutate({ id: dragId, status: targetCol.apiStatus });
-    }
-
-    setDragId(null);
-    setDragOver(null);
+    setConfirmAction(null);
   };
 
   /** Called when the report modal confirms "Job Done" */
@@ -990,21 +936,7 @@ const Orders = () => {
   const handleTrackingChange = (orderId: string, t: MachineTracking) =>
     setTrackingMap(prev => ({ ...prev, [orderId]: t }));
 
-  const handleReturn = (orderId: string) => {
-    const order = allOrders.find((o: any) => o.id === orderId);
-    if (!order) return;
-    if (!window.confirm(`Return tools for order #${order.orderNumber}? This will release tools back to yard.`)) return;
-    apiClient.orders.updateStatus(orderId, 'returned')
-      .then(() => {
-        queryClient.invalidateQueries({ queryKey: ['orders'] });
-        setTrackingMap(prev => {
-          const next = { ...prev };
-          delete next[orderId];
-          return next;
-        });
-      })
-      .catch(() => alert('Failed to return order.'));
-  };
+
 
   if (isLoading) {
     return (
@@ -1077,15 +1009,8 @@ const Orders = () => {
         {COLUMNS.map(col => (
           <div
             key={col.id}
-            onDragOver={e => { e.preventDefault(); setDragOver(col.id); }}
-            onDragLeave={() => setDragOver(null)}
-            onDrop={() => handleDrop(col.id)}
-            className={`flex flex-col min-w-[280px] w-[280px] shrink-0 rounded-2xl border-t-4 transition-all duration-150 ${
+            className={`flex flex-col min-w-[280px] w-[280px] shrink-0 rounded-2xl border-t-4 shadow-sm transition-all duration-150 ${
               col.topBar.replace('bg-', 'border-t-')
-            } ${
-              dragOver === col.id
-                ? 'ring-2 ring-blue-400 shadow-xl bg-blue-50/60 dark:bg-blue-900/20'
-                : 'shadow-sm'
             }`}
           >
             {/* Column header */}
@@ -1094,7 +1019,6 @@ const Orders = () => {
                 <div className="flex items-center gap-2">
                   <span className={`w-2.5 h-2.5 rounded-full ${col.dot}`} />
                   <span className="text-sm font-black text-slate-700 dark:text-slate-200">{col.label}</span>
-                  {/* Onsite: show both sub-status labels */}
                   {col.id === 'onsite' && (
                     <div className="flex items-center gap-1">
                       <span className="text-[10px] font-bold bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-300 px-1.5 py-0.5 rounded">Standby</span>
@@ -1113,12 +1037,8 @@ const Orders = () => {
             {/* Cards */}
             <div className={`flex-1 p-3 space-y-3 overflow-y-auto ${col.bodyBg}`}>
               {colOrders(col.id).length === 0 ? (
-                <div className={`flex flex-col items-center justify-center h-24 rounded-xl border-2 border-dashed transition-colors ${
-                  dragOver === col.id
-                    ? 'border-blue-400 bg-blue-50/50 dark:bg-blue-900/20'
-                    : 'border-slate-200 dark:border-white/10'
-                }`}>
-                  <p className="text-xs text-slate-400 dark:text-slate-600">Drop here</p>
+                <div className="flex flex-col items-center justify-center h-24 rounded-xl border-2 border-dashed border-slate-200 dark:border-white/10">
+                  <p className="text-xs text-slate-400 dark:text-slate-600">No orders</p>
                 </div>
               ) : (
                 colOrders(col.id).map((order: any) => (
@@ -1127,11 +1047,9 @@ const Orders = () => {
                     order={order}
                     colId={col.id}
                     tracking={getTracking(order.id)}
-                    onDragStart={setDragId}
                     onTrackingChange={handleTrackingChange}
                     hasHardcopy={!!hardcopyMap[order.id]}
-                    onDelete={handleDelete}
-                    onReturn={handleReturn}
+                    onAction={handleAction}
                     onView={setSelectedPopupOrderId}
                   />
                 ))
@@ -1196,6 +1114,21 @@ const Orders = () => {
           </div>
         </div>
       )}
+
+      {/* ── Confirm Action Modal ── */}
+      {confirmAction && (() => {
+        const order = allOrders.find((o: any) => o.id === confirmAction.orderId);
+        if (!order) return null;
+        return (
+          <ConfirmActionModal
+            actionType={confirmAction.action}
+            orderNumber={order.orderNumber}
+            customerName={order.customer?.name || 'Unknown'}
+            onClose={() => setConfirmAction(null)}
+            onConfirm={executeAction}
+          />
+        );
+      })()}
 
     </MainLayout>
   );
