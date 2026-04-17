@@ -258,9 +258,26 @@ export class OrdersService {
             );
         }
 
+        // Safety net: you can't physically start an operation unless the
+        // tools are at the rig. If the reached-onsite milestone was missed
+        // (e.g. data from before the sub-stage was introduced), stamp it
+        // now and flip tools IN_TRANSIT → ONSITE so the Dashboard, Tools
+        // page, and Kanban all agree.
+        if (!order.reachedOnsiteAt) {
+            order.reachedOnsiteAt = new Date();
+            if (order.items) {
+                for (const item of order.items) {
+                    await this.toolsRepository.update(item.toolId, {
+                        status: ToolStatus.ONSITE,
+                        rigId: order.rigId,
+                    });
+                }
+            }
+        }
+
         // Idempotent: if already running, just return current state
         if (order.operationStartedAt) {
-            return order;
+            return this.ordersRepository.save(order);
         }
 
         order.operationStartedAt = new Date();
