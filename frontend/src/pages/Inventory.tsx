@@ -69,7 +69,7 @@ interface ToolRow {
   category: string | null;
   serialNumber: string;
   size: string | null;
-  status: 'available' | 'onsite' | 'maintenance';
+  status: 'available' | 'in_transit' | 'onsite' | 'maintenance';
   description: string | null;
   manufacturerSn: string | null;
   partNo: string | null;
@@ -111,9 +111,10 @@ const blankForm = (category = 'CRT'): ToolFormState => ({
 });
 
 const STATUS_BADGE: Record<ToolRow['status'], { label: string; bg: string; dot: string }> = {
-  available:   { label: 'Yard',    bg: 'bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-400',     dot: 'bg-sky-500' },
-  onsite:      { label: 'Onsite',  bg: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400', dot: 'bg-emerald-500' },
-  maintenance: { label: 'Service', bg: 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400',           dot: 'bg-rose-500' },
+  available:   { label: 'Yard',       bg: 'bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-400',         dot: 'bg-sky-500' },
+  in_transit:  { label: 'In-Transit', bg: 'bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400',     dot: 'bg-blue-500' },
+  onsite:      { label: 'Onsite',     bg: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400', dot: 'bg-emerald-500' },
+  maintenance: { label: 'Service',    bg: 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400',     dot: 'bg-rose-500' },
 };
 
 const OperationalInventory = () => {
@@ -151,12 +152,13 @@ const OperationalInventory = () => {
 
   // Per-category breakdown (total + status split) for the sidebar mini-bars.
   const categoryBreakdown = useMemo(() => {
-    const map: Record<string, { total: number; yard: number; onsite: number; service: number }> = {};
+    const map: Record<string, { total: number; yard: number; in_transit: number; onsite: number; service: number }> = {};
     tools.forEach(t => {
       if (!t.category) return;
-      if (!map[t.category]) map[t.category] = { total: 0, yard: 0, onsite: 0, service: 0 };
+      if (!map[t.category]) map[t.category] = { total: 0, yard: 0, in_transit: 0, onsite: 0, service: 0 };
       map[t.category].total += 1;
       if (t.status === 'available') map[t.category].yard += 1;
+      else if (t.status === 'in_transit') map[t.category].in_transit += 1;
       else if (t.status === 'onsite') map[t.category].onsite += 1;
       else if (t.status === 'maintenance') map[t.category].service += 1;
     });
@@ -204,6 +206,7 @@ const OperationalInventory = () => {
   const statusCounts = useMemo(() => ({
     all: inCategory.length,
     available: inCategory.filter(t => t.status === 'available').length,
+    in_transit: inCategory.filter(t => t.status === 'in_transit').length,
     onsite: inCategory.filter(t => t.status === 'onsite').length,
     maintenance: inCategory.filter(t => t.status === 'maintenance').length,
   }), [inCategory]);
@@ -407,9 +410,10 @@ const OperationalInventory = () => {
             {/* Status filter chips */}
             <div className="mt-4 mb-4 flex flex-wrap gap-2">
               <FilterChip label="All"     count={statusCounts.all}          active={statusFilter === 'all'}         onClick={() => setStatusFilter('all')}         accent="slate" />
-              <FilterChip label="Yard"    count={statusCounts.available}    active={statusFilter === 'available'}   onClick={() => setStatusFilter('available')}   accent="sky" />
-              <FilterChip label="Onsite"  count={statusCounts.onsite}       active={statusFilter === 'onsite'}      onClick={() => setStatusFilter('onsite')}      accent="emerald" />
-              <FilterChip label="Service" count={statusCounts.maintenance}  active={statusFilter === 'maintenance'} onClick={() => setStatusFilter('maintenance')} accent="rose" />
+              <FilterChip label="Yard"       count={statusCounts.available}    active={statusFilter === 'available'}    onClick={() => setStatusFilter('available')}    accent="sky" />
+              <FilterChip label="In-Transit" count={statusCounts.in_transit}  active={statusFilter === 'in_transit'}  onClick={() => setStatusFilter('in_transit')}  accent="blue" />
+              <FilterChip label="Onsite"     count={statusCounts.onsite}       active={statusFilter === 'onsite'}      onClick={() => setStatusFilter('onsite')}      accent="emerald" />
+              <FilterChip label="Service"    count={statusCounts.maintenance}  active={statusFilter === 'maintenance'} onClick={() => setStatusFilter('maintenance')} accent="rose" />
             </div>
 
           {/* Table */}
@@ -539,9 +543,10 @@ const OperationalInventory = () => {
                     <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5 tracking-wider">Status</label>
                     <select value={form.status} onChange={e => updateForm('status', e.target.value as ToolRow['status'])}
                       className="w-full p-3 bg-slate-50 dark:bg-meta-4 rounded-xl font-bold text-sm border border-slate-200 dark:border-white/5 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:text-white">
-                      <option value="available">Available (Yard)</option>
-                      <option value="onsite">Onsite</option>
-                      <option value="maintenance">Maintenance / Service</option>
+                      <option value="available">Yard (Available)</option>
+                      <option value="in_transit">In-Transit (Order Booked)</option>
+                      <option value="onsite">Onsite (Active Order)</option>
+                      <option value="maintenance">Service / Maintenance</option>
                     </select>
                   </div>
                 </div>
@@ -685,13 +690,14 @@ const OperationalInventory = () => {
 
 // ─── Operational Inventory presentation helpers ─────────────────────────────
 
-type Accent = 'slate' | 'sky' | 'emerald' | 'rose';
+type Accent = 'slate' | 'sky' | 'blue' | 'emerald' | 'rose';
 
 const ACCENT_STYLES: Record<Accent, { ring: string; text: string; soft: string; dot: string; bar: string }> = {
-  slate:   { ring: 'ring-slate-200 dark:ring-white/10',   text: 'text-slate-800 dark:text-white',     soft: 'bg-slate-100 text-slate-600 dark:bg-meta-4 dark:text-slate-300', dot: 'bg-slate-400',   bar: 'bg-slate-400' },
-  sky:     { ring: 'ring-sky-200 dark:ring-sky-500/20', text: 'text-sky-700 dark:text-sky-300', soft: 'bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300', dot: 'bg-sky-500',  bar: 'bg-sky-400' },
+  slate:   { ring: 'ring-slate-200 dark:ring-white/10',     text: 'text-slate-800 dark:text-white',     soft: 'bg-slate-100 text-slate-600 dark:bg-meta-4 dark:text-slate-300',         dot: 'bg-slate-400',   bar: 'bg-slate-400' },
+  sky:     { ring: 'ring-sky-200 dark:ring-sky-500/20',     text: 'text-sky-700 dark:text-sky-300',     soft: 'bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300',             dot: 'bg-sky-500',     bar: 'bg-sky-400' },
+  blue:    { ring: 'ring-blue-200 dark:ring-blue-500/20',   text: 'text-blue-700 dark:text-blue-300',   soft: 'bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300',         dot: 'bg-blue-500',    bar: 'bg-blue-500' },
   emerald: { ring: 'ring-emerald-200 dark:ring-emerald-500/20', text: 'text-emerald-700 dark:text-emerald-300', soft: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300', dot: 'bg-emerald-500', bar: 'bg-emerald-500' },
-  rose:    { ring: 'ring-rose-200 dark:ring-rose-500/20',  text: 'text-rose-700 dark:text-rose-300',  soft: 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300',   dot: 'bg-rose-500',    bar: 'bg-rose-500' },
+  rose:    { ring: 'ring-rose-200 dark:ring-rose-500/20',   text: 'text-rose-700 dark:text-rose-300',   soft: 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300',         dot: 'bg-rose-500',    bar: 'bg-rose-500' },
 };
 
 const CategoryButton = ({ label, breakdown, active, group, onClick }: {

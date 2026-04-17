@@ -25,9 +25,10 @@ const TRS_CATEGORIES = ['CRT', 'Torque Sub', 'Power Tong', 'Jam Unit', 'HPU', 'F
 const DHT_CATEGORIES = ['Bucking', 'Reamers', 'Anti Stick Slip', 'Scrapper', 'Jars', 'Circulating DHT'];
 
 // Status mapping from backend ToolStatus to display labels
-type DisplayStatus = 'onsite' | 'yard' | 'service';
+type DisplayStatus = 'onsite' | 'in_transit' | 'yard' | 'service';
 const STATUS_MAP: Record<string, DisplayStatus> = {
   'available': 'yard',
+  'in_transit': 'in_transit',
   'onsite': 'onsite',
   'maintenance': 'service',
 };
@@ -40,6 +41,7 @@ interface ToolItem {
   size: string;
   serialNumber: string;
   status: DisplayStatus;
+  rawStatus?: string;
   operationalHours: number;
   rigName?: string;
   locationName?: string;
@@ -56,6 +58,17 @@ const STATUS_CONFIG = {
     tabBorder: 'border-emerald-300 dark:border-emerald-500/40',
     tabText: 'text-emerald-700 dark:text-emerald-400',
     icon: 'onsite',
+  },
+  in_transit: {
+    label: 'In-Transit',
+    dotColor: 'bg-blue-500',
+    badgeBg: 'bg-blue-50 dark:bg-blue-500/10',
+    badgeText: 'text-blue-700 dark:text-blue-400',
+    borderColor: 'border-blue-200 dark:border-blue-500/30',
+    tabBg: 'bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/10',
+    tabBorder: 'border-blue-300 dark:border-blue-500/40',
+    tabText: 'text-blue-700 dark:text-blue-400',
+    icon: 'in_transit',
   },
   yard: {
     label: 'Yard',
@@ -88,6 +101,7 @@ const Tools = () => {
 
   const [selectedCategory, setSelectedCategory] = useState<string>('CRT');
   const [selectedStatus, setSelectedStatus] = useState<'all' | DisplayStatus>('all');
+
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
@@ -152,6 +166,7 @@ const Tools = () => {
   // Stable counts derived from memoized data
   const totalCount = categoryTools.length;
   const onsiteCount = categoryTools.filter(t => t.status === 'onsite').length;
+  const inTransitCount = categoryTools.filter(t => t.status === 'in_transit').length;
   const yardCount = categoryTools.filter(t => t.status === 'yard').length;
   const serviceCount = categoryTools.filter(t => t.status === 'service').length;
 
@@ -251,10 +266,11 @@ const Tools = () => {
             </div>
 
             {/* Status Tabs */}
-            <div className="grid grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-5 gap-3 mb-6">
               {[
                 { id: 'all' as const, label: 'All', count: totalCount, icon: 'all' },
                 { id: 'onsite' as const, label: 'Onsite', count: onsiteCount, icon: 'onsite' },
+                { id: 'in_transit' as const, label: 'In-Transit', count: inTransitCount, icon: 'in_transit' },
                 { id: 'yard' as const, label: 'Yard', count: yardCount, icon: 'yard' },
                 { id: 'service' as const, label: 'Service', count: serviceCount, icon: 'service' }
               ].map(tab => {
@@ -272,7 +288,8 @@ const Tools = () => {
                   >
                     <div className="mb-1">
                       {tab.icon === 'all' && <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>}
-                      {tab.icon === 'onsite' && <span className="block w-3.5 h-3.5 rounded-full bg-emerald-500 shadow-md shadow-emerald-500/40" />}
+                      {tab.icon === 'onsite' && <span className="block w-3.5 h-3.5 rounded-full bg-emerald-500 shadow-md shadow-emerald-500/40 animate-pulse" />}
+                      {tab.icon === 'in_transit' && <span className="block w-3.5 h-3.5 rounded-full bg-blue-500 shadow-md shadow-blue-500/40" />}
                       {tab.icon === 'yard' && <span className="block w-3.5 h-3.5 rounded-full bg-amber-500 shadow-md shadow-amber-500/40" />}
                       {tab.icon === 'service' && <span className="block w-3.5 h-3.5 rounded-full bg-rose-500 shadow-md shadow-rose-500/40" />}
                     </div>
