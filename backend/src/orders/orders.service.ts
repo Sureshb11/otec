@@ -37,9 +37,10 @@ export class OrdersService {
 
     async create(createOrderDto: CreateOrderDto): Promise<Order> {
         const { items, ...orderData } = createOrderDto;
+        const initialStatus = orderData.status || OrderStatus.BOOKED;
         const order = this.ordersRepository.create({
             ...orderData,
-            status: orderData.status || OrderStatus.BOOKED,
+            status: initialStatus,
         });
         const savedOrder = await this.ordersRepository.save(order);
 
@@ -51,6 +52,26 @@ export class OrdersService {
                 }),
             );
             await this.orderItemsRepository.save(orderItems);
+
+            // Sync tool statuses to match the order's initial status. Mirrors
+            // the logic in updateStatus() — without this, a freshly-booked
+            // order leaves each tool in whatever status it inherited from a
+            // previous order (e.g. ONSITE from a job that never closed cleanly),
+            // so the Tools page and the Kanban disagree.
+            if (initialStatus === OrderStatus.BOOKED) {
+                for (const item of items) {
+                    await this.toolsRepository.update(item.toolId, {
+                        status: ToolStatus.IN_TRANSIT,
+                    });
+                }
+            } else if (initialStatus === OrderStatus.ACTIVE) {
+                for (const item of items) {
+                    await this.toolsRepository.update(item.toolId, {
+                        status: ToolStatus.ONSITE,
+                        rigId: savedOrder.rigId,
+                    });
+                }
+            }
         }
 
         return this.findOne(savedOrder.id);
@@ -241,6 +262,66 @@ export class OrdersService {
         const elapsedSec = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
         order.totalOperationalSeconds = Number(order.totalOperationalSeconds || 0) + elapsedSec;
         order.operationStartedAt = null;
+    }
+
+    /**
+     * Reconcile tool statuses against their current order status.
+     * Fixes data drift — e.g. a tool left as ONSITE after its order was
+     * manually closed, or stuck IN_TRANSIT with no open order.
+     *
+     * Rules:
+     *   - A tool referenced by an ACTIVE order  → must be ONSITE (+ rig assigned)
+     *   - A tool referenced by a BOOKED order   → must be IN_TRANSIT
+     *   - A tool with no open order             → must be AVAILABLE, no rig
+     * Tools in MAINTENANCE are left alone — that's an operator-controlled state.
+     */
+    async reconcileToolStatuses(): Promise<{ fixed: number; details: string[] }> {
+        const openOrders = await this.ordersRepository.find({
+            where: [
+                { status: OrderStatus.BOOKED },
+                { status: OrderStatus.ACTIVE },
+            ],
+            relations: ['items'],
+        });
+
+        // Build expected state per tool from open orders
+        const expected: Record<string, { status: ToolStatus; rigId: string | null }> = {};
+        for (const order of openOrders) {
+            if (!order.items) continue;
+            for (const item of order.items) {
+                if (order.status === OrderStatus.ACTIVE) {
+                    expected[item.toolId] = { status: ToolStatus.ONSITE, rigId: order.rigId };
+                } else if (order.status === OrderStatus.BOOKED && !expected[item.toolId]) {
+                    // Don't overwrite an ACTIVE claim with a BOOKED one
+                    expected[item.toolId] = { status: ToolStatus.IN_TRANSIT, rigId: null };
+                }
+            }
+        }
+
+        const allTools = await this.toolsRepository.find();
+        const details: string[] = [];
+        let fixed = 0;
+
+        for (const tool of allTools) {
+            if (tool.status === ToolStatus.MAINTENANCE) continue;
+
+            const target = expected[tool.id] ?? { status: ToolStatus.AVAILABLE, rigId: null };
+            const needsStatusFix = tool.status !== target.status;
+            const needsRigFix = (tool.rigId ?? null) !== (target.rigId ?? null);
+
+            if (needsStatusFix || needsRigFix) {
+                await this.toolsRepository.update(tool.id, {
+                    status: target.status,
+                    rigId: target.rigId,
+                });
+                fixed++;
+                details.push(
+                    `${tool.name} (${tool.serialNumber}): ${tool.status} → ${target.status}`,
+                );
+            }
+        }
+
+        return { fixed, details };
     }
 
     async remove(id: string): Promise<void> {

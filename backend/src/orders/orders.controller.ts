@@ -77,6 +77,17 @@ export class OrdersController {
         return this.ordersService.stopOperation(id);
     }
 
+    /**
+     * Reconcile tool.status / tool.rigId against current open orders.
+     * Useful when Kanban column and Tools page disagree (e.g. a stuck
+     * ONSITE tool whose order was manually closed long ago).
+     */
+    @Post('reconcile-tools')
+    @RequirePermission('orders', 'canEdit')
+    reconcileTools() {
+        return this.ordersService.reconcileToolStatuses();
+    }
+
     @Delete(':id')
     @RequirePermission('orders', 'canDelete')
     remove(@Param('id') id: string) {
