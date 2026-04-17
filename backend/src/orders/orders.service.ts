@@ -110,11 +110,13 @@ export class OrdersService {
             }
         }
 
-        if (targetStatus === OrderStatus.RETURNED) {
-            order.returnedAt = new Date();
-            // Mark all tools in this order as available, update operational hours, and release from rig
-            if (order.items && order.activatedAt) {
-                const hoursWorked = (new Date().getTime() - order.activatedAt.getTime()) / (1000 * 60 * 60);
+        if (targetStatus === OrderStatus.JOB_DONE) {
+            // Job is complete — release tools back to yard, update operational hours, clear rig assignment
+            if (order.items) {
+                const activatedTime = order.activatedAt ? new Date(order.activatedAt) : null;
+                const hoursWorked = activatedTime
+                    ? (new Date().getTime() - activatedTime.getTime()) / (1000 * 60 * 60)
+                    : 0;
                 for (const item of order.items) {
                     const tool = await this.toolsRepository.findOne({ where: { id: item.toolId } });
                     if (tool) {
@@ -124,6 +126,20 @@ export class OrdersService {
                             operationalHours: Number(tool.operationalHours || 0) + hoursWorked,
                         });
                     }
+                }
+            }
+        }
+
+        if (targetStatus === OrderStatus.RETURNED) {
+            order.returnedAt = new Date();
+            // Additional return confirmation — tools already released at job_done, just record returnedAt
+            if (order.items && order.activatedAt) {
+                for (const item of order.items) {
+                    // Ensure tools are available (in case job_done was skipped)
+                    await this.toolsRepository.update(item.toolId, {
+                        status: ToolStatus.AVAILABLE,
+                        rigId: null,
+                    });
                 }
             }
         }
