@@ -746,10 +746,20 @@ const Orders = () => {
   const allOrders   = Array.isArray(orders) ? orders : [];
   const getTracking = (id: string) => trackingMap[id] ?? emptyTracking();
 
-  // Only show orders that belong on the Kanban board (exclude returned, cancelled, draft)
-  const boardOrders = allOrders.filter((o: any) =>
-    getColId(o.status, getTracking(o.id)) !== null
-  );
+  // Only show orders that belong on the Kanban board (exclude returned, cancelled, draft).
+  // Also auto-clear job_done orders after 24h — they linger on the board for a day
+  // after being marked complete, then drop off automatically.
+  const JOB_DONE_TTL_MS = 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  const boardOrders = allOrders.filter((o: any) => {
+    const col = getColId(o.status, getTracking(o.id));
+    if (col === null) return false;
+    if (col === 'job-done') {
+      const stamp = o.updatedAt ? new Date(o.updatedAt).getTime() : 0;
+      if (stamp && now - stamp >= JOB_DONE_TTL_MS) return false;
+    }
+    return true;
+  });
 
   const filteredOrders = boardOrders.filter((o: any) =>
     !search ||
