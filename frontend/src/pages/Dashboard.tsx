@@ -43,7 +43,6 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedCategory, setSelectedCategory] = useState<string>('CRT');
-  const [baseTime] = useState(() => new Date()); // captured once at mount
 
   // Fetch real data from API
   useEffect(() => {
@@ -117,8 +116,17 @@ const Dashboard = () => {
     return counts;
   }, [tools]);
 
-  // Compute runtime per tool using real activatedAt from orders
-  const [orderActivatedMap, setOrderActivatedMap] = useState<Record<string, string>>({});
+  // ─── Operational runtime (toolId → { totalSeconds, operationStartedAt }) ───
+  // Sourced from the backend `orders` table:
+  //   - totalOperationalSeconds: accumulated across all Standby↔Active cycles
+  //   - operationStartedAt: non-null while the operator has the tools in Active
+  // Displayed runtime = totalSeconds + (operationStartedAt ? now − started : 0).
+  // A null operationStartedAt means the tools are in Standby (timer paused).
+  interface RuntimeInfo {
+    totalSeconds: number;
+    operationStartedAt: string | null;
+  }
+  const [orderRuntimeMap, setOrderRuntimeMap] = useState<Record<string, RuntimeInfo>>({});
 
   // Selected category tools
   const activeCategoryTools = useMemo(() =>
@@ -126,88 +134,52 @@ const Dashboard = () => {
     [tools, selectedCategory]
   );
 
-  // Live monitor: ONLY tools that are ONSITE + currently in an active order
-  // (excludes stale onsite tools from completed/old orders)
+  // Live monitor: tools that are ONSITE + part of an active order.
+  // (Presence in orderRuntimeMap means the tool is in an order whose status is 'active'.)
   const onsiteTools = useMemo(() =>
-    activeCategoryTools.filter(t => t.status === 'onsite' && orderActivatedMap[t.id]),
-    [activeCategoryTools, orderActivatedMap]
+    activeCategoryTools.filter(t => t.status === 'onsite' && orderRuntimeMap[t.id]),
+    [activeCategoryTools, orderRuntimeMap]
   );
 
-  // Fetch orders to get activatedAt timestamps for onsite tools
+  // Fetch orders to build the runtime map for every tool in an active order.
   useEffect(() => {
     const fetchOrders = async () => {
       try {
         const ordersData = await apiClient.orders.getAll();
         if (Array.isArray(ordersData)) {
-          const map: Record<string, string> = {};
+          const map: Record<string, RuntimeInfo> = {};
           ordersData.forEach((order: any) => {
             if (order.status === 'active' && Array.isArray(order.items)) {
-              // Use activatedAt if set, otherwise fall back to updatedAt (closest approx. to activation time)
-              const timeRef = order.activatedAt || order.updatedAt;
-              if (timeRef) {
-                order.items.forEach((item: any) => {
-                  map[item.toolId] = timeRef;
-                });
-              }
+              const info: RuntimeInfo = {
+                totalSeconds: Number(order.totalOperationalSeconds) || 0,
+                operationStartedAt: order.operationStartedAt || null,
+              };
+              order.items.forEach((item: any) => {
+                map[item.toolId] = info;
+              });
             }
           });
-          setOrderActivatedMap(map);
+          setOrderRuntimeMap(map);
         }
       } catch (err) {
-        console.error('Failed to fetch orders for tool activation times:', err);
+        console.error('Failed to fetch orders for runtime map:', err);
       }
     };
     fetchOrders();
+    // Poll every 15s so Start/Stop events from the Kanban propagate without a manual refresh.
+    const interval = setInterval(fetchOrders, 15000);
+    return () => clearInterval(interval);
   }, []);
 
-  // Persistent start times — survives page refresh via localStorage
-  // Priority: activatedAt from order > localStorage cache > current time (first seen)
-  const [startTimesMap, setStartTimesMap] = useState<Record<string, Date>>({});
-  const STORAGE_PREFIX = 'otec_tool_start_';
-
-  useEffect(() => {
-    const map: Record<string, Date> = {};
-
-    onsiteTools.forEach(tool => {
-      // Priority 1: real activatedAt from active order (most accurate)
-      const activatedAt = orderActivatedMap[tool.id];
-      if (activatedAt) {
-        map[tool.id] = new Date(activatedAt);
-        localStorage.removeItem(STORAGE_PREFIX + tool.id); // no longer need cached value
-        return;
-      }
-
-      // Priority 2: cached start time from previous session (persists across refresh)
-      const stored = localStorage.getItem(STORAGE_PREFIX + tool.id);
-      if (stored) {
-        map[tool.id] = new Date(stored);
-        return;
-      }
-
-      // Priority 3: first time we see this tool as onsite — store now so refresh keeps it
-      const now = new Date();
-      localStorage.setItem(STORAGE_PREFIX + tool.id, now.toISOString());
-      map[tool.id] = now;
-    });
-
-    setStartTimesMap(map);
-
-    // Clean up localStorage entries for tools no longer onsite
-    const onsiteIds = new Set(onsiteTools.map(t => t.id));
-    Object.keys(localStorage)
-      .filter(k => k.startsWith(STORAGE_PREFIX))
-      .forEach(k => {
-        const toolId = k.replace(STORAGE_PREFIX, '');
-        if (!onsiteIds.has(toolId)) {
-          localStorage.removeItem(k);
-        }
-      });
-  }, [onsiteTools, orderActivatedMap]);
-
+  // Derive the live ticking runtime per tool. This is the only place the clock is computed.
   const liveInstances = useMemo(() =>
     onsiteTools.map(tool => {
-      const startTime = startTimesMap[tool.id] || baseTime;
-      const elapsedSec = Math.max(0, Math.floor((currentTime.getTime() - startTime.getTime()) / 1000));
+      const info = orderRuntimeMap[tool.id];
+      const base = info?.totalSeconds || 0;
+      const openSec = info?.operationStartedAt
+        ? Math.max(0, Math.floor((currentTime.getTime() - new Date(info.operationStartedAt).getTime()) / 1000))
+        : 0;
+      const elapsedSec = base + openSec;
       const hours = Math.floor(elapsedSec / 3600);
       const minutes = Math.floor((elapsedSec % 3600) / 60);
       const seconds = elapsedSec % 60;
@@ -216,10 +188,10 @@ const Dashboard = () => {
         hours,
         minutes,
         seconds,
-        startTime
+        isRunning: !!info?.operationStartedAt, // true = Active, false = Standby
       };
     }),
-    [onsiteTools, currentTime, startTimesMap, baseTime]
+    [onsiteTools, currentTime, orderRuntimeMap]
   );
 
   // All tools not onsite for the yard/service count in the side panel
@@ -228,16 +200,16 @@ const Dashboard = () => {
 
   // Active count = tools that are onsite AND in an active order
   const activeOrderToolCount = useMemo(
-    () => tools.filter(t => t.status === 'onsite' && orderActivatedMap[t.id]).length,
-    [tools, orderActivatedMap]
+    () => tools.filter(t => t.status === 'onsite' && orderRuntimeMap[t.id]).length,
+    [tools, orderRuntimeMap]
   );
 
   // Set of categories that have at least one tool in an active order (for green dots)
   const activeOrderCategories = useMemo(() => {
     const s = new Set<string>();
-    tools.forEach(t => { if (orderActivatedMap[t.id]) s.add(t.category); });
+    tools.forEach(t => { if (orderRuntimeMap[t.id]) s.add(t.category); });
     return s;
-  }, [tools, orderActivatedMap]);
+  }, [tools, orderRuntimeMap]);
 
   if (loading) return (
     <MainLayout>

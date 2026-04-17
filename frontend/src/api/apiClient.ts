@@ -243,6 +243,17 @@ export const apiClient = {
       const response = await api.patch(`/orders/${id}/status`, { status });
       return response.data;
     },
+    // Operational-runtime timer controls (Kanban Active/Standby).
+    // Separate from order status — the order stays 'active' while the
+    // operator cycles between Start and Stop.
+    startOperation: async (id: string) => {
+      const response = await api.patch(`/orders/${id}/operation/start`);
+      return response.data;
+    },
+    stopOperation: async (id: string) => {
+      const response = await api.patch(`/orders/${id}/operation/stop`);
+      return response.data;
+    },
     delete: async (id: string) => {
       await api.delete(`/orders/${id}`);
     },
