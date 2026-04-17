@@ -16,7 +16,11 @@ interface LiveTool {
   rigName?: string;
   locationName?: string;
   customerName?: string;
-  activatedAt?: string; // real order activation time
+  // Operational runtime (SAP PM / Maximo pattern): accumulated running seconds
+  // across all Start/Stop cycles + timestamp of current open segment (if any).
+  // Separate from the order-level deployment timestamp (activatedAt).
+  totalSeconds: number;
+  operationStartedAt: string | null;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -135,9 +139,13 @@ interface ToolTileProps {
 const ToolTile = ({ tool, now }: ToolTileProps) => {
   const isDHT = tool.group === 'DHT';
 
-  const elapsedSec = tool.activatedAt
-    ? Math.max(0, Math.floor((now - new Date(tool.activatedAt).getTime()) / 1000))
-    : null;
+  // Runtime = accumulated completed segments + the currently open segment (if Start is active).
+  // null means operator has never pressed Start — render "Not tracked".
+  const base = tool.totalSeconds || 0;
+  const openSec = tool.operationStartedAt
+    ? Math.max(0, Math.floor((now - new Date(tool.operationStartedAt).getTime()) / 1000))
+    : 0;
+  const elapsedSec = (base > 0 || tool.operationStartedAt) ? base + openSec : null;
 
   return (
     <div className={`relative flex flex-col rounded-2xl overflow-hidden border shadow-lg
@@ -298,13 +306,19 @@ const ToolBoard = () => {
         apiClient.orders.getAll().catch(() => []),
       ]);
 
-      // Build toolId → activatedAt map from active orders
-      const activatedMap: Record<string, string> = {};
+      // Build toolId → runtime map from active orders. Runtime tracks the
+      // operator-controlled Start/Stop cycle (operationStartedAt +
+      // totalOperationalSeconds), NOT the order deployment timestamp.
+      const runtimeMap: Record<string, { totalSeconds: number; operationStartedAt: string | null }> = {};
       if (Array.isArray(ordersData)) {
         ordersData.forEach((order: any) => {
-          if (order.status === 'active' && order.activatedAt && Array.isArray(order.items)) {
+          if (order.status === 'active' && Array.isArray(order.items)) {
+            const info = {
+              totalSeconds: Number(order.totalOperationalSeconds) || 0,
+              operationStartedAt: order.operationStartedAt || null,
+            };
             order.items.forEach((item: any) => {
-              if (item.toolId) activatedMap[item.toolId] = order.activatedAt;
+              if (item.toolId) runtimeMap[item.toolId] = info;
             });
           }
         });
@@ -331,7 +345,8 @@ const ToolBoard = () => {
               rigName: t.rig?.name,
               locationName: t.rig?.location?.name,
               customerName: t.rig?.customer?.name,
-              activatedAt: activatedMap[t.id],
+              totalSeconds: runtimeMap[t.id]?.totalSeconds ?? 0,
+              operationStartedAt: runtimeMap[t.id]?.operationStartedAt ?? null,
             };
           });
         setTools(onsite);
@@ -404,7 +419,7 @@ const ToolBoard = () => {
     });
   }
 
-  const trackedCount = filteredTools.filter(t => t.activatedAt).length;
+  const trackedCount = filteredTools.filter(t => t.operationStartedAt || t.totalSeconds > 0).length;
 
   return (
     <div
