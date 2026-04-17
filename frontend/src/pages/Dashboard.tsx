@@ -191,6 +191,12 @@ const Dashboard = () => {
   const yardTools = activeCategoryTools.filter(t => t.status === 'available');
   const serviceToolsList = activeCategoryTools.filter(t => t.status === 'maintenance');
 
+  // Active count = tools currently in active orders (not just onsite status)
+  const activeOrderToolCount = useMemo(
+    () => Object.keys(orderActivatedMap).length,
+    [orderActivatedMap]
+  );
+
   if (loading) return (
     <MainLayout>
       <div className="flex items-center justify-center h-[60vh]">
@@ -228,7 +234,7 @@ const Dashboard = () => {
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-2xl font-black text-slate-900 dark:text-white leading-none tracking-tight">{stats.onsiteTools}</h3>
+                  <h3 className="text-2xl font-black text-slate-900 dark:text-white leading-none tracking-tight">{activeOrderToolCount}</h3>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mt-0.5">Active</p>
                 </div>
               </Link>
