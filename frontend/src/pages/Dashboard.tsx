@@ -11,7 +11,7 @@ interface ToolData {
   category: string;
   size: string;
   serialNumber: string;
-  status: 'available' | 'onsite' | 'maintenance';
+  status: 'available' | 'in_transit' | 'onsite' | 'maintenance';
   operationalHours: number;
   rigName?: string;
   rigLocation?: string;
@@ -124,19 +124,21 @@ const Dashboard = () => {
     return counts;
   }, [tools]);
 
-  // Selected category tools — onsite ones shown in the live monitor
+  // Compute runtime per tool using real activatedAt from orders
+  const [orderActivatedMap, setOrderActivatedMap] = useState<Record<string, string>>({});
+
+  // Selected category tools
   const activeCategoryTools = useMemo(() =>
     tools.filter(t => t.category === selectedCategory),
     [tools, selectedCategory]
   );
 
+  // Live monitor: ONLY tools that are ONSITE + currently in an active order
+  // (excludes stale onsite tools from completed/old orders)
   const onsiteTools = useMemo(() =>
-    activeCategoryTools.filter(t => t.status === 'onsite'),
-    [activeCategoryTools]
+    activeCategoryTools.filter(t => t.status === 'onsite' && orderActivatedMap[t.id]),
+    [activeCategoryTools, orderActivatedMap]
   );
-
-  // Compute runtime per tool using real activatedAt from orders
-  const [orderActivatedMap, setOrderActivatedMap] = useState<Record<string, string>>({});
 
   // Fetch orders to get activatedAt timestamps for onsite tools
   useEffect(() => {
@@ -469,7 +471,7 @@ const Dashboard = () => {
                 </h2>
                 <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">
                   {selectedCategory
-                    ? `${activeCategoryTools.length} total · ${onsiteTools.length} onsite · ${yardTools.length} yard · ${serviceToolsList.length} service`
+                    ? `${activeCategoryTools.length} total · ${onsiteTools.length} active · ${activeCategoryTools.filter(t => t.status === 'in_transit').length} in-transit · ${yardTools.length} yard · ${serviceToolsList.length} service`
                     : 'Select a category to view live metrics'}
                 </p>
               </div>
