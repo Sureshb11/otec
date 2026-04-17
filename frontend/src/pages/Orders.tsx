@@ -389,10 +389,18 @@ const OrderCard = ({ order, colId, tracking, onDragStart, onTrackingChange, hasH
                             Tools Standby
                           </span>
                           <button
-                            onClick={() => update({
-                              operationStarted: { status: true, timestamp: nowStr(), markedBy: OPERATION_ROLES[0], markedByRole: OPERATION_ROLES[0] },
-                              isActive: true,
-                            })}
+                            onClick={() => {
+                              // Local kanban tracking (UI only)
+                              update({
+                                operationStarted: { status: true, timestamp: nowStr(), markedBy: OPERATION_ROLES[0], markedByRole: OPERATION_ROLES[0] },
+                                isActive: true,
+                              });
+                              // Persist operational-runtime start on the order so the
+                              // Dashboard timer and hour accumulation use the real "Active" moment,
+                              // not the earlier Onsite drop.
+                              apiClient.orders.startOperation(order.id)
+                                .catch(err => console.error('Failed to start operation timer:', err));
+                            }}
                             className="inline-flex items-center gap-1 text-xs bg-emerald-600 text-white px-2.5 py-1 rounded-md hover:bg-emerald-700 font-bold transition-colors"
                           >
                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -416,7 +424,12 @@ const OrderCard = ({ order, colId, tracking, onDragStart, onTrackingChange, hasH
                               Tools Active · Operating
                             </span>
                             <button
-                              onClick={() => update({ operationStarted: emptyEvent(), isActive: false })}
+                              onClick={() => {
+                                update({ operationStarted: emptyEvent(), isActive: false });
+                                // Close the runtime segment on the backend
+                                apiClient.orders.stopOperation(order.id)
+                                  .catch(err => console.error('Failed to stop operation timer:', err));
+                              }}
                               className="text-xs text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400 font-medium transition-colors"
                             >
                               Stop
