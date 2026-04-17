@@ -135,7 +135,7 @@ const Dashboard = () => {
     [activeCategoryTools]
   );
 
-  // Compute runtime per tool using real activatedAt from orders (falls back to mount-time)
+  // Compute runtime per tool using real activatedAt from orders
   const [orderActivatedMap, setOrderActivatedMap] = useState<Record<string, string>>({});
 
   // Fetch orders to get activatedAt timestamps for onsite tools
@@ -161,10 +161,53 @@ const Dashboard = () => {
     fetchOrders();
   }, []);
 
+  // Persistent start times — survives page refresh via localStorage
+  // Priority: activatedAt from order > localStorage cache > current time (first seen)
+  const [startTimesMap, setStartTimesMap] = useState<Record<string, Date>>({});
+  const STORAGE_PREFIX = 'otec_tool_start_';
+
+  useEffect(() => {
+    const map: Record<string, Date> = {};
+
+    onsiteTools.forEach(tool => {
+      // Priority 1: real activatedAt from active order (most accurate)
+      const activatedAt = orderActivatedMap[tool.id];
+      if (activatedAt) {
+        map[tool.id] = new Date(activatedAt);
+        localStorage.removeItem(STORAGE_PREFIX + tool.id); // no longer need cached value
+        return;
+      }
+
+      // Priority 2: cached start time from previous session (persists across refresh)
+      const stored = localStorage.getItem(STORAGE_PREFIX + tool.id);
+      if (stored) {
+        map[tool.id] = new Date(stored);
+        return;
+      }
+
+      // Priority 3: first time we see this tool as onsite — store now so refresh keeps it
+      const now = new Date();
+      localStorage.setItem(STORAGE_PREFIX + tool.id, now.toISOString());
+      map[tool.id] = now;
+    });
+
+    setStartTimesMap(map);
+
+    // Clean up localStorage entries for tools no longer onsite
+    const onsiteIds = new Set(onsiteTools.map(t => t.id));
+    Object.keys(localStorage)
+      .filter(k => k.startsWith(STORAGE_PREFIX))
+      .forEach(k => {
+        const toolId = k.replace(STORAGE_PREFIX, '');
+        if (!onsiteIds.has(toolId)) {
+          localStorage.removeItem(k);
+        }
+      });
+  }, [onsiteTools, orderActivatedMap]);
+
   const liveInstances = useMemo(() =>
     onsiteTools.map(tool => {
-      const activatedAt = orderActivatedMap[tool.id];
-      const startTime = activatedAt ? new Date(activatedAt) : baseTime;
+      const startTime = startTimesMap[tool.id] || baseTime;
       const elapsedSec = Math.max(0, Math.floor((currentTime.getTime() - startTime.getTime()) / 1000));
       const hours = Math.floor(elapsedSec / 3600);
       const minutes = Math.floor((elapsedSec % 3600) / 60);
@@ -177,7 +220,7 @@ const Dashboard = () => {
         startTime
       };
     }),
-    [onsiteTools, currentTime, baseTime, orderActivatedMap]
+    [onsiteTools, currentTime, startTimesMap, baseTime]
   );
 
   // All tools not onsite for the yard/service count in the side panel
