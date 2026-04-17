@@ -131,12 +131,11 @@ export class OrdersService {
         }
 
         if (targetStatus === OrderStatus.JOB_DONE) {
-            // Job complete — release tools to yard, accumulate operational hours, clear rig
+            // Close any open operation segment first so runtime is complete
+            this.closeOpenOperationSegment(order);
+            // Job complete — release tools to yard, distribute accumulated runtime hours, clear rig
             if (order.items) {
-                const activatedTime = order.activatedAt ? new Date(order.activatedAt) : null;
-                const hoursWorked = activatedTime
-                    ? (new Date().getTime() - activatedTime.getTime()) / (1000 * 60 * 60)
-                    : 0;
+                const hoursWorked = (order.totalOperationalSeconds || 0) / 3600;
                 for (const item of order.items) {
                     const tool = await this.toolsRepository.findOne({ where: { id: item.toolId } });
                     if (tool) {
@@ -152,15 +151,14 @@ export class OrdersService {
 
         if (targetStatus === OrderStatus.RETURNED) {
             order.returnedAt = new Date();
+            // Safety net: close any still-open segment if JOB_DONE was skipped
+            this.closeOpenOperationSegment(order);
             // Final confirmation — ensure tools are available (safety net if JOB_DONE was skipped)
             if (order.items) {
+                const hoursWorked = (order.totalOperationalSeconds || 0) / 3600;
                 for (const item of order.items) {
                     const tool = await this.toolsRepository.findOne({ where: { id: item.toolId } });
                     if (tool && tool.status !== ToolStatus.AVAILABLE) {
-                        const activatedTime = order.activatedAt ? new Date(order.activatedAt) : null;
-                        const hoursWorked = activatedTime
-                            ? (new Date().getTime() - activatedTime.getTime()) / (1000 * 60 * 60)
-                            : 0;
                         await this.toolsRepository.update(item.toolId, {
                             status: ToolStatus.AVAILABLE,
                             rigId: null,
@@ -172,6 +170,8 @@ export class OrdersService {
         }
 
         if (targetStatus === OrderStatus.CANCELLED) {
+            // Close any open segment so the cancel reflects real runtime up to this moment
+            this.closeOpenOperationSegment(order);
             // Release tools back to yard from any active state (IN_TRANSIT, ONSITE)
             if (order.items) {
                 for (const item of order.items) {
@@ -187,6 +187,60 @@ export class OrdersService {
         }
 
         return this.ordersRepository.save(order);
+    }
+
+    /**
+     * Mark the order's tools as actively operating. Stamps operationStartedAt.
+     * Called when the operator clicks "Start Operation" (Standby → Active).
+     *
+     * No-op if already running. Requires order.status === 'active'.
+     */
+    async startOperation(id: string): Promise<Order> {
+        const order = await this.findOne(id);
+
+        if (order.status !== OrderStatus.ACTIVE) {
+            throw new BadRequestException(
+                `Cannot start operation on an order in '${order.status}' status. Order must be Active (tools onsite).`,
+            );
+        }
+
+        // Idempotent: if already running, just return current state
+        if (order.operationStartedAt) {
+            return order;
+        }
+
+        order.operationStartedAt = new Date();
+        return this.ordersRepository.save(order);
+    }
+
+    /**
+     * End the current operation segment. Adds elapsed seconds to totalOperationalSeconds
+     * and clears operationStartedAt. Called on "Stop" button in the Kanban.
+     *
+     * Idempotent: no-op if no segment is open.
+     */
+    async stopOperation(id: string): Promise<Order> {
+        const order = await this.findOne(id);
+
+        if (!order.operationStartedAt) {
+            return order; // nothing running, no-op
+        }
+
+        this.closeOpenOperationSegment(order);
+        return this.ordersRepository.save(order);
+    }
+
+    /**
+     * Helper: if the order has an open operation segment, accumulate the elapsed
+     * seconds into totalOperationalSeconds and clear operationStartedAt.
+     * Mutates `order` in place. Caller is responsible for persisting.
+     */
+    private closeOpenOperationSegment(order: Order): void {
+        if (!order.operationStartedAt) return;
+        const startedAt = new Date(order.operationStartedAt).getTime();
+        const elapsedSec = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
+        order.totalOperationalSeconds = Number(order.totalOperationalSeconds || 0) + elapsedSec;
+        order.operationStartedAt = null;
     }
 
     async remove(id: string): Promise<void> {

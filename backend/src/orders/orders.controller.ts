@@ -55,6 +55,28 @@ export class OrdersController {
         return this.ordersService.updateStatus(id, status);
     }
 
+    /**
+     * Start an operational runtime segment for this order — called when the
+     * operator clicks "Start Operation" in the Kanban (Standby → Active).
+     * Stamps `operationStartedAt` so the Dashboard timer counts from here.
+     */
+    @Patch(':id/operation/start')
+    @RequirePermission('orders', 'canEdit')
+    startOperation(@Param('id') id: string) {
+        return this.ordersService.startOperation(id);
+    }
+
+    /**
+     * Stop the current operational runtime segment — called on "Stop" in the Kanban.
+     * Accumulates elapsed seconds into `totalOperationalSeconds` and clears
+     * `operationStartedAt`. Next Start resumes accumulation.
+     */
+    @Patch(':id/operation/stop')
+    @RequirePermission('orders', 'canEdit')
+    stopOperation(@Param('id') id: string) {
+        return this.ordersService.stopOperation(id);
+    }
+
     @Delete(':id')
     @RequirePermission('orders', 'canDelete')
     remove(@Param('id') id: string) {

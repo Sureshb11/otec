@@ -78,6 +78,17 @@ export class Order {
     @Column({ name: 'returnedAt', type: 'timestamp', nullable: true })
     returnedAt: Date;
 
+    // Operational runtime tracking (separate from activatedAt which marks deployment).
+    // operationStartedAt is non-null while tools are actively operating (Active).
+    // totalOperationalSeconds accumulates across all Standby↔Active cycles.
+    // When an operation segment ends, (now - operationStartedAt) is added to the total
+    // and operationStartedAt is cleared.
+    @Column({ name: 'operationStartedAt', type: 'timestamp', nullable: true })
+    operationStartedAt: Date | null;
+
+    @Column({ name: 'totalOperationalSeconds', type: 'int', default: 0 })
+    totalOperationalSeconds: number;
+
     @Column({ name: 'totalAmount', type: 'decimal', precision: 12, scale: 2, nullable: true })
     totalAmount: number;
 
