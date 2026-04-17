@@ -3,30 +3,11 @@ import { useState, useEffect, useMemo } from 'react';
 import MainLayout from '../components/MainLayout';
 import Can from '../components/Can';
 import { apiClient } from '../api/apiClient';
-
-// ─── Shared category data ─────────────────────────────────────────────────────
-
-const CATEGORY_DISPLAY_MAP: Record<string, string> = {
-  'CRT': 'CRT',
-  'Torque Sub': 'TORQUE SUB',
-  'Power Tong': 'POWER TONG',
-  'Jam Unit': 'JAM UNIT',
-  'HPU': 'HPU',
-  'Filup Tool': 'FILUP TOOL',
-  'Safety Clamp': 'SAFETY CLAMP',
-  'Elevators': 'ELEVATORS',
-  'Slips': 'SLIPS',
-  'Spider Elevators': 'SPIDER ELEVATORS',
-  'Bucking': 'BUCKING',
-  'Reamers': 'REAMERS',
-  'Anti Stick Slip': 'ANTI STICK SLIP',
-  'Scrapper': 'SCRAPPER',
-  'Jars': 'JARS',
-  'Circulating DHT': 'CIRCULATING'
-};
-
-const TRS_CATEGORIES = ['CRT', 'Torque Sub', 'Power Tong', 'Jam Unit', 'HPU', 'Filup Tool', 'Safety Clamp', 'Elevators', 'Slips', 'Spider Elevators'];
-const DHT_CATEGORIES = ['Bucking', 'Reamers', 'Anti Stick Slip', 'Scrapper', 'Jars', 'Circulating DHT'];
+import {
+  TRS_CATEGORIES,
+  DHT_CATEGORIES,
+  CATEGORY_DISPLAY_MAP,
+} from '../constants/categories';
 
 // ─── Consumables sub-section ──────────────────────────────────────────────────
 

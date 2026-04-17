@@ -3,6 +3,11 @@ import { useAuthStore } from '../store/authStore';
 import { Link } from 'react-router-dom';
 import MainLayout from '../components/MainLayout';
 import { apiClient } from '../api/apiClient';
+import {
+  TRS_CATEGORIES,
+  DHT_CATEGORIES,
+  CATEGORY_DISPLAY_MAP,
+} from '../constants/categories';
 
 interface ToolData {
   id: string;
@@ -52,25 +57,21 @@ const Dashboard = () => {
         ]);
 
         if (Array.isArray(toolsData)) {
-          const mapped: ToolData[] = toolsData.map((t: any) => {
-            let cat = 'Other';
-            if (t.description?.startsWith('Imported from ')) {
-              cat = t.description.replace('Imported from ', '');
-            }
-            return {
-              id: t.id,
-              name: t.name,
-              group: t.type as 'TRS' | 'DHT',
-              category: cat,
-              size: t.size || '',
-              serialNumber: t.serialNumber,
-              status: t.status || 'available',
-              operationalHours: Number(t.operationalHours) || 0,
-              rigName: t.rig?.name,
-              rigLocation: t.rig?.location?.name,
-              customerName: t.rig?.customer?.name,
-            };
-          });
+          // Use the canonical `category` column from the tools table — same
+          // source of truth Inventory uses. Avoids drift between pages.
+          const mapped: ToolData[] = toolsData.map((t: any) => ({
+            id: t.id,
+            name: t.name,
+            group: t.type as 'TRS' | 'DHT',
+            category: t.category || 'Other',
+            size: t.size || '',
+            serialNumber: t.serialNumber,
+            status: t.status || 'available',
+            operationalHours: Number(t.operationalHours) || 0,
+            rigName: t.rig?.name,
+            rigLocation: t.rig?.location?.name,
+            customerName: t.rig?.customer?.name,
+          }));
           setTools(mapped);
 
           const onsiteCount = mapped.filter(t => t.status === 'onsite').length;
@@ -103,16 +104,8 @@ const Dashboard = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Group tools by category
-  const TRS_CATS = ['CRT', 'Power Tong', 'Jam Unit', 'Filup Tool', 'Safety Clamp', 'Elevators', 'Slips', 'Spider Elevators'];
-  const DHT_CATS = ['Reamers', 'Anti Stick Slip', 'Scrapper', 'Jars', 'Circulating DHT'];
-  const CATEGORY_DISPLAY: Record<string, string> = {
-    'CRT': 'CRT', 'Power Tong': 'POWER TONG', 'Jam Unit': 'JAM UNIT',
-    'Filup Tool': 'FILUP TOOL', 'Safety Clamp': 'SAFETY CLAMP',
-    'Elevators': 'ELEVATORS', 'Slips': 'SLIPS', 'Spider Elevators': 'SPIDER ELEVATORS',
-    'Reamers': 'REAMERS', 'Anti Stick Slip': 'ANTI STICK SLIP',
-    'Scrapper': 'SCRAPPER', 'Jars': 'JARS', 'Circulating DHT': 'CIRCULATING'
-  };
+  // Category lists + display labels now come from constants/categories.ts
+  // (shared with Inventory) so the two pages can't drift.
 
   const categoryCounts = useMemo(() => {
     const counts: Record<string, { total: number; onsite: number }> = {};
@@ -370,7 +363,7 @@ const Dashboard = () => {
                 <div className="flex-1 h-px bg-gradient-to-r from-slate-200 dark:from-strokedark to-transparent ml-2"></div>
               </div>
               <div className="space-y-1.5">
-                {TRS_CATS.map(cat => {
+                {TRS_CATEGORIES.map(cat => {
                   const cc = categoryCounts[cat] || { total: 0, onsite: 0 };
                   return (
                     <button
@@ -385,7 +378,7 @@ const Dashboard = () => {
                         <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-blue-400 to-blue-500"></div>
                       )}
                       <div className="flex justify-between items-center pl-2">
-                        <span className={`font-bold tracking-wide ${selectedCategory === cat ? 'text-slate-900 dark:text-white' : ''}`}>{CATEGORY_DISPLAY[cat] || cat}</span>
+                        <span className={`font-bold tracking-wide ${selectedCategory === cat ? 'text-slate-900 dark:text-white' : ''}`}>{CATEGORY_DISPLAY_MAP[cat] || cat}</span>
                         <div className="flex items-center gap-2">
                           {activeOrderCategories.has(cat) && (
                             <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.6)] animate-pulse"></span>
@@ -410,7 +403,7 @@ const Dashboard = () => {
                 <div className="flex-1 h-px bg-gradient-to-r from-slate-200 dark:from-strokedark to-transparent ml-2"></div>
               </div>
               <div className="space-y-1.5">
-                {DHT_CATS.map(cat => {
+                {DHT_CATEGORIES.map(cat => {
                   const cc = categoryCounts[cat] || { total: 0, onsite: 0 };
                   return (
                     <button
@@ -425,7 +418,7 @@ const Dashboard = () => {
                         <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-indigo-400 to-purple-500"></div>
                       )}
                       <div className="flex justify-between items-center pl-2">
-                        <span className={`font-bold tracking-wide ${selectedCategory === cat ? 'text-slate-900 dark:text-white' : ''}`}>{CATEGORY_DISPLAY[cat] || cat}</span>
+                        <span className={`font-bold tracking-wide ${selectedCategory === cat ? 'text-slate-900 dark:text-white' : ''}`}>{CATEGORY_DISPLAY_MAP[cat] || cat}</span>
                         <div className="flex items-center gap-2">
                           {activeOrderCategories.has(cat) && (
                             <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.6)] animate-pulse"></span>
@@ -459,7 +452,7 @@ const Dashboard = () => {
                 <h2 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-3 tracking-tight">
                   {selectedCategory ? (
                     <>
-                      {CATEGORY_DISPLAY[selectedCategory] || selectedCategory}
+                      {CATEGORY_DISPLAY_MAP[selectedCategory] || selectedCategory}
                       <span className="px-3 py-1 rounded-full text-[10px] font-black bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 tracking-[0.2em] uppercase border border-emerald-300/50 dark:border-emerald-500/30 flex items-center gap-2 shadow-sm">
                         <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_5px_rgba(16,185,129,0.8)]"></span>
                         Live Monitor
