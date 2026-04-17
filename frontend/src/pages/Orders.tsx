@@ -894,6 +894,10 @@ const Orders = () => {
           lastUpdated: nowStr(),
         };
         setTrackingMap(prev => ({ ...prev, [orderId]: t }));
+        // Persist operational-runtime start on the backend so the Dashboard timer
+        // ticks from this moment instead of the earlier Onsite-drop (activatedAt).
+        apiClient.orders.startOperation(orderId)
+          .catch(err => console.error('Failed to start operation timer:', err));
         break;
       }
       case 'complete': {
