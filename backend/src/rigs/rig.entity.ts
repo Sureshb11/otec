@@ -38,6 +38,9 @@ export class Rig {
     @Column({ nullable: true })
     description: string;
 
+    @Column({ name: 'wellNumber', nullable: true })
+    wellNumber: string;
+
     @ManyToOne(() => Location, { nullable: true })
     @JoinColumn({ name: 'locationId' })
     location: Location;

@@ -12,6 +12,7 @@ interface Rig {
   type: RigType;
   status: RigStatus;
   description: string | null;
+  wellNumber: string | null;
   locationId: string | null;
   customerId: string | null;
   location?: { id: string; name: string };
@@ -28,12 +29,13 @@ type RigForm = {
   type: RigType;
   status: RigStatus;
   description: string;
+  wellNumber: string;
   locationId: string;
   customerId: string;
 };
 
 const blankForm = (): RigForm => ({
-  name: '', type: 'TRS', status: 'active', description: '', locationId: '', customerId: '',
+  name: '', type: 'TRS', status: 'active', description: '', wellNumber: '', locationId: '', customerId: '',
 });
 
 const orNull = (v: string | null | undefined) => {
@@ -89,6 +91,7 @@ const Rigs = () => {
       type: r.type,
       status: r.status,
       description: r.description || '',
+      wellNumber: r.wellNumber || '',
       locationId: r.locationId || '',
       customerId: r.customerId || '',
     });
@@ -114,6 +117,7 @@ const Rigs = () => {
       type: form.type,
       status: form.status,
       description: orNull(form.description),
+      wellNumber: orNull(form.wellNumber),
       locationId: form.locationId || null,
       customerId: form.customerId || null,
     };
@@ -285,6 +289,10 @@ const Rigs = () => {
                 </select>
               </div>
               <div>
+                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider">Well No</label>
+                <input type="text" value={form.wellNumber} onChange={(e) => setForm({ ...form, wellNumber: e.target.value })} className="w-full px-4 py-3 border border-slate-200 dark:border-strokedark rounded-xl bg-white/50 dark:bg-boxdark dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 transition-all" placeholder="e.g., W-101" />
+              </div>
+              <div>
                 <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider">Description</label>
                 <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="w-full px-4 py-3 border border-slate-200 dark:border-strokedark rounded-xl bg-white/50 dark:bg-boxdark dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 transition-all" placeholder="Rig description..." rows={3} />
               </div>
@@ -337,6 +345,7 @@ const Rigs = () => {
               <tr className="bg-slate-50/80 dark:bg-boxdark-2/80">
                 <th className="px-6 py-4 text-left text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.15em]">Name</th>
                 <th className="px-6 py-4 text-left text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.15em]">Type</th>
+                <th className="px-6 py-4 text-left text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.15em]">Well No</th>
                 <th className="px-6 py-4 text-left text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.15em]">Location</th>
                 <th className="px-6 py-4 text-left text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.15em]">Customer</th>
                 <th className="px-6 py-4 text-left text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.15em]">Status</th>
@@ -350,6 +359,7 @@ const Rigs = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${rig.type === 'TRS' ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400 border border-blue-200/50 dark:border-blue-500/20' : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-500/20'}`}>{rig.type}</span>
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">{rig.wellNumber || '--'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">{rig.location?.name || '--'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">{rig.customer?.name || '--'}</td>
                   <td className="px-6 py-4 whitespace-nowrap">

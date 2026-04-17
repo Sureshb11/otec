@@ -495,15 +495,45 @@ const NewOrderModal = ({ customers, locations, rigs, tools, isSaving, onClose, o
   const [custId,     setCustId]    = useState('');
   const [locId,      setLocId]     = useState('');
   const [rigId,      setRigId]     = useState('');
-  const [startDate,  setStartDate] = useState('');
+  const [rigText,    setRigText]   = useState('');
+  const [showRigSuggestions, setShowRigSuggestions] = useState(false);
+  const [wellNumber, setWellNumber] = useState('');
+  const [startDate,  setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [endDate]   = useState('');
   const [toolSearch, setToolSearch]= useState('');
   const [selTools,   setSelTools]  = useState<{ toolId: string; size: string }[]>([]);
+  const [isCreatingRig, setIsCreatingRig] = useState(false);
 
-  const filtered = tools.filter((t: any) =>
-    t.name.toLowerCase().includes(toolSearch.toLowerCase()) ||
-    (t.type && t.type.toLowerCase().includes(toolSearch.toLowerCase()))
+  // Filter rigs based on typed text
+  const filteredRigs = rigs.filter((r: any) =>
+    r.name.toLowerCase().includes(rigText.toLowerCase())
   );
+
+  // Check if exact match exists
+  const exactRigMatch = rigs.find((r: any) => r.name.toLowerCase() === rigText.trim().toLowerCase());
+
+  const handleRigSelect = (rig: any) => {
+    setRigId(rig.id);
+    setRigText(rig.name);
+    setShowRigSuggestions(false);
+  };
+
+  const handleRigInputChange = (value: string) => {
+    setRigText(value);
+    setRigId(''); // clear ID — will be resolved on save
+    setShowRigSuggestions(value.length > 0);
+  };
+
+  const filtered = tools.filter((t: any) => {
+    const q = toolSearch.toLowerCase();
+    return (
+      t.name?.toLowerCase().includes(q) ||
+      t.category?.toLowerCase().includes(q) ||
+      t.description?.toLowerCase().includes(q) ||
+      t.serialNumber?.toLowerCase().includes(q) ||
+      t.type?.toLowerCase().includes(q)
+    );
+  });
   const trsTools = filtered.filter((t: any) => t.type === 'TRS');
   const dhtTools = filtered.filter((t: any) => t.type === 'DHT');
 
@@ -519,45 +549,85 @@ const NewOrderModal = ({ customers, locations, rigs, tools, isSaving, onClose, o
   const changeSize = (toolId: string, size: string) =>
     setSelTools(prev => prev.map(i => i.toolId === toolId ? { ...i, size } : i));
 
-  const handleSave = () => {
-    if (!custId || !locId || !rigId || selTools.length === 0) {
+  const handleSave = async () => {
+    if (!custId || !locId || !rigText.trim() || selTools.length === 0) {
       alert('Please fill in Customer, Location, Rig, and select at least one Tool.');
       return;
     }
+
+    let finalRigId = rigId;
+
+    // If no rigId selected (user typed a new rig name), auto-create it
+    if (!finalRigId) {
+      // Check if an exact match exists (user may have typed an existing name without clicking suggestion)
+      const match = rigs.find((r: any) => r.name.toLowerCase() === rigText.trim().toLowerCase());
+      if (match) {
+        finalRigId = match.id;
+      } else {
+        // Auto-create the rig
+        try {
+          setIsCreatingRig(true);
+          const newRig = await apiClient.rigs.create({
+            name: rigText.trim(),
+            type: 'TRS', // default type
+            status: 'active',
+            locationId: locId || undefined,
+            customerId: custId || undefined,
+          });
+          finalRigId = newRig.id;
+        } catch (err: any) {
+          console.error('Failed to auto-create rig:', err);
+          alert(err?.response?.data?.message || 'Failed to create new rig. Please try again.');
+          return;
+        } finally {
+          setIsCreatingRig(false);
+        }
+      }
+    }
+
     onSave({
       orderNumber: `ORD-${Date.now().toString().slice(-6)}`,
       customerId:  custId,
       locationId:  locId,
-      rigId:       rigId,
-      status:      'booked',   // ← new orders land directly in Booked
+      rigId:       finalRigId,
+      wellNumber:  wellNumber.trim() || undefined,
+      status:      'booked',
       startDate:   startDate ? new Date(startDate).toISOString() : new Date().toISOString(),
       endDate:     endDate   ? new Date(endDate).toISOString()   : new Date(Date.now() + 7 * 86400000).toISOString(),
       items: selTools.map(i => ({ toolId: i.toolId, size: i.size || undefined, quantity: 1 })),
     });
+
+    // Auto-update rig with well number if provided
+    if (wellNumber.trim() && finalRigId) {
+      apiClient.rigs.update(finalRigId, { wellNumber: wellNumber.trim() }).catch(err =>
+        console.error('Failed to update rig well number:', err)
+      );
+    }
   };
 
   const ToolRow = ({ tool }: { tool: any }) => {
     const sel   = selTools.find(i => i.toolId === tool.id);
     const sizes = getToolCategorySizes(tool.name);
     return (
-      <div className="flex items-center hover:bg-slate-50 dark:hover:bg-meta-4 transition-colors">
-        <div className="flex-1 px-4 py-3 text-sm text-slate-900 dark:text-white flex items-center justify-between gap-2">
-          <span>{tool.name}</span>
+      <div className="flex items-center hover:bg-slate-50 dark:hover:bg-meta-4 transition-colors border-b border-slate-50 dark:border-white/5 last:border-0">
+        <div className="w-[28%] px-3 py-2.5 text-sm text-slate-900 dark:text-white font-medium truncate">{tool.name}</div>
+        <div className="w-[18%] px-3 py-2.5 text-[11px] text-slate-500 dark:text-slate-400 truncate">{tool.category || '—'}</div>
+        <div className="w-[18%] px-3 py-2.5 text-[11px] text-slate-500 dark:text-slate-400 font-mono truncate">{tool.serialNumber || '—'}</div>
+        <div className="w-[22%] px-3 py-2.5 text-[11px] text-slate-400 dark:text-slate-500 truncate">{tool.description || '—'}</div>
+        <div className="w-[14%] px-3 py-2.5 flex items-center justify-center gap-2">
+          <input type="checkbox" checked={!!sel} onChange={() => toggleTool(tool.id, tool.name)}
+            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4" />
           {sel && (
             sizes && sizes.length > 0 ? (
               <select value={sel.size} onChange={e => changeSize(tool.id, e.target.value)}
-                className="w-32 px-2 py-1 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 text-slate-900 dark:text-white dark:bg-boxdark">
+                className="w-20 px-1.5 py-0.5 text-[10px] border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 text-slate-900 dark:text-white dark:bg-boxdark">
                 {sizes.map((s: string) => <option key={s} value={s}>{s}"</option>)}
               </select>
             ) : (
-              <input type="text" placeholder='Size (e.g. 5")' value={sel.size} onChange={e => changeSize(tool.id, e.target.value)}
-                className="w-32 px-2 py-1 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 text-slate-900 dark:text-white dark:bg-boxdark" />
+              <input type="text" placeholder='Size' value={sel.size} onChange={e => changeSize(tool.id, e.target.value)}
+                className="w-20 px-1.5 py-0.5 text-[10px] border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 text-slate-900 dark:text-white dark:bg-boxdark" />
             )
-          )}
-        </div>
-        <div className="w-16 px-4 py-3 text-center">
-          <input type="checkbox" checked={!!sel} onChange={() => toggleTool(tool.id, tool.name)}
-            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4" />
+            )}
         </div>
       </div>
     );
@@ -613,20 +683,50 @@ const NewOrderModal = ({ customers, locations, rigs, tools, isSaving, onClose, o
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="relative">
               <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider">Rig <span className="text-red-500">*</span></label>
-              <select value={rigId} onChange={e => setRigId(e.target.value)}
-                className="w-full border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm bg-white/50 dark:bg-boxdark dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 transition-all">
-                <option value="">-- Select rig --</option>
-                {rigs.map((r: any) => <option key={r.id} value={r.id}>{r.name}</option>)}
-              </select>
+              <input
+                type="text"
+                value={rigText}
+                onChange={e => handleRigInputChange(e.target.value)}
+                onFocus={() => rigText.length > 0 && setShowRigSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowRigSuggestions(false), 200)}
+                placeholder="Type rig name..."
+                className="w-full border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm bg-white/50 dark:bg-boxdark dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 transition-all"
+              />
+              {rigText.trim() && !exactRigMatch && (
+                <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1 font-bold flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                  New rig — auto-created on save
+                </p>
+              )}
+              {showRigSuggestions && filteredRigs.length > 0 && (
+                <div className="absolute z-50 left-0 right-0 mt-1 bg-white dark:bg-boxdark rounded-xl shadow-xl border border-slate-200 dark:border-white/10 max-h-40 overflow-y-auto">
+                  {filteredRigs.map((r: any) => (
+                    <button
+                      key={r.id}
+                      type="button"
+                      onMouseDown={() => handleRigSelect(r)}
+                      className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-white hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors flex items-center justify-between"
+                    >
+                      <span className="font-medium">{r.name}</span>
+                      {r.location?.name && <span className="text-[10px] text-slate-400 font-bold">{r.location.name}</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
-
-          {/* Schedule Section */}
-          <div>
-            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Schedule</h4>
+            <div>
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider">Well No</label>
+              <input
+                type="text"
+                value={wellNumber}
+                onChange={e => setWellNumber(e.target.value)}
+                placeholder="e.g. W-101"
+                className="w-full border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm bg-white/50 dark:bg-boxdark dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 transition-all"
+              />
+            </div>
             <div>
               <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider">Start Date</label>
               <div className="relative">
@@ -637,7 +737,6 @@ const NewOrderModal = ({ customers, locations, rigs, tools, isSaving, onClose, o
                   min={new Date().toISOString().split('T')[0]}
                   className="w-full border border-slate-200 dark:border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm bg-white/50 dark:bg-boxdark dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 transition-all cursor-pointer" />
               </div>
-              {!startDate && <p className="text-[10px] text-slate-400 mt-1.5 font-medium">Defaults to today if left empty</p>}
             </div>
           </div>
 
@@ -648,16 +747,19 @@ const NewOrderModal = ({ customers, locations, rigs, tools, isSaving, onClose, o
                 Tools <span className="text-red-500">*</span>
                 <span className="text-slate-300 font-medium ml-1 normal-case tracking-normal">(select at least one)</span>
               </h4>
-              <div className="relative">
-                <input value={toolSearch} onChange={e => setToolSearch(e.target.value)} placeholder="Search tools..."
-                  className="w-48 border border-slate-200 dark:border-white/10 rounded-xl pl-8 pr-3 py-2 text-xs bg-white/50 dark:bg-boxdark dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 transition-all" />
-                <svg className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-              </div>
+            </div>
+            <div className="relative mb-3">
+              <input value={toolSearch} onChange={e => setToolSearch(e.target.value)} placeholder="Search by name, category, description, or item code..."
+                className="w-full border border-slate-200 dark:border-white/10 rounded-xl pl-9 pr-4 py-2.5 text-sm bg-white/50 dark:bg-boxdark dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 transition-all" />
+              <svg className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
             </div>
             <div className="border border-slate-200 dark:border-white/10 rounded-xl overflow-hidden max-h-52 overflow-y-auto">
               <div className="flex border-b border-slate-100 dark:border-white/5 bg-slate-50/80 dark:bg-meta-4/50">
-                <div className="flex-1 px-4 py-2.5 text-[10px] font-black text-slate-500 uppercase tracking-wider">Tool Name</div>
-                <div className="w-16 px-4 py-2.5 text-[10px] font-black text-slate-500 uppercase text-center tracking-wider">Select</div>
+                <div className="w-[28%] px-3 py-2.5 text-[10px] font-black text-slate-500 uppercase tracking-wider">Tool Name</div>
+                <div className="w-[18%] px-3 py-2.5 text-[10px] font-black text-slate-500 uppercase tracking-wider">Category</div>
+                <div className="w-[18%] px-3 py-2.5 text-[10px] font-black text-slate-500 uppercase tracking-wider">Item Code</div>
+                <div className="w-[22%] px-3 py-2.5 text-[10px] font-black text-slate-500 uppercase tracking-wider">Description</div>
+                <div className="w-[14%] px-3 py-2.5 text-[10px] font-black text-slate-500 uppercase text-center tracking-wider">Select</div>
               </div>
               {trsTools.length > 0 && <>
                 <div className="px-4 py-1.5 bg-blue-50 dark:bg-blue-500/5 text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest border-b border-slate-100 dark:border-white/5">TRS</div>
@@ -687,7 +789,7 @@ const NewOrderModal = ({ customers, locations, rigs, tools, isSaving, onClose, o
             className="px-5 py-2.5 text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-meta-4 rounded-xl transition-colors disabled:opacity-50">
             Cancel
           </button>
-          <button onClick={handleSave} disabled={isSaving || !custId || !locId || !rigId || selTools.length === 0}
+          <button onClick={handleSave} disabled={isSaving || isCreatingRig || !custId || !locId || !rigText.trim() || selTools.length === 0}
             className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-blue-600 text-white rounded-xl text-sm font-bold shadow-[0_0_15px_rgba(25,86,168,0.3)] hover:shadow-[0_0_25px_rgba(25,86,168,0.5)] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
             {isSaving ? (
               <>

@@ -17,6 +17,10 @@ export class CreateRigDto {
     description?: string;
 
     @IsOptional()
+    @IsString()
+    wellNumber?: string;
+
+    @IsOptional()
     @IsUUID()
     locationId?: string;
 
@@ -41,6 +45,10 @@ export class UpdateRigDto {
     @IsOptional()
     @IsString()
     description?: string;
+
+    @IsOptional()
+    @IsString()
+    wellNumber?: string;
 
     @IsOptional()
     @IsUUID()

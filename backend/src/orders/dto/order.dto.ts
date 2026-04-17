@@ -50,6 +50,10 @@ export class CreateOrderDto {
 
     @IsOptional()
     @IsString()
+    wellNumber?: string;
+
+    @IsOptional()
+    @IsString()
     notes?: string;
 
     @IsOptional()
@@ -95,4 +99,8 @@ export class UpdateOrderDto {
     @IsOptional()
     @IsNumber()
     totalAmount?: number;
+
+    @IsOptional()
+    @IsString()
+    wellNumber?: string;
 }

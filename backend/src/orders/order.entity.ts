@@ -63,6 +63,9 @@ export class Order {
     @Column({ type: 'varchar', default: OrderStatus.DRAFT })
     status: OrderStatus;
 
+    @Column({ name: 'wellNumber', nullable: true })
+    wellNumber: string;
+
     @Column({ name: 'startDate', type: 'date' })
     startDate: Date;
 
