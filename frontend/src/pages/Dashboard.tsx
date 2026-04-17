@@ -146,10 +146,14 @@ const Dashboard = () => {
         if (Array.isArray(ordersData)) {
           const map: Record<string, string> = {};
           ordersData.forEach((order: any) => {
-            if (order.status === 'active' && order.activatedAt && Array.isArray(order.items)) {
-              order.items.forEach((item: any) => {
-                map[item.toolId] = order.activatedAt;
-              });
+            if (order.status === 'active' && Array.isArray(order.items)) {
+              // Use activatedAt if set, otherwise fall back to updatedAt (closest approx. to activation time)
+              const timeRef = order.activatedAt || order.updatedAt;
+              if (timeRef) {
+                order.items.forEach((item: any) => {
+                  map[item.toolId] = timeRef;
+                });
+              }
             }
           });
           setOrderActivatedMap(map);
@@ -227,11 +231,18 @@ const Dashboard = () => {
   const yardTools = activeCategoryTools.filter(t => t.status === 'available');
   const serviceToolsList = activeCategoryTools.filter(t => t.status === 'maintenance');
 
-  // Active count = tools currently in active orders (not just onsite status)
+  // Active count = tools that are onsite AND in an active order
   const activeOrderToolCount = useMemo(
-    () => Object.keys(orderActivatedMap).length,
-    [orderActivatedMap]
+    () => tools.filter(t => t.status === 'onsite' && orderActivatedMap[t.id]).length,
+    [tools, orderActivatedMap]
   );
+
+  // Set of categories that have at least one tool in an active order (for green dots)
+  const activeOrderCategories = useMemo(() => {
+    const s = new Set<string>();
+    tools.forEach(t => { if (orderActivatedMap[t.id]) s.add(t.category); });
+    return s;
+  }, [tools, orderActivatedMap]);
 
   if (loading) return (
     <MainLayout>
@@ -374,8 +385,8 @@ const Dashboard = () => {
                       <div className="flex justify-between items-center pl-2">
                         <span className={`font-bold tracking-wide ${selectedCategory === cat ? 'text-slate-900 dark:text-white' : ''}`}>{CATEGORY_DISPLAY[cat] || cat}</span>
                         <div className="flex items-center gap-2">
-                          {cc.onsite > 0 && (
-                            <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.6)]"></span>
+                          {activeOrderCategories.has(cat) && (
+                            <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.6)] animate-pulse"></span>
                           )}
                           <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-black ${selectedCategory === cat
                             ? 'bg-blue-200/50 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400'
@@ -414,8 +425,8 @@ const Dashboard = () => {
                       <div className="flex justify-between items-center pl-2">
                         <span className={`font-bold tracking-wide ${selectedCategory === cat ? 'text-slate-900 dark:text-white' : ''}`}>{CATEGORY_DISPLAY[cat] || cat}</span>
                         <div className="flex items-center gap-2">
-                          {cc.onsite > 0 && (
-                            <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.6)]"></span>
+                          {activeOrderCategories.has(cat) && (
+                            <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.6)] animate-pulse"></span>
                           )}
                           <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-black ${selectedCategory === cat
                             ? 'bg-indigo-200/50 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-400'
