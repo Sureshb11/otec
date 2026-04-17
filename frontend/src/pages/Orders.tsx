@@ -107,11 +107,22 @@ const emptyTracking = (): MachineTracking => ({
   lastUpdated:      nowStr(),
 });
 
-/** Map backend status + local tracking → Kanban column. Returns null for statuses outside the pipeline. */
-const getColId = (apiStatus: string, t: MachineTracking): KanbanColId | null => {
+/**
+ * Map backend status + persisted arrival flag → Kanban column.
+ * Prefers backend `reachedOnsiteAt` (persistent, cross-browser) and falls back
+ * to the local tracking flag so pre-migration data still renders correctly.
+ */
+const getColId = (
+  apiStatus: string,
+  t: MachineTracking,
+  reachedOnsiteAt?: string | null,
+): KanbanColId | null => {
   switch (apiStatus) {
     case 'booked':   return 'booked';
-    case 'active':   return t.reachedOnsite.status ? 'onsite' : 'in-transit';
+    case 'active': {
+      const reached = !!reachedOnsiteAt || t.reachedOnsite.status;
+      return reached ? 'onsite' : 'in-transit';
+    }
     case 'job_done': return 'job-done';
     default:         return null; // draft / returned / cancelled → hidden
   }
@@ -839,7 +850,7 @@ const Orders = () => {
   const JOB_DONE_TTL_MS = 24 * 60 * 60 * 1000;
   const now = Date.now();
   const boardOrders = allOrders.filter((o: any) => {
-    const col = getColId(o.status, getTracking(o.id));
+    const col = getColId(o.status, getTracking(o.id), o.reachedOnsiteAt);
     if (col === null) return false;
     if (col === 'job-done') {
       const stamp = o.updatedAt ? new Date(o.updatedAt).getTime() : 0;
@@ -857,7 +868,7 @@ const Orders = () => {
   );
 
   const colOrders = (colId: KanbanColId) =>
-    filteredOrders.filter((o: any) => getColId(o.status, getTracking(o.id)) === colId);
+    filteredOrders.filter((o: any) => getColId(o.status, getTracking(o.id), o.reachedOnsiteAt) === colId);
 
   // ── Action Handlers ─────────────────────────────────────────────────────────
 
@@ -898,7 +909,7 @@ const Orders = () => {
         break;
       }
       case 'reached': {
-        // In-Transit → Onsite (Standby): mark reachedOnsite
+        // In-Transit → Onsite (Standby): mark reachedOnsite + flip tools ONSITE on backend
         const t: MachineTracking = {
           ...curr,
           reachedOnsite: { status: true, timestamp: nowStr(), markedBy: '', markedByRole: '' },
@@ -907,7 +918,12 @@ const Orders = () => {
           lastUpdated: nowStr(),
         };
         setTrackingMap(prev => ({ ...prev, [orderId]: t }));
-        // Status stays 'active' — column is determined by tracking
+        // Persist the arrival on the backend so tools flip IN_TRANSIT → ONSITE
+        // (with rig attached). Without this, the Tools/Dashboard pages keep
+        // showing the tool as in-transit forever.
+        apiClient.orders.markReachedOnsite(orderId)
+          .then(() => queryClient.invalidateQueries({ queryKey: ['orders'] }))
+          .catch(err => console.error('Failed to mark reached-onsite:', err));
         break;
       }
       case 'start': {

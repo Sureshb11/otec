@@ -243,6 +243,12 @@ export const apiClient = {
       const response = await api.patch(`/orders/${id}/status`, { status });
       return response.data;
     },
+    // Confirm arrival at rig (Kanban In-Transit → Onsite/Standby).
+    // Flips each tool from IN_TRANSIT → ONSITE with rig attached.
+    markReachedOnsite: async (id: string) => {
+      const response = await api.patch(`/orders/${id}/reached-onsite`);
+      return response.data;
+    },
     // Operational-runtime timer controls (Kanban Active/Standby).
     // Separate from order status — the order stays 'active' while the
     // operator cycles between Start and Stop.

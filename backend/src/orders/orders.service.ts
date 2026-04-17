@@ -140,12 +140,14 @@ export class OrdersService {
 
         if (targetStatus === OrderStatus.ACTIVE) {
             order.activatedAt = new Date();
-            // Tools arrive at rig — mark ONSITE and assign rig
+            // Dispatch stage: tools are en route to the rig, not there yet.
+            // They flip to ONSITE later, when the rig crew confirms arrival
+            // via markReachedOnsite().
             if (order.items) {
                 for (const item of order.items) {
                     await this.toolsRepository.update(item.toolId, {
-                        status: ToolStatus.ONSITE,
-                        rigId: order.rigId,
+                        status: ToolStatus.IN_TRANSIT,
+                        rigId: null,
                     });
                 }
             }
@@ -204,6 +206,37 @@ export class OrdersService {
                         });
                     }
                 }
+            }
+        }
+
+        return this.ordersRepository.save(order);
+    }
+
+    /**
+     * Mark that the dispatched tools have physically arrived at the rig.
+     * Flips each tool from IN_TRANSIT → ONSITE and assigns the rig.
+     * Called when the rig crew confirms arrival (Kanban: In-Transit → Onsite).
+     *
+     * Idempotent: re-calling is a no-op beyond updating the timestamp.
+     * Requires order.status === 'active'.
+     */
+    async markReachedOnsite(id: string): Promise<Order> {
+        const order = await this.findOne(id);
+
+        if (order.status !== OrderStatus.ACTIVE) {
+            throw new BadRequestException(
+                `Cannot mark reached-onsite on an order in '${order.status}' status. Order must be Active (dispatched).`,
+            );
+        }
+
+        order.reachedOnsiteAt = new Date();
+
+        if (order.items) {
+            for (const item of order.items) {
+                await this.toolsRepository.update(item.toolId, {
+                    status: ToolStatus.ONSITE,
+                    rigId: order.rigId,
+                });
             }
         }
 
@@ -284,15 +317,22 @@ export class OrdersService {
             relations: ['items'],
         });
 
-        // Build expected state per tool from open orders
+        // Build expected state per tool from open orders.
+        // ACTIVE has two sub-stages distinguished by reachedOnsiteAt:
+        //   - null → tool is IN_TRANSIT (dispatched, not yet arrived)
+        //   - set  → tool is ONSITE (rig crew confirmed arrival)
         const expected: Record<string, { status: ToolStatus; rigId: string | null }> = {};
         for (const order of openOrders) {
             if (!order.items) continue;
             for (const item of order.items) {
                 if (order.status === OrderStatus.ACTIVE) {
-                    expected[item.toolId] = { status: ToolStatus.ONSITE, rigId: order.rigId };
+                    if (order.reachedOnsiteAt) {
+                        expected[item.toolId] = { status: ToolStatus.ONSITE, rigId: order.rigId };
+                    } else {
+                        // In-transit trumps any BOOKED claim already assigned
+                        expected[item.toolId] = { status: ToolStatus.IN_TRANSIT, rigId: null };
+                    }
                 } else if (order.status === OrderStatus.BOOKED && !expected[item.toolId]) {
-                    // Don't overwrite an ACTIVE claim with a BOOKED one
                     expected[item.toolId] = { status: ToolStatus.IN_TRANSIT, rigId: null };
                 }
             }

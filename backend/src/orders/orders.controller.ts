@@ -56,6 +56,16 @@ export class OrdersController {
     }
 
     /**
+     * Mark that dispatched tools have arrived at the rig.
+     * Kanban: In-Transit → Onsite (Standby). Flips each tool to ONSITE.
+     */
+    @Patch(':id/reached-onsite')
+    @RequirePermission('orders', 'canEdit')
+    markReachedOnsite(@Param('id') id: string) {
+        return this.ordersService.markReachedOnsite(id);
+    }
+
+    /**
      * Start an operational runtime segment for this order — called when the
      * operator clicks "Start Operation" in the Kanban (Standby → Active).
      * Stamps `operationStartedAt` so the Dashboard timer counts from here.

@@ -78,6 +78,12 @@ export class Order {
     @Column({ name: 'returnedAt', type: 'timestamp', nullable: true })
     returnedAt: Date;
 
+    // Timestamp when the rig crew confirms the tool has arrived at site.
+    // While ACTIVE-but-null, the tool is still IN_TRANSIT (truck en route).
+    // Once stamped, the tool flips to ONSITE with the rig attached.
+    @Column({ name: 'reachedOnsiteAt', type: 'timestamp', nullable: true })
+    reachedOnsiteAt: Date | null;
+
     // Operational runtime tracking (separate from activatedAt which marks deployment).
     // operationStartedAt is non-null while tools are actively operating (Active).
     // totalOperationalSeconds accumulates across all Standby↔Active cycles.
