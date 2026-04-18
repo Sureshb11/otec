@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { formatDistance } from 'date-fns';
 import UserAvatarMenu from '../components/UserAvatarMenu';
 import { apiClient } from '../api/apiClient';
+import { fmtKwDate, fmtKwDateTime } from '../utils/kuwaitTime';
 
 interface OrderDetailsProps {
   orderIdProp?: string;
@@ -490,13 +491,13 @@ const OrderDetails = ({ orderIdProp, isModal, onClose }: OrderDetailsProps) => {
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-bodydark1 mb-1">Expected Rent Out Date</label>
                       <div className="text-sm text-gray-900 dark:text-white">
-                        {order.startDate ? new Date(order.startDate).toLocaleDateString() : '—'}
+                        {fmtKwDate(order.startDate)}
                       </div>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-bodydark1 mb-1">Expected Return Date</label>
                       <div className="text-sm text-gray-900 dark:text-white">
-                        {order.endDate ? new Date(order.endDate).toLocaleDateString() : '—'}
+                        {fmtKwDate(order.endDate)}
                       </div>
                     </div>
                   </div>
@@ -688,7 +689,7 @@ const OrderDetails = ({ orderIdProp, isModal, onClose }: OrderDetailsProps) => {
                      </div>
                      <div className="ml-6 flex-1">
                        <h3 className="text-lg font-black text-slate-800 dark:text-white tracking-tight">Order Booked & Formulated</h3>
-                       <p className="text-[11px] font-black tracking-widest uppercase text-slate-400 mt-1">{created.toLocaleString()}</p>
+                       <p className="text-[11px] font-black tracking-widest uppercase text-slate-400 mt-1">{fmtKwDateTime(created)}</p>
                        <div className="mt-4 p-4 bg-slate-50 dark:bg-[#1E293B]/50 rounded-xl border border-slate-100 dark:border-strokedark/50 inline-block">
                          <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Order successfully initiated into the system pipeline by operations manager.</span>
                        </div>
@@ -704,7 +705,7 @@ const OrderDetails = ({ orderIdProp, isModal, onClose }: OrderDetailsProps) => {
                      </div>
                      <div className="ml-6 flex-1">
                        <h3 className="text-lg font-black text-slate-800 dark:text-white tracking-tight">Arrived Onsite & Executing</h3>
-                       <p className="text-[11px] font-black tracking-widest uppercase text-slate-400 mt-1">{activated.toLocaleString()}</p>
+                       <p className="text-[11px] font-black tracking-widest uppercase text-slate-400 mt-1">{fmtKwDateTime(activated)}</p>
                        <div className="mt-4 px-6 py-4 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-xl inline-flex flex-col shadow-sm">
                           <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400/80 mb-1">Live Run Duration</span>
                           <p className="text-xl font-black text-emerald-700 dark:text-emerald-300">{runDuration}</p>
@@ -721,7 +722,7 @@ const OrderDetails = ({ orderIdProp, isModal, onClose }: OrderDetailsProps) => {
                      </div>
                      <div className="ml-6 flex-1">
                        <h3 className="text-lg font-black text-slate-800 dark:text-white tracking-tight">Job Concluded & Assets Returned</h3>
-                       <p className="text-[11px] font-black tracking-widest uppercase text-slate-400 mt-1">{returned.toLocaleString()}</p>
+                       <p className="text-[11px] font-black tracking-widest uppercase text-slate-400 mt-1">{fmtKwDateTime(returned)}</p>
                        <div className="mt-4 p-4 bg-slate-50 dark:bg-[#1E293B]/50 rounded-xl border border-slate-100 dark:border-strokedark/50 inline-block">
                          <span className="text-sm font-medium text-slate-600 dark:text-slate-400">All tools logged functionally returned and job cycle successfully closed.</span>
                        </div>

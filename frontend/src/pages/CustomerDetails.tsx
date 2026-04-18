@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import UserAvatarMenu from '../components/UserAvatarMenu';
 import { apiClient } from '../api/apiClient';
+import { fmtKwDate, fmtKwDateTime } from '../utils/kuwaitTime';
 
 const CustomerDetails = () => {
   const { customerId } = useParams<{ customerId: string }>();
@@ -408,7 +409,7 @@ const CustomerDetails = () => {
                         </dt>
                         <dd className="mt-1 text-sm text-gray-900 dark:text-white">
                           {customer.createdAt && customer.createdAt !== '—'
-                            ? new Date(customer.createdAt).toLocaleString()
+                            ? fmtKwDateTime(customer.createdAt)
                             : '—'}
                         </dd>
                       </div>
@@ -497,10 +498,10 @@ const CustomerDetails = () => {
                             {order.totalAmount != null ? `$${Number(order.totalAmount).toFixed(2)}` : '—'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                            {order.startDate ? new Date(order.startDate).toLocaleDateString() : '—'}
+                            {order.startDate ? fmtKwDate(order.startDate) : '—'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                            {order.endDate ? new Date(order.endDate).toLocaleDateString() : '—'}
+                            {order.endDate ? fmtKwDate(order.endDate) : '—'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800 capitalize">

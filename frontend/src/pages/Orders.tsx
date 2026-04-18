@@ -4,8 +4,8 @@ import { useLocation } from 'react-router-dom';
 import { apiClient } from '../api/apiClient';
 import MainLayout from '../components/MainLayout';
 import Can from '../components/Can';
-import { format } from 'date-fns';
 import { getToolCategorySizes } from '../utils/toolCategorySizes';
+import { fmtKwDateTime, fmtKwDate } from '../utils/kuwaitTime';
 import JobReportModal, { type JobReportData } from '../components/JobReportModal';
 import OrderDetails from './OrderDetails';
 
@@ -91,11 +91,9 @@ const OPERATION_ROLES = ['OTEC Field Engineer', 'Rig Supervisor (Client side)', 
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const nowStr = () =>
-  new Date().toLocaleString('en-GB', {
-    day: '2-digit', month: 'short', year: 'numeric',
-    hour: '2-digit', minute: '2-digit', hour12: true,
-  }).replace(',', '');
+// localStorage fallback stamps — Kuwait-local so cards render consistently
+// even when the backend field hasn't been populated yet (legacy data path).
+const nowStr = () => fmtKwDateTime(new Date());
 
 const emptyEvent = (): TrackingEvent => ({ status: false, timestamp: '', markedBy: '', markedByRole: '' });
 
@@ -128,28 +126,35 @@ const getColId = (
   }
 };
 
-const safeFormat = (d?: string) => {
-  if (!d) return '—';
-  try { return format(new Date(d), 'dd MMM yyyy'); } catch { return d; }
-};
+const safeFormat = (d?: string) => fmtKwDate(d);
 
 
 // ─── Standby Hours Calculator ──────────────────────────────────────────────────
+// Accepts Date | ISO string | null. Live value when still in standby (no start),
+// frozen once the operator has pressed Start (end = operationStartedAt).
 
-const calcStandbyHours = (reachedTs: string, startedTs?: string): string => {
-  if (!reachedTs) return '—';
+const calcStandbyHours = (
+  reached: Date | string | null | undefined,
+  started: Date | string | null | undefined,
+): string => {
+  if (!reached) return '—';
   try {
-    // Parse the timestamp format "DD Mon YYYY HH:MM am/pm"
-    const reached = new Date(reachedTs);
-    const end     = startedTs ? new Date(startedTs) : new Date();
-    if (isNaN(reached.getTime())) return '—';
-    const diffMs = end.getTime() - reached.getTime();
+    const reachedDate = reached instanceof Date ? reached : new Date(reached);
+    if (isNaN(reachedDate.getTime())) return '—';
+    const endDate = started
+      ? (started instanceof Date ? started : new Date(started))
+      : new Date();
+    const diffMs = endDate.getTime() - reachedDate.getTime();
     if (diffMs < 0) return '0h 0m';
     const hours = Math.floor(diffMs / 3600000);
     const mins  = Math.floor((diffMs % 3600000) / 60000);
     return `${hours}h ${mins}m`;
   } catch { return '—'; }
 };
+
+// Thin alias — display helpers live in utils/kuwaitTime.ts so every page uses
+// the same format. Kept as a local name to keep the existing call sites short.
+const fmtStamp = fmtKwDateTime;
 
 // ─── Confirm Action Modal ─────────────────────────────────────────────────────
 
@@ -276,9 +281,19 @@ const OrderCard = ({ order, colId, tracking, hasHardcopy, onAction, onView }: Or
   const col           = COLUMNS.find(c => c.id === colId)!;
   const isOnsite      = colId === 'onsite';
 
-  // Onsite sub-state
-  const isStandby     = isOnsite && !tracking.operationStarted.status;
-  const isActive      = isOnsite &&  tracking.operationStarted.status;
+  // Timestamps: prefer backend-persisted values so every operator sees the
+  // same thing. Fall back to the local tracking event strings for rows that
+  // existed before the backend fields were introduced.
+  const leftYardAt         = order.activatedAt        || tracking.leftYard.timestamp        || null;
+  const reachedOnsiteAt    = order.reachedOnsiteAt    || tracking.reachedOnsite.timestamp   || null;
+  const operationStartedAt = order.operationStartedAt || tracking.operationStarted.timestamp || null;
+  const hasEverStarted     = !!operationStartedAt || Number(order.totalOperationalSeconds || 0) > 0;
+
+  // Onsite sub-state — driven by the persisted operation timer so the badge
+  // matches what the Dashboard/Tool Board show.
+  const isRunning     = !!order.operationStartedAt;
+  const isStandby     = isOnsite && !isRunning;
+  const isActive      = isOnsite &&  isRunning;
 
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -422,22 +437,22 @@ const OrderCard = ({ order, colId, tracking, hasHardcopy, onAction, onView }: Or
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Machine Tracking</p>
               <div className="flex items-center justify-between text-xs">
                 <span className="text-slate-500 dark:text-slate-400">Left Yard</span>
-                <span className="font-medium text-slate-700 dark:text-slate-200 text-[11px]">{tracking.leftYard.timestamp || '—'}</span>
+                <span className="font-medium text-slate-700 dark:text-slate-200 text-[11px]">{fmtStamp(leftYardAt)}</span>
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span className="text-slate-500 dark:text-slate-400">Reached Onsite</span>
-                <span className="font-medium text-slate-700 dark:text-slate-200 text-[11px]">{tracking.reachedOnsite.timestamp || '—'}</span>
+                <span className="font-medium text-slate-700 dark:text-slate-200 text-[11px]">{fmtStamp(reachedOnsiteAt)}</span>
               </div>
               <div className="flex items-center justify-between text-xs border-t border-slate-200 dark:border-white/10 pt-1.5">
                 <span className="text-orange-600 dark:text-orange-400 font-bold">Standby Hours</span>
                 <span className="font-black text-orange-700 dark:text-orange-300 text-[11px]">
-                  {calcStandbyHours(tracking.reachedOnsite.timestamp, tracking.operationStarted.status ? tracking.operationStarted.timestamp : undefined)}
+                  {calcStandbyHours(reachedOnsiteAt, operationStartedAt)}
                 </span>
               </div>
-              {isActive && tracking.operationStarted.timestamp && (
+              {hasEverStarted && operationStartedAt && (
                 <div className="flex items-center justify-between text-xs border-t border-slate-200 dark:border-white/10 pt-1.5">
                   <span className="text-emerald-600 dark:text-emerald-400 font-bold">Job Started</span>
-                  <span className="font-medium text-emerald-700 dark:text-emerald-300 text-[11px]">{tracking.operationStarted.timestamp}</span>
+                  <span className="font-medium text-emerald-700 dark:text-emerald-300 text-[11px]">{fmtStamp(operationStartedAt)}</span>
                 </div>
               )}
             </div>

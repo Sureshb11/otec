@@ -8,6 +8,7 @@ import {
   DHT_CATEGORIES,
   CATEGORY_DISPLAY_MAP,
 } from '../constants/categories';
+import { fmtKwDate } from '../utils/kuwaitTime';
 
 // ─── Consumables sub-section ──────────────────────────────────────────────────
 
@@ -455,7 +456,7 @@ const OperationalInventory = () => {
                         </span>
                       </td>
                       <td className="px-3 py-2.5 text-slate-500 dark:text-slate-400 text-[11px] tabular-nums whitespace-nowrap">
-                        {t.receivedDate ? new Date(t.receivedDate).toLocaleDateString() : '—'}
+                        {fmtKwDate(t.receivedDate)}
                       </td>
                       <td className="px-3 py-2.5 text-right whitespace-nowrap" onClick={e => e.stopPropagation()}>
                         <Can module="inventory" action="edit">
@@ -658,7 +659,7 @@ const OperationalInventory = () => {
               <DetailRow label="HS Code" value={detailsTool.hsCode} mono />
               <DetailRow label="COO Number" value={detailsTool.cooNumber} mono />
               <DetailRow label="Net Weight" value={detailsTool.netWeight ? `${detailsTool.netWeight} kg` : null} />
-              <DetailRow label="Received" value={detailsTool.receivedDate ? new Date(detailsTool.receivedDate).toLocaleDateString() : null} />
+              <DetailRow label="Received" value={detailsTool.receivedDate ? fmtKwDate(detailsTool.receivedDate) : null} />
               <DetailRow label="Invoice" value={detailsTool.invoiceNumber} mono />
               <DetailRow label="PO" value={detailsTool.poNumber} mono />
               <DetailRow label="UOM" value={detailsTool.uom} />

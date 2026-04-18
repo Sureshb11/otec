@@ -5,6 +5,7 @@ import {
   AreaChart, Area, PieChart, Pie, Cell
 } from 'recharts';
 import { apiClient } from '../api/apiClient';
+import { fmtKwDate, fmtKwDateTime } from '../utils/kuwaitTime';
 
 // Define chart colors for the premium aesthetic
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
@@ -323,7 +324,7 @@ const Reports = () => {
               <div>
                 <h2 className="text-3xl font-black text-slate-900 dark:text-white print:text-black">Detailed Orders Report</h2>
                 <div className="hidden print:block mt-2 text-sm">
-                  <p><strong>Report Date:</strong> {new Date().toLocaleDateString()}</p>
+                  <p><strong>Report Date:</strong> {fmtKwDate(new Date())}</p>
                   <p><strong>Filter:</strong> {fromDate || 'Start'} to {toDate || 'End'}</p>
                 </div>
               </div>
@@ -380,10 +381,10 @@ const Reports = () => {
                   {filteredDetailedOrders.map(order => (
                     <tr key={order.id} className="border-b border-slate-100 dark:border-slate-800/50 print:border-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors text-[13px] print:text-[10px]">
                       {columns.orderNo && <td className="py-3 px-4 print:py-1.5 print:px-2 font-bold text-slate-700 dark:text-slate-200 print:text-black whitespace-nowrap">{order.orderNumber}</td>}
-                      {columns.bookedDate && <td className="py-3 px-4 print:py-1.5 print:px-2 text-slate-500 dark:text-slate-400 print:text-black whitespace-nowrap">{order.createdAt ? new Date(order.createdAt).toLocaleString() : '—'}</td>}
-                      {columns.transitDate && <td className="py-3 px-4 print:py-1.5 print:px-2 text-slate-500 dark:text-slate-400 print:text-black whitespace-nowrap">{order.startDate ? new Date(order.startDate).toLocaleString() : '—'}</td>}
-                      {columns.startedDate && <td className="py-3 px-4 print:py-1.5 print:px-2 text-slate-500 dark:text-slate-400 print:text-black whitespace-nowrap">{order.activatedAt ? new Date(order.activatedAt).toLocaleString() : '—'}</td>}
-                      {columns.returnedDate && <td className="py-3 px-4 print:py-1.5 print:px-2 text-slate-500 dark:text-slate-400 print:text-black whitespace-nowrap">{order.returnedAt ? new Date(order.returnedAt).toLocaleString() : '—'}</td>}
+                      {columns.bookedDate && <td className="py-3 px-4 print:py-1.5 print:px-2 text-slate-500 dark:text-slate-400 print:text-black whitespace-nowrap">{fmtKwDateTime(order.createdAt)}</td>}
+                      {columns.transitDate && <td className="py-3 px-4 print:py-1.5 print:px-2 text-slate-500 dark:text-slate-400 print:text-black whitespace-nowrap">{fmtKwDateTime(order.startDate)}</td>}
+                      {columns.startedDate && <td className="py-3 px-4 print:py-1.5 print:px-2 text-slate-500 dark:text-slate-400 print:text-black whitespace-nowrap">{fmtKwDateTime(order.activatedAt)}</td>}
+                      {columns.returnedDate && <td className="py-3 px-4 print:py-1.5 print:px-2 text-slate-500 dark:text-slate-400 print:text-black whitespace-nowrap">{fmtKwDateTime(order.returnedAt)}</td>}
                       {columns.customer && <td className="py-3 px-4 print:py-1.5 print:px-2 font-medium text-slate-700 dark:text-slate-300 print:text-black min-w-[120px]">{order.customer?.name || '—'}</td>}
                       {columns.rig && <td className="py-3 px-4 print:py-1.5 print:px-2 text-slate-500 dark:text-slate-400 print:text-black min-w-[100px]">{order.rig?.name || order.location?.name || '—'}</td>}
                       {columns.status && <td className="py-3 px-4 print:py-1.5 print:px-2 print:text-black">
@@ -412,7 +413,7 @@ const Reports = () => {
             </div>
             
             <div className="hidden print:block mt-8 text-right text-xs pt-4 border-t border-slate-300 font-medium text-black">
-              Printed from OTEC Advanced Management System | {new Date().toLocaleString()}
+              Printed from OTEC Advanced Management System | {fmtKwDateTime(new Date())}
             </div>
           </div>
         ) : (

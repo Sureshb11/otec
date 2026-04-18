@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../api/apiClient';
+import { fmtKwClock, fmtKwLongDate } from '../utils/kuwaitTime';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -33,11 +34,11 @@ const fmtElapsed = (seconds: number): string => {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 };
 
-const fmtClock = (d: Date) =>
-  d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
-const fmtDate = (d: Date) =>
-  d.toLocaleDateString('en-GB', { weekday: 'long', day: '2-digit', month: 'short', year: 'numeric' });
+// Kuwait time (Asia/Kuwait, UTC+3) — the big TV clock in the Tool Board
+// should always reflect rig-site time, not whatever timezone the browser
+// reports. Shared helpers keep it consistent with the rest of the app.
+const fmtClock = (d: Date) => fmtKwClock(d);
+const fmtDate  = (d: Date) => fmtKwLongDate(d);
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
