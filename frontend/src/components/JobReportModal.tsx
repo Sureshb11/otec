@@ -67,6 +67,53 @@ const safeFmt = (d?: string) => {
   try { return format(new Date(d), 'dd MMM yyyy'); } catch { return d; }
 };
 
+// ─── Editable field renderer (hoisted so input identity is stable across renders) ──
+
+interface EditableTextProps {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  multiline?: boolean;
+  placeholder?: string;
+  editMode: boolean;
+}
+
+const EditableText = ({
+  label,
+  value,
+  onChange,
+  multiline = false,
+  placeholder = '',
+  editMode,
+}: EditableTextProps) => (
+  <div className="space-y-1">
+    <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">{label}</label>
+    {editMode ? (
+      multiline ? (
+        <textarea
+          rows={3}
+          value={value}
+          placeholder={placeholder}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-white/10 text-sm bg-white dark:bg-meta-4 text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500/30 focus:outline-none resize-none"
+        />
+      ) : (
+        <input
+          type="text"
+          value={value}
+          placeholder={placeholder}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-white/10 text-sm bg-white dark:bg-meta-4 text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500/30 focus:outline-none"
+        />
+      )
+    ) : (
+      <p className="text-sm font-semibold text-slate-800 dark:text-white min-h-[1.5rem]">
+        {value || <span className="text-slate-400 italic">—</span>}
+      </p>
+    )}
+  </div>
+);
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const JobReportModal = ({ reportData: initialData, onClose, onConfirm }: JobReportModalProps) => {
@@ -145,41 +192,6 @@ const JobReportModal = ({ reportData: initialData, onClose, onConfirm }: JobRepo
   const handleConfirm = () => {
     onConfirm(data);
   };
-
-  // ── Editable field renderer ──
-  const EditableText = ({
-    label, value, onChange, multiline = false, placeholder = ''
-  }: {
-    label: string; value: string; onChange: (v: string) => void;
-    multiline?: boolean; placeholder?: string;
-  }) => (
-    <div className="space-y-1">
-      <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">{label}</label>
-      {editMode ? (
-        multiline ? (
-          <textarea
-            rows={3}
-            value={value}
-            placeholder={placeholder}
-            onChange={e => onChange(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-white/10 text-sm bg-white dark:bg-meta-4 text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500/30 focus:outline-none resize-none"
-          />
-        ) : (
-          <input
-            type="text"
-            value={value}
-            placeholder={placeholder}
-            onChange={e => onChange(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-white/10 text-sm bg-white dark:bg-meta-4 text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500/30 focus:outline-none"
-          />
-        )
-      ) : (
-        <p className="text-sm font-semibold text-slate-800 dark:text-white min-h-[1.5rem]">
-          {value || <span className="text-slate-400 italic">—</span>}
-        </p>
-      )}
-    </div>
-  );
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
@@ -372,23 +384,27 @@ const JobReportModal = ({ reportData: initialData, onClose, onConfirm }: JobRepo
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <EditableText
+                  editMode={editMode}
                   label="Hours Onsite"
                   value={data.hoursOnsite || ''}
                   onChange={v => field('hoursOnsite', v)}
                   placeholder="e.g. 48 hrs"
                 />
                 <EditableText
+                  editMode={editMode}
                   label="Assigned Personnel"
                   value={data.assignedPersonnel}
                   onChange={v => field('assignedPersonnel', v)}
                 />
                 <EditableText
+                  editMode={editMode}
                   label="Return Condition"
                   value={data.returnCondition || ''}
                   onChange={v => field('returnCondition', v)}
                   placeholder="e.g. Good / Minor wear / Damaged"
                 />
                 <EditableText
+                  editMode={editMode}
                   label="Signed Off By"
                   value={data.signedOffBy || ''}
                   onChange={v => field('signedOffBy', v)}
@@ -396,6 +412,7 @@ const JobReportModal = ({ reportData: initialData, onClose, onConfirm }: JobRepo
                 />
                 <div className="md:col-span-2">
                   <EditableText
+                    editMode={editMode}
                     label="Operation Summary"
                     value={data.operationSummary || ''}
                     onChange={v => field('operationSummary', v)}
@@ -405,6 +422,7 @@ const JobReportModal = ({ reportData: initialData, onClose, onConfirm }: JobRepo
                 </div>
                 <div className="md:col-span-2">
                   <EditableText
+                    editMode={editMode}
                     label="Additional Notes"
                     value={data.notes || ''}
                     onChange={v => field('notes', v)}
