@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import MainLayout from '../components/MainLayout';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -6,6 +6,8 @@ import {
 } from 'recharts';
 import { apiClient } from '../api/apiClient';
 import { fmtKwDate, fmtKwDateTime } from '../utils/kuwaitTime';
+import { useAuthStore } from '../store/authStore';
+import EditOrderModal from '../components/EditOrderModal';
 
 // Define chart colors for the premium aesthetic
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
@@ -30,6 +32,8 @@ const Reports = () => {
   const [orders, setOrders] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [inventory, setInventory] = useState<any[]>([]);
+  const [editingOrder, setEditingOrder] = useState<any | null>(null);
+  const isAdmin = useAuthStore((s) => s.isAdmin)();
 
   useEffect(() => {
     Promise.all([
@@ -43,6 +47,11 @@ const Reports = () => {
       setCustomers(Array.isArray(c) ? c : []);
       setInventory(Array.isArray(i) ? i : []);
     });
+  }, []);
+
+  const refetchOrders = useCallback(async () => {
+    const o = await apiClient.orders.getAll().catch(() => []);
+    setOrders(Array.isArray(o) ? o : []);
   }, []);
 
   const reportTypes = [
@@ -375,6 +384,7 @@ const Reports = () => {
                     {columns.rig && <th className="py-4 px-4 print:py-2 print:px-2 font-black tracking-widest uppercase text-[10px]">Location/Rig</th>}
                     {columns.status && <th className="py-4 px-4 print:py-2 print:px-2 font-black tracking-widest uppercase text-[10px]">Status</th>}
                     {columns.amount && <th className="py-4 px-4 print:py-2 print:px-2 font-black tracking-widest uppercase text-right text-[10px]">Amount</th>}
+                    {isAdmin && <th className="py-4 px-4 font-black tracking-widest uppercase text-center text-[10px] print:hidden">Edit</th>}
                   </tr>
                 </thead>
                 <tbody className="print:text-black">
@@ -399,11 +409,25 @@ const Reports = () => {
                       {columns.amount && <td className="py-3 px-4 print:py-1.5 print:px-2 text-right font-bold text-slate-700 dark:text-slate-200 print:text-black whitespace-nowrap">
                         {Number(order.totalAmount || 0) > 0 ? Number(order.totalAmount).toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : '—'}
                       </td>}
+                      {isAdmin && (
+                        <td className="py-3 px-4 text-center print:hidden">
+                          <button
+                            onClick={() => setEditingOrder(order)}
+                            className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors"
+                            title="Edit order"
+                            aria-label="Edit order"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                   {filteredDetailedOrders.length === 0 && (
                     <tr>
-                      <td colSpan={10} className="text-center py-12 text-slate-500 dark:text-slate-400 print:text-black font-medium">
+                      <td colSpan={11} className="text-center py-12 text-slate-500 dark:text-slate-400 print:text-black font-medium">
                         No orders found for the selected period.
                       </td>
                     </tr>
@@ -511,6 +535,23 @@ const Reports = () => {
         </div>
         )}
       </div>
+
+      {editingOrder && (
+        <EditOrderModal
+          order={{
+            id: editingOrder.id,
+            orderNumber: editingOrder.orderNumber,
+            status: editingOrder.status,
+            startDate: editingOrder.startDate,
+            endDate: editingOrder.endDate,
+            totalAmount: editingOrder.totalAmount,
+            wellNumber: editingOrder.wellNumber,
+            notes: editingOrder.notes,
+          }}
+          onClose={() => setEditingOrder(null)}
+          onSaved={refetchOrders}
+        />
+      )}
     </MainLayout>
   );
 };
