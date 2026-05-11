@@ -35,6 +35,9 @@ export class User {
   @Column({ name: 'resetPasswordExpires', nullable: true })
   resetPasswordExpires: Date;
 
+  @Column({ name: 'tokenVersion', type: 'int', default: 0 })
+  tokenVersion: number;
+
   @ManyToMany(() => Role, (role) => role.users, { eager: true })
   @JoinTable({
     name: 'user_roles',
@@ -59,4 +62,3 @@ export class User {
     return this.hasRole('admin');
   }
 }
-

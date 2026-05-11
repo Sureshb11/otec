@@ -1,0 +1,19 @@
+{
+  "name": "otec",
+  "private": true,
+  "version": "0.0.0",
+  "description": "OTEC monorepo root (tooling only)",
+  "scripts": {
+    "prepare": "husky install",
+    "lint:backend": "cd backend && npm run lint"
+  },
+  "devDependencies": {
+    "husky": "^9.0.11",
+    "lint-staged": "^15.2.0"
+  },
+  "lint-staged": {
+    "backend/src/**/*.ts": [
+      "bash -c 'cd backend && npx eslint --fix \"$@\"' --"
+    ]
+  }
+}

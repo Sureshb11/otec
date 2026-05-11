@@ -1,8 +1,14 @@
-import { Injectable, UnauthorizedException, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
 import { RolesService } from '../roles/roles.service';
 import { PermissionsService } from '../permissions/permissions.service';
+import { MailerService } from '../common/mailer/mailer.service';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 
@@ -13,15 +19,16 @@ export class AuthService {
     private jwtService: JwtService,
     private rolesService: RolesService,
     private permissionsService: PermissionsService,
-  ) { }
+    private mailerService: MailerService,
+  ) {}
 
   async validateUser(email: string, password: string): Promise<any> {
     console.log('🔍 Validate user attempt:', {
       email,
       hasPassword: !!password,
-      passwordLength: password?.length
+      passwordLength: password?.length,
     });
-    
+
     const user = await this.usersService.findByEmail(email);
 
     if (!user) {
@@ -48,13 +55,17 @@ export class AuthService {
       email: user.email,
       sub: user.id,
       roles: roleNames,
+      tv: userWithRoles.tokenVersion ?? 0,
     };
 
     // Merge permissions from all of the user's roles.
     // For each module, if ANY role grants a capability, the user has it.
     // super_admin bypasses all checks — empty map signals "full access" on frontend.
     const isSuperAdmin = roleNames.includes('super_admin');
-    const permissionsMap: Record<string, { canView: boolean; canAdd: boolean; canEdit: boolean; canDelete: boolean }> = {};
+    const permissionsMap: Record<
+      string,
+      { canView: boolean; canAdd: boolean; canEdit: boolean; canDelete: boolean }
+    > = {};
 
     if (!isSuperAdmin) {
       for (const role of userWithRoles.roles || []) {
@@ -62,7 +73,12 @@ export class AuthService {
         for (const perm of rolePerms) {
           const key = perm.moduleName.toLowerCase();
           if (!permissionsMap[key]) {
-            permissionsMap[key] = { canView: false, canAdd: false, canEdit: false, canDelete: false };
+            permissionsMap[key] = {
+              canView: false,
+              canAdd: false,
+              canEdit: false,
+              canDelete: false,
+            };
           }
           if (perm.canView) permissionsMap[key].canView = true;
           if (perm.canAdd) permissionsMap[key].canAdd = true;
@@ -100,31 +116,36 @@ export class AuthService {
   }
 
   async requestPasswordReset(email: string): Promise<{ message: string; token?: string }> {
+    const genericResponse = {
+      message: 'If an account with that email exists, a password reset link has been sent.',
+    };
+
     const user = await this.usersService.findByEmail(email);
     if (!user) {
-      // Don't reveal if user exists for security
-      return {
-        message: 'If an account with that email exists, a password reset link has been sent.',
-      };
+      return genericResponse;
     }
 
-    // Generate reset token
     const resetToken = crypto.randomBytes(32).toString('hex');
     const resetTokenExpires = new Date();
-    resetTokenExpires.setHours(resetTokenExpires.getHours() + 1); // Token expires in 1 hour
+    resetTokenExpires.setHours(resetTokenExpires.getHours() + 1);
 
-    await this.usersService.setPasswordResetToken(email, resetToken, resetTokenExpires);
+    await this.usersService.setPasswordResetToken(user.email, resetToken, resetTokenExpires);
 
-    // In production, send email with reset link
-    // For now, return token in response (remove in production)
-    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${resetToken}`;
+    const resetUrl = `${
+      process.env.FRONTEND_URL || 'http://localhost:5173'
+    }/reset-password?token=${resetToken}`;
 
-    console.log('Password reset link:', resetUrl); // Remove in production
+    await this.mailerService.send({
+      to: user.email,
+      subject: 'Reset your OTEC password',
+      text: `A password reset was requested for your account. Open the link below to set a new password (expires in 1 hour):\n\n${resetUrl}\n\nIf you didn't request this, you can ignore this email.`,
+      html: `<p>A password reset was requested for your account.</p><p><a href="${resetUrl}">Reset your password</a> (link expires in 1 hour).</p><p>If you didn't request this, you can ignore this email.</p>`,
+    });
 
-    return {
-      message: 'If an account with that email exists, a password reset link has been sent.',
-      token: resetToken, // Remove in production - only for development
-    };
+    if (process.env.NODE_ENV !== 'production') {
+      return { ...genericResponse, token: resetToken };
+    }
+    return genericResponse;
   }
 
   async resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
@@ -138,5 +159,10 @@ export class AuthService {
 
   async getCurrentUser(userId: string) {
     return this.usersService.findOne(userId);
+  }
+
+  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+    await this.usersService.changePassword(userId, currentPassword, newPassword);
+    return { message: 'Password updated successfully' };
   }
 }

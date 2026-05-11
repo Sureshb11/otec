@@ -16,6 +16,10 @@ import { ToolInstancesModule } from './tool-instances/tool-instances.module';
 import { OrdersModule } from './orders/orders.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { MailerModule } from './common/mailer/mailer.module';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
+import { AuditModule } from './common/audit/audit.module';
 
 @Module({
   imports: [
@@ -26,6 +30,9 @@ import { DashboardModule } from './dashboard/dashboard.module';
     TypeOrmModule.forRootAsync({
       useClass: DatabaseConfig,
     }),
+    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
+    MailerModule,
+    AuditModule,
     // Core modules
     AuthModule,
     UsersModule,
@@ -42,8 +49,6 @@ import { DashboardModule } from './dashboard/dashboard.module';
     DashboardModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
-export class AppModule { }
-
-
+export class AppModule {}
