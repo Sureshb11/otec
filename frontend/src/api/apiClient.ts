@@ -27,10 +27,32 @@ export interface Permission {
   allowed: boolean;
 }
 
+export interface AuditLogEntry {
+  id: string;
+  action: string;
+  resource: string;
+  resourceId: string | null;
+  actorId: string | null;
+  actorEmail: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+}
+
 export const apiClient = {
   auth: {
     login: async (credentials: { email: string; password: string }) => {
       const response = await api.post('/auth/login', credentials);
+      return response.data;
+    },
+    changePassword: async (payload: { currentPassword: string; newPassword: string }) => {
+      const response = await api.post('/auth/change-password', payload);
+      return response.data;
+    },
+  },
+
+  audit: {
+    list: async (params: { limit?: number; offset?: number; action?: string; resource?: string } = {}) => {
+      const response = await api.get<{ items: AuditLogEntry[]; total: number }>('/audit-logs', { params });
       return response.data;
     },
   },

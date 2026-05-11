@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { apiClient } from '../api/apiClient';
@@ -10,12 +10,27 @@ import type { User } from '../api/apiClient';
 
 const UserManagement = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { isAuthenticated, user } = useAuthStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [confirmDeleteUser, setConfirmDeleteUser] = useState<User | null>(null);
-  const [deleting, setDeleting] = useState(false);
+  const [confirmDeactivateUser, setConfirmDeactivateUser] = useState<User | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  const reactivate = async (target: User) => {
+    setActionError(null);
+    try {
+      setSubmitting(true);
+      await apiClient.users.update(target.id, { isActive: true });
+      await queryClient.invalidateQueries({ queryKey: ['users'] });
+    } catch (err: any) {
+      setActionError(err?.response?.data?.message || 'Failed to reactivate user');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   // Always try to fetch users - let the backend decide access
   // The backend will return 403 if user doesn't have admin role
@@ -467,20 +482,28 @@ const UserManagement = () => {
                   </button>
                 </Can>
                 <Can module="users" action="delete">
-                  <button
-                    className="text-sm text-rose-500 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300 font-bold flex items-center space-x-1"
-                    onClick={() => setConfirmDeleteUser(user)}
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                      />
-                    </svg>
-                    <span>Delete</span>
-                  </button>
+                  {user.isActive ? (
+                    <button
+                      className="text-sm text-rose-500 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300 font-bold flex items-center space-x-1"
+                      onClick={() => setConfirmDeactivateUser(user)}
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-12.728 12.728M5.636 5.636l12.728 12.728" />
+                      </svg>
+                      <span>Deactivate</span>
+                    </button>
+                  ) : (
+                    <button
+                      className="text-sm text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 font-bold flex items-center space-x-1 disabled:opacity-50"
+                      onClick={() => reactivate(user)}
+                      disabled={submitting}
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      <span>{submitting ? 'Reactivating…' : 'Reactivate'}</span>
+                    </button>
+                  )}
                 </Can>
               </div>
             </div>
@@ -505,46 +528,53 @@ const UserManagement = () => {
         </div>
       )}
 
-      {/* Delete User Confirmation Modal */}
-      {confirmDeleteUser && (
+      {actionError && (
+        <div className="fixed bottom-4 right-4 z-[110] max-w-sm bg-rose-50 dark:bg-rose-900/40 border border-rose-200 dark:border-rose-700 rounded-xl shadow-xl p-4 text-sm text-rose-700 dark:text-rose-200 font-semibold">
+          {actionError}
+          <button onClick={() => setActionError(null)} className="ml-3 text-xs underline">Dismiss</button>
+        </div>
+      )}
+
+      {/* Deactivate User Confirmation Modal */}
+      {confirmDeactivateUser && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setConfirmDeleteUser(null)} />
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setConfirmDeactivateUser(null)} />
           <div className="relative bg-white dark:bg-boxdark rounded-2xl p-8 w-full max-w-sm shadow-2xl border border-white/20 dark:border-white/5">
             <div className="text-center mb-5">
               <div className="w-14 h-14 rounded-full bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center mx-auto mb-4">
                 <svg className="w-7 h-7 text-rose-600 dark:text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
               </div>
-              <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Delete User?</h2>
+              <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Deactivate User?</h2>
               <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
-                <span className="font-bold text-slate-700 dark:text-white">{confirmDeleteUser.firstName} {confirmDeleteUser.lastName}</span> will be permanently removed.
+                <span className="font-bold text-slate-700 dark:text-white">{confirmDeactivateUser.firstName} {confirmDeactivateUser.lastName}</span> will lose access immediately. Their account history is preserved.
               </p>
-              <p className="text-xs text-rose-500 font-bold mt-2">This action cannot be undone.</p>
+              <p className="text-xs text-slate-500 font-semibold mt-2">You can reactivate them later from this page.</p>
             </div>
             <div className="flex gap-3">
               <button
-                onClick={() => setConfirmDeleteUser(null)}
+                onClick={() => setConfirmDeactivateUser(null)}
                 className="flex-1 py-3 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-meta-4 rounded-xl font-bold transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={async () => {
+                  setActionError(null);
                   try {
-                    setDeleting(true);
-                    await apiClient.users.delete(confirmDeleteUser.id);
-                    setConfirmDeleteUser(null);
-                    window.location.reload();
+                    setSubmitting(true);
+                    await apiClient.users.delete(confirmDeactivateUser.id);
+                    setConfirmDeactivateUser(null);
+                    await queryClient.invalidateQueries({ queryKey: ['users'] });
                   } catch (err: any) {
-                    console.error('Failed to delete user:', err);
-                    alert(err?.response?.data?.message || 'Failed to delete user');
+                    setActionError(err?.response?.data?.message || 'Failed to deactivate user');
                   } finally {
-                    setDeleting(false);
+                    setSubmitting(false);
                   }
                 }}
-                disabled={deleting}
+                disabled={submitting}
                 className="flex-1 py-3 bg-gradient-to-r from-rose-600 to-rose-500 text-white rounded-xl font-bold shadow-lg transition-all disabled:opacity-50"
               >
-                {deleting ? 'Deleting...' : 'Delete'}
+                {submitting ? 'Deactivating…' : 'Deactivate'}
               </button>
             </div>
           </div>

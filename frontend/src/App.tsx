@@ -10,6 +10,7 @@ import RolePermissions from './pages/RolePermissions';
 import CreateUser from './pages/CreateUser';
 import EditUser from './pages/EditUser';
 import Settings from './pages/Settings';
+import AuditLogs from './pages/AuditLogs';
 import Orders from './pages/Orders';
 import Inventory from './pages/Inventory';
 import Tools from './pages/Tools';
@@ -245,6 +246,16 @@ function App() {
               <ProtectedRoute>
                 <MainLayout>
                   <Settings />
+                </MainLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/audit-logs"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <MainLayout>
+                  <AuditLogs />
                 </MainLayout>
               </ProtectedRoute>
             }

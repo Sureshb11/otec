@@ -10,7 +10,6 @@ interface RequestPasswordResetForm {
 const RequestPasswordReset = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [resetToken, setResetToken] = useState<string | null>(null);
 
   const {
     register,
@@ -21,14 +20,10 @@ const RequestPasswordReset = () => {
   const onSubmit = async (data: RequestPasswordResetForm) => {
     setIsLoading(true);
     setMessage(null);
-    setResetToken(null);
 
     try {
       const response = await api.post('/auth/request-password-reset', { email: data.email });
       setMessage({ type: 'success', text: response.data.message });
-      if (response.data.token) {
-        setResetToken(response.data.token);
-      }
     } catch (error: any) {
       setMessage({
         type: 'error',
@@ -102,15 +97,6 @@ const RequestPasswordReset = () => {
                   )}
                   <p className="text-sm font-semibold">{message.text}</p>
                 </div>
-              </div>
-            )}
-
-            {resetToken && (
-              <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
-                <p className="text-sm text-blue-300 font-bold mb-2">Development Mode:</p>
-                <p className="text-xs text-blue-200/70 mb-2">Reset token (for testing):</p>
-                <p className="text-xs text-blue-400 font-mono break-all">{resetToken}</p>
-                <Link to={`/reset-password?token=${resetToken}`} className="text-xs text-blue-400 hover:text-blue-300 underline mt-2 inline-block font-semibold">Click here to reset password →</Link>
               </div>
             )}
 
