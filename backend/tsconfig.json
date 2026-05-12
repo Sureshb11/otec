@@ -19,6 +19,17 @@
     "noFallthroughCasesInSwitch": false,
     "esModuleInterop": true,
     "resolveJsonModule": true
-  }
+  },
+  "include": ["src/**/*", "api/**/*"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "check_api_json.ts",
+    "check_api_json.js",
+    "check_tools.ts",
+    "check_users.ts",
+    "queryDb.ts",
+    "queryDb2.ts"
+  ]
 }
 

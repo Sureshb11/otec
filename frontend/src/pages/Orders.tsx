@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'react-router-dom';
 import { apiClient } from '../api/apiClient';
@@ -495,8 +495,17 @@ const NewOrderModal = ({ customers, locations, rigs, tools, isSaving, onClose, o
   const [startDate,  setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [endDate]   = useState('');
   const [toolSearch, setToolSearch]= useState('');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [selTools,   setSelTools]  = useState<{ toolId: string; size: string }[]>([]);
   const [isCreatingRig, setIsCreatingRig] = useState(false);
+
+  const toolCategories = useMemo(() => {
+    const set = new Set<string>();
+    tools.forEach((t: any) => {
+      if (t.category) set.add(t.category);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [tools]);
 
   // Filter rigs based on typed text
   const filteredRigs = rigs.filter((r: any) =>
@@ -519,7 +528,9 @@ const NewOrderModal = ({ customers, locations, rigs, tools, isSaving, onClose, o
   };
 
   const filtered = tools.filter((t: any) => {
+    if (categoryFilter !== 'all' && t.category !== categoryFilter) return false;
     const q = toolSearch.toLowerCase();
+    if (!q) return true;
     return (
       t.name?.toLowerCase().includes(q) ||
       t.category?.toLowerCase().includes(q) ||
@@ -742,10 +753,23 @@ const NewOrderModal = ({ customers, locations, rigs, tools, isSaving, onClose, o
                 <span className="text-slate-300 font-medium ml-1 normal-case tracking-normal">(select at least one)</span>
               </h4>
             </div>
-            <div className="relative mb-3">
-              <input value={toolSearch} onChange={e => setToolSearch(e.target.value)} placeholder="Search by name, category, description, or item code..."
-                className="w-full border border-slate-200 dark:border-white/10 rounded-xl pl-9 pr-4 py-2.5 text-sm bg-white/50 dark:bg-boxdark dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 transition-all" />
-              <svg className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+            <div className="flex flex-col sm:flex-row gap-2 mb-3">
+              <div className="relative flex-1">
+                <input value={toolSearch} onChange={e => setToolSearch(e.target.value)} placeholder="Search by name, category, description, or item code..."
+                  className="w-full border border-slate-200 dark:border-white/10 rounded-xl pl-9 pr-4 py-2.5 text-sm bg-white/50 dark:bg-boxdark dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 transition-all" />
+                <svg className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+              </div>
+              <select
+                value={categoryFilter}
+                onChange={e => setCategoryFilter(e.target.value)}
+                className="sm:w-56 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-sm bg-white/50 dark:bg-boxdark dark:text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 transition-all"
+                aria-label="Filter by category"
+              >
+                <option value="all">All categories</option>
+                {toolCategories.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
             </div>
             <div className="border border-slate-200 dark:border-white/10 rounded-xl overflow-hidden max-h-52 overflow-y-auto">
               <div className="flex border-b border-slate-100 dark:border-white/5 bg-slate-50/80 dark:bg-meta-4/50">
@@ -1166,10 +1190,26 @@ const Orders = () => {
             notes:             reportOrder.notes ?? '',
             operationSummary:  '',
             returnCondition:   'Good',
-            hoursOnsite: reportTracking?.operationStarted?.timestamp
-              ? `Since ${reportTracking.operationStarted.timestamp}`
-              : '',
+            hoursOnsite: (() => {
+              const reached = reportOrder.reachedOnsiteAt || reportTracking?.reachedOnsite?.timestamp;
+              const end = reportOrder.endDate || reportOrder.returnedAt || new Date().toISOString();
+              return reached ? calcStandbyHours(reached, end) : '';
+            })(),
+            standbyHours: (() => {
+              const reached = reportOrder.reachedOnsiteAt || reportTracking?.reachedOnsite?.timestamp;
+              const started = reportOrder.operationStartedAt || reportTracking?.operationStarted?.timestamp;
+              return reached ? calcStandbyHours(reached, started) : '';
+            })(),
+            operationHours: (() => {
+              const started = reportOrder.operationStartedAt || reportTracking?.operationStarted?.timestamp;
+              const stopped = reportOrder.operationStoppedAt || reportOrder.endDate || reportOrder.returnedAt;
+              return started ? calcStandbyHours(started, stopped) : '';
+            })(),
             signedOffBy: '',
+            otecRepName: '',
+            otecRepDate: '',
+            clientRepName: '',
+            clientRepDate: '',
           }}
           onClose={() => { setReportOrder(null); setReportTracking(null); }}
           onConfirm={handleReportConfirm}

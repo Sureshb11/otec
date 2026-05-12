@@ -12,6 +12,7 @@
 import { useState, useRef } from 'react';
 import { format } from 'date-fns';
 import { useAuthStore } from '../store/authStore';
+import { fmtKwDateTime } from '../utils/kuwaitTime';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -38,7 +39,13 @@ export interface JobReportData {
   operationSummary?: string;
   returnCondition?: string;
   hoursOnsite?: string;
+  standbyHours?: string;
+  operationHours?: string;
   signedOffBy?: string;
+  otecRepName?: string;
+  otecRepDate?: string;
+  clientRepName?: string;
+  clientRepDate?: string;
   hardcopyFile?: File | null;
   hardcopyFileName?: string;
 }
@@ -62,9 +69,24 @@ interface JobReportModalProps {
 const nowFmt = () =>
   format(new Date(), 'dd MMM yyyy, HH:mm:ss');
 
-const safeFmt = (d?: string) => {
+const safeFmtDateTime = (d?: string) => {
   if (!d) return '—';
-  try { return format(new Date(d), 'dd MMM yyyy'); } catch { return d; }
+  return fmtKwDateTime(d, '—');
+};
+
+// Converts an ISO timestamp to the `datetime-local` input format (no timezone)
+const toDateTimeLocal = (d?: string): string => {
+  if (!d) return '';
+  const date = new Date(d);
+  if (isNaN(date.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
+const fromDateTimeLocal = (s: string): string => {
+  if (!s) return '';
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? s : d.toISOString();
 };
 
 // ─── Editable field renderer (hoisted so input identity is stable across renders) ──
@@ -114,6 +136,48 @@ const EditableText = ({
   </div>
 );
 
+interface EditableDateTimeProps {
+  label: string;
+  value: string;
+  onChange: (isoValue: string) => void;
+  editMode: boolean;
+}
+
+const EditableDateTime = ({ label, value, onChange, editMode }: EditableDateTimeProps) => (
+  <div className="space-y-1">
+    <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">{label}</label>
+    {editMode ? (
+      <input
+        type="datetime-local"
+        value={toDateTimeLocal(value)}
+        onChange={(e) => onChange(fromDateTimeLocal(e.target.value))}
+        className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-white/10 text-sm bg-white dark:bg-meta-4 text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500/30 focus:outline-none"
+      />
+    ) : (
+      <p className="text-sm font-semibold text-slate-800 dark:text-white min-h-[1.5rem]">
+        {safeFmtDateTime(value)}
+      </p>
+    )}
+  </div>
+);
+
+interface InlineCellInputProps {
+  value: string;
+  onChange: (v: string) => void;
+  type?: 'text' | 'number';
+  placeholder?: string;
+}
+
+const InlineCellInput = ({ value, onChange, type = 'text', placeholder }: InlineCellInputProps) => (
+  <input
+    type={type}
+    value={value}
+    placeholder={placeholder}
+    onChange={(e) => onChange(e.target.value)}
+    className="w-full px-2 py-1 rounded border border-slate-200 dark:border-white/10 text-sm bg-white dark:bg-meta-4 text-slate-800 dark:text-white focus:ring-1 focus:ring-blue-500/40 focus:outline-none"
+  />
+);
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const JobReportModal = ({ reportData: initialData, onClose, onConfirm }: JobReportModalProps) => {
@@ -144,6 +208,57 @@ const JobReportModal = ({ reportData: initialData, onClose, onConfirm }: JobRepo
       ]);
     }
     setData(prev => ({ ...prev, [key]: val }));
+  };
+
+  const updateTool = (index: number, key: keyof ReportTool, val: string | number) => {
+    setData(prev => {
+      const oldTool = prev.tools[index];
+      const oldVal = String((oldTool as any)?.[key] ?? '');
+      const newVal = String(val ?? '');
+      if (oldVal !== newVal && adminMode) {
+        setAuditLog(p => [
+          {
+            timestamp: nowFmt(),
+            editor: `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim() || 'Admin',
+            field: `tools[${index}].${key}`,
+            oldValue: oldVal,
+            newValue: newVal,
+          },
+          ...p,
+        ]);
+      }
+      const nextTools = prev.tools.map((t, i) => (i === index ? { ...t, [key]: val } : t));
+      return { ...prev, tools: nextTools };
+    });
+  };
+
+  const removeTool = (index: number) => {
+    setData(prev => {
+      const removed = prev.tools[index];
+      if (removed && adminMode) {
+        setAuditLog(p => [
+          {
+            timestamp: nowFmt(),
+            editor: `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim() || 'Admin',
+            field: `tools[${index}]`,
+            oldValue: `${removed.toolName} (${removed.serialNumber ?? '—'})`,
+            newValue: 'removed',
+          },
+          ...p,
+        ]);
+      }
+      return { ...prev, tools: prev.tools.filter((_, i) => i !== index) };
+    });
+  };
+
+  const addTool = () => {
+    setData(prev => ({
+      ...prev,
+      tools: [
+        ...prev.tools,
+        { toolId: `manual-${Date.now()}`, toolName: '', serialNumber: '', size: '', quantity: 1 },
+      ],
+    }));
   };
 
   // ── File upload ──
@@ -317,26 +432,36 @@ const JobReportModal = ({ reportData: initialData, onClose, onConfirm }: JobRepo
                   <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Order Number</span>
                   <p className="text-sm font-bold text-slate-800 dark:text-white">#{data.orderNumber}</p>
                 </div>
-                <div className="space-y-1">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Customer</span>
-                  <p className="text-sm font-bold text-slate-800 dark:text-white">{data.customerName}</p>
-                </div>
-                <div className="space-y-1">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Location</span>
-                  <p className="text-sm font-bold text-slate-800 dark:text-white">{data.locationName || '—'}</p>
-                </div>
-                <div className="space-y-1">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Rig</span>
-                  <p className="text-sm font-bold text-slate-800 dark:text-white">{data.rigName || '—'}</p>
-                </div>
-                <div className="space-y-1">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Job Start</span>
-                  <p className="text-sm font-bold text-slate-800 dark:text-white">{safeFmt(data.jobStartDate)}</p>
-                </div>
-                <div className="space-y-1">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Job End</span>
-                  <p className="text-sm font-bold text-slate-800 dark:text-white">{safeFmt(data.jobEndDate)}</p>
-                </div>
+                <EditableText
+                  editMode={editMode}
+                  label="Customer"
+                  value={data.customerName}
+                  onChange={(v) => field('customerName', v)}
+                />
+                <EditableText
+                  editMode={editMode}
+                  label="Location"
+                  value={data.locationName || ''}
+                  onChange={(v) => field('locationName', v)}
+                />
+                <EditableText
+                  editMode={editMode}
+                  label="Rig"
+                  value={data.rigName || ''}
+                  onChange={(v) => field('rigName', v)}
+                />
+                <EditableDateTime
+                  editMode={editMode}
+                  label="Job Start"
+                  value={data.jobStartDate}
+                  onChange={(v) => field('jobStartDate', v)}
+                />
+                <EditableDateTime
+                  editMode={editMode}
+                  label="Job End"
+                  value={data.jobEndDate}
+                  onChange={(v) => field('jobEndDate', v)}
+                />
               </div>
             </div>
 
@@ -346,6 +471,14 @@ const JobReportModal = ({ reportData: initialData, onClose, onConfirm }: JobRepo
                 <span className="w-5 h-px bg-slate-300 dark:bg-white/20 block" />
                 2. Tools Used
                 <span className="flex-1 h-px bg-slate-300 dark:bg-white/20 block" />
+                {editMode && (
+                  <button
+                    onClick={addTool}
+                    className="ml-2 print:hidden px-2 py-1 rounded-md border border-slate-200 dark:border-white/10 text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors normal-case tracking-normal"
+                  >
+                    + Add row
+                  </button>
+                )}
               </h3>
               {data.tools.length > 0 ? (
                 <table className="w-full text-sm border-collapse">
@@ -356,22 +489,74 @@ const JobReportModal = ({ reportData: initialData, onClose, onConfirm }: JobRepo
                       <th className="text-left px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-400 border border-slate-200 dark:border-white/10">Serial No.</th>
                       <th className="text-left px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-400 border border-slate-200 dark:border-white/10">Size</th>
                       <th className="text-right px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-400 border border-slate-200 dark:border-white/10">Qty</th>
+                      {editMode && (
+                        <th className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-400 border border-slate-200 dark:border-white/10 print:hidden text-center">Remove</th>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
                     {data.tools.map((t, i) => (
                       <tr key={t.toolId} className={i % 2 === 0 ? 'bg-white dark:bg-boxdark' : 'bg-slate-50/50 dark:bg-meta-4/30'}>
                         <td className="px-3 py-2.5 text-slate-400 border border-slate-200 dark:border-white/10 text-xs">{i + 1}</td>
-                        <td className="px-3 py-2.5 font-semibold text-slate-800 dark:text-white border border-slate-200 dark:border-white/10">{t.toolName}</td>
-                        <td className="px-3 py-2.5 font-mono text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-white/10 text-xs">{t.serialNumber || '—'}</td>
-                        <td className="px-3 py-2.5 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-white/10">{t.size || '—'}</td>
-                        <td className="px-3 py-2.5 font-bold text-slate-800 dark:text-white border border-slate-200 dark:border-white/10 text-right">{t.quantity ?? 1}</td>
+                        <td className="px-2 py-1.5 border border-slate-200 dark:border-white/10">
+                          {editMode ? (
+                            <InlineCellInput value={t.toolName} onChange={(v) => updateTool(i, 'toolName', v)} />
+                          ) : (
+                            <span className="font-semibold text-slate-800 dark:text-white">{t.toolName}</span>
+                          )}
+                        </td>
+                        <td className="px-2 py-1.5 border border-slate-200 dark:border-white/10">
+                          {editMode ? (
+                            <InlineCellInput value={t.serialNumber || ''} onChange={(v) => updateTool(i, 'serialNumber', v)} />
+                          ) : (
+                            <span className="font-mono text-slate-500 dark:text-slate-400 text-xs">{t.serialNumber || '—'}</span>
+                          )}
+                        </td>
+                        <td className="px-2 py-1.5 border border-slate-200 dark:border-white/10">
+                          {editMode ? (
+                            <InlineCellInput value={t.size || ''} onChange={(v) => updateTool(i, 'size', v)} />
+                          ) : (
+                            <span className="text-slate-600 dark:text-slate-300">{t.size || '—'}</span>
+                          )}
+                        </td>
+                        <td className="px-2 py-1.5 border border-slate-200 dark:border-white/10 text-right">
+                          {editMode ? (
+                            <InlineCellInput
+                              type="number"
+                              value={String(t.quantity ?? 1)}
+                              onChange={(v) => updateTool(i, 'quantity', v === '' ? 0 : Number(v))}
+                            />
+                          ) : (
+                            <span className="font-bold text-slate-800 dark:text-white">{t.quantity ?? 1}</span>
+                          )}
+                        </td>
+                        {editMode && (
+                          <td className="px-2 py-1.5 border border-slate-200 dark:border-white/10 text-center print:hidden">
+                            <button
+                              onClick={() => removeTool(i)}
+                              className="text-rose-500 hover:text-rose-700 text-xs font-bold"
+                              aria-label="Remove tool row"
+                            >
+                              ×
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
                 </table>
               ) : (
-                <p className="text-sm text-slate-400 italic">No tools recorded for this order.</p>
+                <div>
+                  <p className="text-sm text-slate-400 italic">No tools recorded for this order.</p>
+                  {editMode && (
+                    <button
+                      onClick={addTool}
+                      className="mt-2 px-3 py-1.5 rounded-md border border-slate-200 dark:border-white/10 text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors print:hidden"
+                    >
+                      + Add tool row
+                    </button>
+                  )}
+                </div>
               )}
             </div>
 
@@ -385,10 +570,24 @@ const JobReportModal = ({ reportData: initialData, onClose, onConfirm }: JobRepo
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <EditableText
                   editMode={editMode}
-                  label="Hours Onsite"
+                  label="Hours Onsite (Total)"
                   value={data.hoursOnsite || ''}
                   onChange={v => field('hoursOnsite', v)}
-                  placeholder="e.g. 48 hrs"
+                  placeholder="e.g. 48h 30m"
+                />
+                <EditableText
+                  editMode={editMode}
+                  label="Standby Hours"
+                  value={data.standbyHours || ''}
+                  onChange={v => field('standbyHours', v)}
+                  placeholder="e.g. 12h 15m"
+                />
+                <EditableText
+                  editMode={editMode}
+                  label="Operation / Running Hours"
+                  value={data.operationHours || ''}
+                  onChange={v => field('operationHours', v)}
+                  placeholder="e.g. 36h 15m"
                 />
                 <EditableText
                   editMode={editMode}
@@ -440,25 +639,43 @@ const JobReportModal = ({ reportData: initialData, onClose, onConfirm }: JobRepo
                 4. Signatures
                 <span className="flex-1 h-px bg-slate-300 dark:bg-white/20 block" />
               </h3>
-              <div className="grid grid-cols-2 gap-6">
-                {['OTEC Representative', 'Client Representative'].map(role => (
-                  <div key={role} className="space-y-8">
-                    <div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">{role}</p>
-                      <div className="h-12 border-b-2 border-dashed border-slate-300 dark:border-white/20" />
-                      <div className="mt-1 grid grid-cols-2 gap-2">
-                        <div>
-                          <p className="text-[9px] text-slate-300 uppercase tracking-wider">Name</p>
-                          <div className="h-5 border-b border-slate-200 dark:border-white/10 mt-1" />
-                        </div>
-                        <div>
-                          <p className="text-[9px] text-slate-300 uppercase tracking-wider">Date</p>
-                          <div className="h-5 border-b border-slate-200 dark:border-white/10 mt-1" />
-                        </div>
-                      </div>
-                    </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">OTEC Representative</p>
+                  <div className="h-12 border-b-2 border-dashed border-slate-300 dark:border-white/20" />
+                  <div className="grid grid-cols-2 gap-3">
+                    <EditableText
+                      editMode={editMode}
+                      label="Name"
+                      value={data.otecRepName || ''}
+                      onChange={(v) => field('otecRepName', v)}
+                    />
+                    <EditableDateTime
+                      editMode={editMode}
+                      label="Date"
+                      value={data.otecRepDate || ''}
+                      onChange={(v) => field('otecRepDate', v)}
+                    />
                   </div>
-                ))}
+                </div>
+                <div className="space-y-4">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Client Representative</p>
+                  <div className="h-12 border-b-2 border-dashed border-slate-300 dark:border-white/20" />
+                  <div className="grid grid-cols-2 gap-3">
+                    <EditableText
+                      editMode={editMode}
+                      label="Name"
+                      value={data.clientRepName || ''}
+                      onChange={(v) => field('clientRepName', v)}
+                    />
+                    <EditableDateTime
+                      editMode={editMode}
+                      label="Date"
+                      value={data.clientRepDate || ''}
+                      onChange={(v) => field('clientRepDate', v)}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
 
