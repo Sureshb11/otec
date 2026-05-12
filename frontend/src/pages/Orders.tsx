@@ -1175,8 +1175,20 @@ const Orders = () => {
             customerName:   reportOrder.customer?.name  ?? '—',
             locationName:   reportOrder.location?.name  ?? '',
             rigName:        reportOrder.rig?.name        ?? '',
-            jobStartDate:   reportOrder.startDate        ?? '',
-            jobEndDate:     reportOrder.endDate ?? reportOrder.returnedAt ?? new Date().toISOString(),
+            // Use the actual operational timestamps when available (real clock
+            // time of Start/Stop). Fall back to the order's planned start/end
+            // dates only if the operation never started — those are saved as
+            // midnight UTC so they'll display as 03:00 in Kuwait time.
+            jobStartDate:
+              reportOrder.operationStartedAt
+              ?? reportTracking?.operationStarted?.timestamp
+              ?? reportOrder.startDate
+              ?? '',
+            jobEndDate:
+              reportOrder.operationStoppedAt
+              ?? reportOrder.returnedAt
+              ?? reportOrder.endDate
+              ?? new Date().toISOString(),
             tools: Array.isArray(reportOrder.items)
               ? reportOrder.items.map((item: any) => ({
                   toolId:       item.toolId,
