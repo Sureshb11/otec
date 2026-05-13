@@ -928,6 +928,36 @@ const ConsumablesInventory = () => {
   const [confirmDelete, setConfirmDelete] = useState<Consumable | null>(null);
   const [catFilter, setCatFilter] = useState('All');
 
+  // Column visibility (persisted)
+  type ConsCol = 'category' | 'subCategory' | 'quantity' | 'unit' | 'minStock' | 'location' | 'description' | 'status';
+  const CONS_COLUMN_DEFS: { key: ConsCol; label: string }[] = [
+    { key: 'category',    label: 'Category' },
+    { key: 'subCategory', label: 'Sub Category' },
+    { key: 'quantity',    label: 'Qty' },
+    { key: 'unit',        label: 'Unit' },
+    { key: 'minStock',    label: 'Reorder At' },
+    { key: 'location',    label: 'Location' },
+    { key: 'description', label: 'Description' },
+    { key: 'status',      label: 'Status' },
+  ];
+  const CONS_LS_KEY = 'otec.consumables.cols.v1';
+  const consDefaultCols: Record<ConsCol, boolean> = {
+    category: true, subCategory: false, quantity: true, unit: true,
+    minStock: true, location: true, description: false, status: true,
+  };
+  const [visibleConsCols, setVisibleConsCols] = useState<Record<ConsCol, boolean>>(() => {
+    try {
+      const raw = localStorage.getItem(CONS_LS_KEY);
+      if (raw) return { ...consDefaultCols, ...JSON.parse(raw) };
+    } catch { /* ignore */ }
+    return consDefaultCols;
+  });
+  const [showConsColMenu, setShowConsColMenu] = useState(false);
+  useEffect(() => {
+    try { localStorage.setItem(CONS_LS_KEY, JSON.stringify(visibleConsCols)); } catch { /* ignore */ }
+  }, [visibleConsCols]);
+  const toggleConsCol = (k: ConsCol) => setVisibleConsCols(p => ({ ...p, [k]: !p[k] }));
+
   const fetchConsumables = async () => {
     try {
       setLoading(true);
@@ -1061,6 +1091,40 @@ const ConsumablesInventory = () => {
                 placeholder="Search consumables..."
                 className="pl-9 pr-4 py-2.5 border border-slate-200/60 dark:border-white/5 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/30 bg-white/60 dark:bg-meta-4 dark:text-white w-48" />
             </div>
+            <div className="relative">
+              <button
+                onClick={() => setShowConsColMenu(s => !s)}
+                className="px-3 py-2.5 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-meta-4 transition-colors flex items-center gap-1.5"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+                </svg>
+                Columns
+              </button>
+              {showConsColMenu && (
+                <>
+                  <div className="fixed inset-0 z-30" onClick={() => setShowConsColMenu(false)} />
+                  <div className="absolute top-full right-0 z-40 mt-2 w-56 bg-white dark:bg-boxdark border border-slate-200 dark:border-white/10 rounded-xl shadow-xl overflow-hidden">
+                    <div className="p-3 bg-slate-50 dark:bg-meta-4/40 border-b border-slate-100 dark:border-white/5 text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-300">
+                      Visible Columns
+                    </div>
+                    <div className="p-2 max-h-72 overflow-y-auto flex flex-col gap-0.5">
+                      {CONS_COLUMN_DEFS.map(({ key, label }) => (
+                        <label key={key} className="flex items-center gap-2.5 px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-meta-4 rounded-lg cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={visibleConsCols[key]}
+                            onChange={() => toggleConsCol(key)}
+                            className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4"
+                          />
+                          <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
             <button onClick={openCreate}
               className="px-5 py-2.5 bg-gradient-to-r from-slate-800 to-slate-700 text-white rounded-xl text-sm font-bold hover:from-slate-700 hover:to-slate-600 shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2">
               <span className="text-lg leading-none">+</span> Add Item
@@ -1088,25 +1152,28 @@ const ConsumablesInventory = () => {
             {error}
           </div>
         )}
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-slate-50 dark:bg-meta-4/50 border-b border-slate-100 dark:border-white/5">
-              <th className="text-left px-5 py-3.5 text-[10px] font-black uppercase tracking-wider text-slate-400">Item Name</th>
-              <th className="text-left px-5 py-3.5 text-[10px] font-black uppercase tracking-wider text-slate-400">Category</th>
-              <th className="text-right px-5 py-3.5 text-[10px] font-black uppercase tracking-wider text-slate-400">Qty</th>
-              <th className="text-center px-5 py-3.5 text-[10px] font-black uppercase tracking-wider text-slate-400">Unit</th>
-              <th className="text-right px-5 py-3.5 text-[10px] font-black uppercase tracking-wider text-slate-400">Reorder At</th>
-              <th className="text-left px-5 py-3.5 text-[10px] font-black uppercase tracking-wider text-slate-400">Location</th>
-              <th className="text-center px-5 py-3.5 text-[10px] font-black uppercase tracking-wider text-slate-400">Status</th>
-              <th className="px-5 py-3.5 text-right text-[10px] font-black uppercase tracking-wider text-slate-400">Actions</th>
+              <th className="text-left px-5 py-3.5 text-[10px] font-black uppercase tracking-wider text-slate-400 whitespace-nowrap">Item Name</th>
+              {visibleConsCols.category && <th className="text-left px-5 py-3.5 text-[10px] font-black uppercase tracking-wider text-slate-400 whitespace-nowrap">Category</th>}
+              {visibleConsCols.subCategory && <th className="text-left px-5 py-3.5 text-[10px] font-black uppercase tracking-wider text-slate-400 whitespace-nowrap">Sub Category</th>}
+              {visibleConsCols.quantity && <th className="text-right px-5 py-3.5 text-[10px] font-black uppercase tracking-wider text-slate-400 whitespace-nowrap">Qty</th>}
+              {visibleConsCols.unit && <th className="text-center px-5 py-3.5 text-[10px] font-black uppercase tracking-wider text-slate-400 whitespace-nowrap">Unit</th>}
+              {visibleConsCols.minStock && <th className="text-right px-5 py-3.5 text-[10px] font-black uppercase tracking-wider text-slate-400 whitespace-nowrap">Reorder At</th>}
+              {visibleConsCols.location && <th className="text-left px-5 py-3.5 text-[10px] font-black uppercase tracking-wider text-slate-400 whitespace-nowrap">Location</th>}
+              {visibleConsCols.description && <th className="text-left px-5 py-3.5 text-[10px] font-black uppercase tracking-wider text-slate-400 whitespace-nowrap">Description</th>}
+              {visibleConsCols.status && <th className="text-center px-5 py-3.5 text-[10px] font-black uppercase tracking-wider text-slate-400 whitespace-nowrap">Status</th>}
+              <th className="px-5 py-3.5 text-right text-[10px] font-black uppercase tracking-wider text-slate-400 whitespace-nowrap">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-white/5">
             {loading ? (
-              <tr><td colSpan={8} className="px-5 py-12 text-center text-slate-400 font-bold">Loading...</td></tr>
+              <tr><td colSpan={2 + Object.values(visibleConsCols).filter(Boolean).length} className="px-5 py-12 text-center text-slate-400 font-bold">Loading...</td></tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-5 py-16 text-center">
+                <td colSpan={2 + Object.values(visibleConsCols).filter(Boolean).length} className="px-5 py-16 text-center">
                   <div className="mb-3 opacity-40"><svg className="w-12 h-12 mx-auto text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg></div>
                   <p className="font-bold text-slate-400 text-base">No consumables yet</p>
                   <button onClick={openCreate} className="mt-3 text-blue-600 dark:text-blue-400 font-bold text-sm hover:underline">+ Add the first item</button>
@@ -1116,37 +1183,57 @@ const ConsumablesInventory = () => {
               const isLow = item.quantity <= item.minStock;
               return (
                 <tr key={item.id} className={`transition-colors hover:bg-slate-50/80 dark:hover:bg-meta-4/30 ${isLow ? 'bg-rose-50/40 dark:bg-rose-900/10' : ''}`}>
-                  <td className="px-5 py-3.5 font-semibold text-slate-800 dark:text-white">
-                    {isLow && <span className="inline-block w-1.5 h-1.5 rounded-full bg-rose-500 mr-2 animate-pulse" />}
-                    {item.itemName}
-                    {item.description && (
-                      <div className="text-[11px] text-slate-400 truncate max-w-xs">{item.description}</div>
+                  <td className="px-5 py-3.5 font-semibold text-slate-800 dark:text-white max-w-[280px]">
+                    <div className="truncate" title={item.itemName}>
+                      {isLow && <span className="inline-block w-1.5 h-1.5 rounded-full bg-rose-500 mr-2 animate-pulse" />}
+                      {item.itemName}
+                    </div>
+                    {!visibleConsCols.description && item.description && (
+                      <div className="text-[11px] text-slate-400 truncate" title={item.description}>{item.description}</div>
                     )}
                   </td>
-                  <td className="px-5 py-3.5">
-                    <span className="text-xs font-bold bg-slate-100 dark:bg-meta-4 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-md">{item.category}</span>
-                  </td>
-                  <td className={`px-5 py-3.5 text-right font-black text-lg tabular-nums ${isLow ? 'text-rose-600 dark:text-rose-400' : 'text-slate-800 dark:text-white'}`}>
-                    {item.quantity}
-                  </td>
-                  <td className="px-5 py-3.5 text-center text-slate-400 text-xs font-bold uppercase">{item.unit || '—'}</td>
-                  <td className="px-5 py-3.5 text-right text-slate-400 text-sm font-medium tabular-nums">{item.minStock}</td>
-                  <td className="px-5 py-3.5 text-slate-500 dark:text-slate-400 text-xs">{item.location || '—'}</td>
-                  <td className="px-5 py-3.5 text-center">
-                    {isLow ? (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-lg bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400">
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        Reorder
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                        OK
-                      </span>
-                    )}
-                  </td>
+                  {visibleConsCols.category && (
+                    <td className="px-5 py-3.5 whitespace-nowrap">
+                      <span className="text-xs font-bold bg-slate-100 dark:bg-meta-4 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-md">{item.category}</span>
+                    </td>
+                  )}
+                  {visibleConsCols.subCategory && (
+                    <td className="px-5 py-3.5 text-slate-500 dark:text-slate-400 text-xs whitespace-nowrap max-w-[160px] truncate" title={item.subCategory || ''}>{item.subCategory || '—'}</td>
+                  )}
+                  {visibleConsCols.quantity && (
+                    <td className={`px-5 py-3.5 text-right font-black text-lg tabular-nums whitespace-nowrap ${isLow ? 'text-rose-600 dark:text-rose-400' : 'text-slate-800 dark:text-white'}`}>
+                      {item.quantity}
+                    </td>
+                  )}
+                  {visibleConsCols.unit && (
+                    <td className="px-5 py-3.5 text-center text-slate-400 text-xs font-bold uppercase whitespace-nowrap">{item.unit || '—'}</td>
+                  )}
+                  {visibleConsCols.minStock && (
+                    <td className="px-5 py-3.5 text-right text-slate-400 text-sm font-medium tabular-nums whitespace-nowrap">{item.minStock}</td>
+                  )}
+                  {visibleConsCols.location && (
+                    <td className="px-5 py-3.5 text-slate-500 dark:text-slate-400 text-xs whitespace-nowrap max-w-[140px] truncate" title={item.location || ''}>{item.location || '—'}</td>
+                  )}
+                  {visibleConsCols.description && (
+                    <td className="px-5 py-3.5 text-slate-500 dark:text-slate-400 text-xs max-w-[320px] truncate" title={item.description || ''}>{item.description || '—'}</td>
+                  )}
+                  {visibleConsCols.status && (
+                    <td className="px-5 py-3.5 text-center whitespace-nowrap">
+                      {isLow ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-lg bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          Reorder
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                          OK
+                        </span>
+                      )}
+                    </td>
+                  )}
                   <td className="px-5 py-3.5 text-right whitespace-nowrap">
                     <button onClick={() => openEdit(item)}
                       className="px-2.5 py-1 text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md mr-1 transition-colors">
@@ -1162,6 +1249,7 @@ const ConsumablesInventory = () => {
             })}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Add / Edit modal */}
