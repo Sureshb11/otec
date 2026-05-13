@@ -4,7 +4,7 @@ import { useLocation } from 'react-router-dom';
 import { apiClient } from '../api/apiClient';
 import MainLayout from '../components/MainLayout';
 import Can from '../components/Can';
-import { getToolCategorySizes } from '../utils/toolCategorySizes';
+import { getSizeOptionsForTool } from '../utils/toolCategorySizes';
 import { fmtKwDateTime, fmtKwDate } from '../utils/kuwaitTime';
 import JobReportModal, { type JobReportData } from '../components/JobReportModal';
 import OrderDetails from './OrderDetails';
@@ -552,11 +552,12 @@ const NewOrderModal = ({ customers, locations, rigs, tools, isSaving, onClose, o
   const trsTools = filtered.filter((t: any) => t.type === 'TRS');
   const dhtTools = filtered.filter((t: any) => t.type === 'DHT');
 
-  const toggleTool = (toolId: string, toolName: string) => {
+  const toggleTool = (toolId: string, _toolName: string) => {
     setSelTools(prev => {
       const found = prev.find(i => i.toolId === toolId);
       if (found) return prev.filter(i => i.toolId !== toolId);
-      const sizes = getToolCategorySizes(toolName);
+      const tool = tools.find((t: any) => t.id === toolId);
+      const sizes = getSizeOptionsForTool({ name: tool?.name, size: tool?.size });
       return [...prev, { toolId, size: sizes?.[0] ?? '' }];
     });
   };
@@ -622,7 +623,7 @@ const NewOrderModal = ({ customers, locations, rigs, tools, isSaving, onClose, o
 
   const ToolRow = ({ tool }: { tool: any }) => {
     const sel   = selTools.find(i => i.toolId === tool.id);
-    const sizes = getToolCategorySizes(tool.name);
+    const sizes = getSizeOptionsForTool({ name: tool.name, size: tool.size });
     return (
       <div className="flex items-center hover:bg-slate-50 dark:hover:bg-meta-4 transition-colors border-b border-slate-50 dark:border-white/5 last:border-0">
         <div className="w-[28%] px-3 py-2.5 text-sm text-slate-900 dark:text-white font-medium truncate">{tool.name}</div>
@@ -634,9 +635,13 @@ const NewOrderModal = ({ customers, locations, rigs, tools, isSaving, onClose, o
             className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4" />
           {sel && (
             sizes && sizes.length > 0 ? (
-              <select value={sel.size} onChange={e => changeSize(tool.id, e.target.value)}
-                className="w-20 px-1.5 py-0.5 text-[10px] border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 text-slate-900 dark:text-white dark:bg-boxdark">
-                {sizes.map((s: string) => <option key={s} value={s}>{s}"</option>)}
+              <select
+                value={sel.size}
+                onChange={e => changeSize(tool.id, e.target.value)}
+                title={sel.size || 'Pick a size'}
+                className="max-w-[180px] truncate px-1.5 py-0.5 text-[10px] border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 text-slate-900 dark:text-white dark:bg-boxdark"
+              >
+                {sizes.map((s: string) => <option key={s} value={s}>{s}</option>)}
               </select>
             ) : (
               <input type="text" placeholder='Size' value={sel.size} onChange={e => changeSize(tool.id, e.target.value)}
