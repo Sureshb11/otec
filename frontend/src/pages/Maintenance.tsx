@@ -14,6 +14,7 @@ import { Link, useParams, useNavigate } from 'react-router-dom';
 import MainLayout from '../components/MainLayout';
 import { format, differenceInDays, addMonths, parseISO } from 'date-fns';
 import { apiClient } from '../api/apiClient';
+import { parseToolSizes } from '../utils/toolCategorySizes';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -169,11 +170,26 @@ const LogMaintenanceModal = ({ tool, onClose, onSave }: LogModalProps) => {
 
 // ─── MaintenanceOverview ──────────────────────────────────────────────────────
 
+// Compact size display: parses the tool.size compatibility string and
+// shows just the first spec + "+N" if there are more. Imported tools
+// have multi-line specs stored as comma-separated strings; the old code
+// blindly appended `"` which broke for those.
+const formatToolSize = (size?: string): string => {
+  if (!size) return '';
+  const parts = parseToolSizes(size);
+  if (!parts || parts.length === 0) return '';
+  if (parts.length === 1) return parts[0];
+  return `${parts[0]} +${parts.length - 1}`;
+};
+
 export const MaintenanceOverview = () => {
   const [tools, setTools] = useState<MaintainedTool[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sortBy, setSortBy] = useState<'status' | 'name' | 'date'>('status');
+  const [sortKey, setSortKey] = useState<'status' | 'name' | 'category' | 'opHours' | 'lastService' | 'nextDue'>('status');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [groupFilter, setGroupFilter] = useState<'All' | 'TRS' | 'DHT'>('All');
+  const [dueFilter, setDueFilter] = useState<'all' | DueStatus>('all');
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     apiClient.tools.getAll().then((data: any[]) => {
@@ -185,21 +201,59 @@ export const MaintenanceOverview = () => {
   const dueSoon  = tools.filter(t => getDueStatus(t.nextDueDate) === 'due-soon').length;
   const ok       = tools.filter(t => getDueStatus(t.nextDueDate) === 'ok').length;
 
+  const onSort = (k: typeof sortKey) => {
+    if (sortKey === k) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortKey(k); setSortDir('asc'); }
+  };
+
   const sorted = useMemo(() => {
-    const filtered = groupFilter === 'All' ? tools : tools.filter(t => t.group === groupFilter);
-    return [...filtered].sort((a, b) => {
-      if (sortBy === 'status') {
+    let list = tools;
+    if (groupFilter !== 'All') list = list.filter(t => t.group === groupFilter);
+    if (dueFilter !== 'all') list = list.filter(t => getDueStatus(t.nextDueDate) === dueFilter);
+    const term = searchTerm.trim().toLowerCase();
+    if (term) {
+      list = list.filter(t =>
+        t.name.toLowerCase().includes(term) ||
+        t.serialNumber.toLowerCase().includes(term) ||
+        (t.category || '').toLowerCase().includes(term),
+      );
+    }
+    return [...list].sort((a, b) => {
+      let v = 0;
+      if (sortKey === 'status') {
         const order: DueStatus[] = ['overdue', 'due-soon', 'ok'];
-        return order.indexOf(getDueStatus(a.nextDueDate)) - order.indexOf(getDueStatus(b.nextDueDate));
+        v = order.indexOf(getDueStatus(a.nextDueDate)) - order.indexOf(getDueStatus(b.nextDueDate));
+      } else if (sortKey === 'name') {
+        v = a.name.localeCompare(b.name);
+      } else if (sortKey === 'category') {
+        v = (a.category || '').localeCompare(b.category || '');
+      } else if (sortKey === 'opHours') {
+        v = a.operationalHours - b.operationalHours;
+      } else if (sortKey === 'lastService') {
+        const aD = a.history[0]?.date || '';
+        const bD = b.history[0]?.date || '';
+        v = aD.localeCompare(bD);
+      } else if (sortKey === 'nextDue') {
+        v = a.nextDueDate.localeCompare(b.nextDueDate);
       }
-      if (sortBy === 'name') return a.name.localeCompare(b.name);
-      return a.nextDueDate.localeCompare(b.nextDueDate);
+      return sortDir === 'asc' ? v : -v;
     });
-  }, [tools, sortBy, groupFilter]);
+  }, [tools, sortKey, sortDir, groupFilter, dueFilter, searchTerm]);
 
   if (loading) return (
     <MainLayout><div className="flex items-center justify-center h-64 text-slate-400 font-bold">Loading…</div></MainLayout>
   );
+
+  // KPI card definition — also wired as the due-status filter
+  const kpis: { key: 'all' | DueStatus; label: string; count: number; color: string; light: string }[] = [
+    { key: 'all',       label: 'All Tools',  count: tools.length, color: 'from-slate-500 to-slate-600',   light: 'bg-slate-50 dark:bg-slate-900/20 border-slate-200 dark:border-slate-500/20' },
+    { key: 'overdue',   label: 'Overdue',    count: overdue,      color: 'from-red-500 to-red-600',       light: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-500/20' },
+    { key: 'due-soon',  label: 'Due Soon',   count: dueSoon,      color: 'from-amber-400 to-amber-500',   light: 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-500/20' },
+    { key: 'ok',        label: 'Up to Date', count: ok,           color: 'from-emerald-500 to-emerald-600', light: 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-500/20' },
+  ];
+
+  const sortIndicator = (k: typeof sortKey) =>
+    sortKey === k ? <span className="text-[8px] ml-0.5">{sortDir === 'asc' ? '▲' : '▼'}</span> : null;
 
   return (
     <MainLayout headerContent={
@@ -213,102 +267,153 @@ export const MaintenanceOverview = () => {
       </div>
     }>
 
-      {/* KPI row */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        {[
-          { label: 'Overdue', count: overdue, color: 'from-red-500 to-red-600', kpi: 'overdue', light: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-500/20' },
-          { label: 'Due Soon', count: dueSoon, color: 'from-amber-400 to-amber-500', kpi: 'due-soon', light: 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-500/20' },
-          { label: 'Up to Date', count: ok, color: 'from-emerald-500 to-emerald-600', kpi: 'ok', light: 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-500/20' },
-        ].map(({ label, count, color, kpi, light }) => (
-          <div key={label} className={`glass-premium dark:bg-boxdark/90 rounded-2xl border shadow-xl p-5 flex items-center gap-4 ${light}`}>
-            <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center shadow-lg`}>
-              {kpi === 'overdue' && <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
-              {kpi === 'due-soon' && <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
-              {kpi === 'ok' && <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
-            </div>
-            <div>
-              <div className="text-3xl font-black text-slate-800 dark:text-white">{count}</div>
-              <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">{label}</div>
-            </div>
-          </div>
-        ))}
+      {/* KPI row — clickable filter chips */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+        {kpis.map(({ key, label, count, color, light }) => {
+          const active = dueFilter === key;
+          return (
+            <button
+              key={key}
+              onClick={() => setDueFilter(key)}
+              className={`text-left rounded-2xl border shadow-md p-4 flex items-center gap-3 transition-all ${light} ${
+                active
+                  ? 'ring-2 ring-blue-500/40 shadow-lg -translate-y-0.5'
+                  : 'hover:shadow-lg hover:-translate-y-0.5 opacity-90 hover:opacity-100'
+              }`}
+            >
+              <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center shadow-md shrink-0`}>
+                {key === 'overdue' && <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+                {key === 'due-soon' && <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+                {key === 'ok' && <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+                {key === 'all' && <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>}
+              </div>
+              <div className="min-w-0">
+                <div className="text-2xl font-black text-slate-800 dark:text-white leading-tight">{count}</div>
+                <div className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{label}</div>
+              </div>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Controls */}
+      {/* Controls row: search + group filter */}
       <div className="flex flex-wrap items-center gap-3 mb-4">
-        {/* Group filter */}
-        {(['All', 'TRS', 'DHT'] as const).map(g => (
-          <button key={g} onClick={() => setGroupFilter(g)}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${groupFilter === g
-              ? 'bg-blue-600 text-white shadow-md'
-              : 'bg-white dark:bg-boxdark border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-meta-4'}`}>
-            {g}
-          </button>
-        ))}
-        <div className="ml-auto flex items-center gap-2">
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Sort:</span>
-          {[{ id: 'status', label: 'Status (Overdue first)' }, { id: 'name', label: 'Name' }, { id: 'date', label: 'Due Date' }].map(s => (
-            <button key={s.id} onClick={() => setSortBy(s.id as any)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${sortBy === s.id
-                ? 'bg-slate-800 dark:bg-slate-600 text-white'
-                : 'bg-white dark:bg-boxdark border border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-meta-4'}`}>
-              {s.label}
+        <div className="relative flex-1 min-w-[220px]">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M10 18a8 8 0 100-16 8 8 0 000 16z" />
+          </svg>
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            placeholder="Search by name, serial, or category…"
+            className="w-full pl-9 pr-4 py-2.5 border border-slate-200/60 dark:border-white/5 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/30 bg-white/60 dark:bg-meta-4 dark:text-white"
+          />
+        </div>
+        <div className="flex items-center gap-1.5 bg-white dark:bg-boxdark border border-slate-200 dark:border-white/10 rounded-xl p-1">
+          {(['All', 'TRS', 'DHT'] as const).map(g => (
+            <button key={g} onClick={() => setGroupFilter(g)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                groupFilter === g
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-meta-4'
+              }`}>
+              {g}
             </button>
           ))}
         </div>
+        <div className="text-xs font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">
+          {sorted.length} of {tools.length}
+        </div>
       </div>
 
-      {/* Tools table */}
+      {/* Tools table — sort via column headers */}
       <div className="glass-premium dark:bg-boxdark/90 rounded-2xl shadow-xl border border-white/20 dark:border-white/5 overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-slate-50 dark:bg-meta-4/50 border-b border-slate-100 dark:border-white/5">
-              <th className="text-left px-5 py-3.5 text-[10px] font-black uppercase tracking-wider text-slate-400">Tool</th>
-              <th className="text-left px-5 py-3.5 text-[10px] font-black uppercase tracking-wider text-slate-400">Category</th>
-              <th className="text-center px-5 py-3.5 text-[10px] font-black uppercase tracking-wider text-slate-400">Status</th>
-              <th className="text-right px-5 py-3.5 text-[10px] font-black uppercase tracking-wider text-slate-400">Op. Hours</th>
-              <th className="text-center px-5 py-3.5 text-[10px] font-black uppercase tracking-wider text-slate-400">Last Service</th>
-              <th className="text-center px-5 py-3.5 text-[10px] font-black uppercase tracking-wider text-slate-400">Next Due</th>
-              <th className="text-center px-5 py-3.5 text-[10px] font-black uppercase tracking-wider text-slate-400">Due Status</th>
-              <th className="px-5 py-3.5"></th>
+              <th onClick={() => onSort('name')} className="text-left px-5 py-3.5 text-[10px] font-black uppercase tracking-wider text-slate-400 cursor-pointer select-none hover:text-slate-700 dark:hover:text-white whitespace-nowrap">
+                Tool {sortIndicator('name')}
+              </th>
+              <th onClick={() => onSort('category')} className="text-left px-5 py-3.5 text-[10px] font-black uppercase tracking-wider text-slate-400 cursor-pointer select-none hover:text-slate-700 dark:hover:text-white whitespace-nowrap">
+                Category {sortIndicator('category')}
+              </th>
+              <th className="text-center px-5 py-3.5 text-[10px] font-black uppercase tracking-wider text-slate-400 whitespace-nowrap">Tool Status</th>
+              <th onClick={() => onSort('opHours')} className="text-right px-5 py-3.5 text-[10px] font-black uppercase tracking-wider text-slate-400 cursor-pointer select-none hover:text-slate-700 dark:hover:text-white whitespace-nowrap">
+                Op. Hours {sortIndicator('opHours')}
+              </th>
+              <th onClick={() => onSort('lastService')} className="text-center px-5 py-3.5 text-[10px] font-black uppercase tracking-wider text-slate-400 cursor-pointer select-none hover:text-slate-700 dark:hover:text-white whitespace-nowrap">
+                Last Service {sortIndicator('lastService')}
+              </th>
+              <th onClick={() => onSort('nextDue')} className="text-center px-5 py-3.5 text-[10px] font-black uppercase tracking-wider text-slate-400 cursor-pointer select-none hover:text-slate-700 dark:hover:text-white whitespace-nowrap">
+                Next Due {sortIndicator('nextDue')}
+              </th>
+              <th onClick={() => onSort('status')} className="text-center px-5 py-3.5 text-[10px] font-black uppercase tracking-wider text-slate-400 cursor-pointer select-none hover:text-slate-700 dark:hover:text-white whitespace-nowrap">
+                Due Status {sortIndicator('status')}
+              </th>
+              <th className="px-5 py-3.5 text-right text-[10px] font-black uppercase tracking-wider text-slate-400 whitespace-nowrap">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-            {sorted.map(tool => {
+            {sorted.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="px-5 py-16 text-center">
+                  <p className="font-bold text-slate-400">No tools match the current filter.</p>
+                  {(searchTerm || dueFilter !== 'all' || groupFilter !== 'All') && (
+                    <button
+                      onClick={() => { setSearchTerm(''); setDueFilter('all'); setGroupFilter('All'); }}
+                      className="mt-3 text-blue-600 dark:text-blue-400 font-bold text-sm hover:underline"
+                    >
+                      Reset filters
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ) : sorted.map(tool => {
               const dueStatus = getDueStatus(tool.nextDueDate);
               const dueCfg = DUE_CONFIG[dueStatus];
               const lastService = tool.history.length > 0 ? tool.history[0] : null;
+              const sizeStr = formatToolSize(tool.size);
               return (
                 <tr key={tool.id} className={`transition-colors hover:bg-slate-50/80 dark:hover:bg-meta-4/30 ${dueCfg.rowBg}`}>
-                  <td className="px-5 py-3.5">
-                    <p className="font-bold text-slate-800 dark:text-white">{tool.name}</p>
-                    <p className="text-[11px] text-slate-400 font-mono mt-0.5">{tool.serialNumber}{tool.size ? ` · ${tool.size}"` : ''}</p>
+                  <td className="px-5 py-3.5 max-w-[280px]">
+                    <p className="font-bold text-slate-800 dark:text-white truncate" title={tool.name}>{tool.name}</p>
+                    <p className="text-[11px] text-slate-400 font-mono mt-0.5 truncate" title={`${tool.serialNumber}${sizeStr ? ' · ' + sizeStr : ''}`}>
+                      {tool.serialNumber}{sizeStr ? ` · ${sizeStr}` : ''}
+                    </p>
                   </td>
-                  <td className="px-5 py-3.5">
+                  <td className="px-5 py-3.5 whitespace-nowrap">
                     <span className="text-xs font-bold bg-slate-100 dark:bg-meta-4 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-md">{tool.category}</span>
-                    <span className={`ml-1 text-xs font-black px-1.5 py-0.5 rounded ${tool.group === 'TRS' ? 'text-blue-500' : 'text-indigo-500'}`}>{tool.group}</span>
+                    <span className={`ml-1 text-[10px] font-black px-1.5 py-0.5 rounded ${tool.group === 'TRS' ? 'text-blue-500' : 'text-indigo-500'}`}>{tool.group}</span>
                   </td>
-                  <td className="px-5 py-3.5 text-center">
+                  <td className="px-5 py-3.5 text-center whitespace-nowrap">
                     <span className={`text-[10px] font-black px-2.5 py-1 rounded-lg ${STATUS_BADGE[tool.currentStatus]}`}>{tool.currentStatus}</span>
                   </td>
-                  <td className="px-5 py-3.5 text-right font-black text-blue-600 dark:text-blue-400 tabular-nums">{tool.operationalHours.toLocaleString()} h</td>
-                  <td className="px-5 py-3.5 text-center text-slate-500 dark:text-slate-400 text-xs">{lastService ? safeFmt(lastService.date) : '—'}</td>
-                  <td className="px-5 py-3.5 text-center text-slate-600 dark:text-slate-300 text-xs font-semibold">{safeFmt(tool.nextDueDate)}</td>
-                  <td className="px-5 py-3.5 text-center">
+                  <td className="px-5 py-3.5 text-right font-black text-blue-600 dark:text-blue-400 tabular-nums whitespace-nowrap">{tool.operationalHours.toLocaleString()} h</td>
+                  <td className="px-5 py-3.5 text-center text-slate-500 dark:text-slate-400 text-xs whitespace-nowrap">{lastService ? safeFmt(lastService.date) : '—'}</td>
+                  <td className="px-5 py-3.5 text-center text-slate-600 dark:text-slate-300 text-xs font-semibold whitespace-nowrap">{safeFmt(tool.nextDueDate)}</td>
+                  <td className="px-5 py-3.5 text-center whitespace-nowrap">
                     <span className={`inline-flex items-center gap-1.5 text-[10px] font-black px-2.5 py-1 rounded-lg ${dueCfg.badge}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${dueCfg.dot} ${dueStatus === 'overdue' ? 'animate-pulse' : ''}`} />
                       {dueCfg.label}
-                      {dueStatus !== 'ok' && (
+                      {dueStatus !== 'ok' && tool.nextDueDate && (
                         <span className="font-normal opacity-70">
                           {Math.abs(differenceInDays(parseISO(tool.nextDueDate), new Date()))}d
                         </span>
                       )}
                     </span>
                   </td>
-                  <td className="px-5 py-3.5 text-right">
-                    <Link to={`/maintenance/${tool.id}`}
-                      className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap">
-                      View →
+                  <td className="px-5 py-3.5 text-right whitespace-nowrap">
+                    <Link
+                      to={`/maintenance/${tool.id}`}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                      title="Open maintenance detail and log service"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                      Log / View
                     </Link>
                   </td>
                 </tr>
@@ -316,6 +421,7 @@ export const MaintenanceOverview = () => {
             })}
           </tbody>
         </table>
+        </div>
       </div>
     </MainLayout>
   );
@@ -402,7 +508,10 @@ export const MaintenanceToolDetail = () => {
         <span className="text-slate-300 dark:text-slate-600">/</span>
         <div>
           <h1 className="text-2xl font-black text-slate-800 dark:text-white">{tool.name}</h1>
-          <p className="text-xs text-slate-400 font-mono">{tool.serialNumber}{tool.size ? ` · ${tool.size}"` : ''}</p>
+          <p className="text-xs text-slate-400 font-mono">
+            {tool.serialNumber}
+            {formatToolSize(tool.size) ? ` · ${formatToolSize(tool.size)}` : ''}
+          </p>
         </div>
       </div>
     }>
@@ -419,7 +528,7 @@ export const MaintenanceToolDetail = () => {
               {[
                 { label: 'Category', value: tool.category },
                 { label: 'Group', value: tool.group },
-                { label: 'Size', value: tool.size ? `${tool.size}"` : '—' },
+                { label: 'Size', value: formatToolSize(tool.size) || '—' },
                 { label: 'Op. Hours', value: `${tool.operationalHours.toLocaleString()} hrs` },
                 { label: 'Interval', value: `Every ${tool.maintenanceInterval} months` },
               ].map(({ label, value }) => (
