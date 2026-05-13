@@ -118,6 +118,50 @@ const OperationalInventory = () => {
   const [confirmDelete, setConfirmDelete] = useState<ToolRow | null>(null);
   const [detailsTool, setDetailsTool] = useState<ToolRow | null>(null);
 
+  // Column visibility — persisted in localStorage so admin's choice sticks
+  type ColKey =
+    | 'serialNumber' | 'size' | 'manufacturer' | 'manufacturerSn'
+    | 'partNo' | 'country' | 'status' | 'receivedDate'
+    | 'hsCode' | 'cooNumber' | 'invoiceNumber' | 'poNumber' | 'uom';
+
+  const COLUMN_DEFS: { key: ColKey; label: string }[] = [
+    { key: 'serialNumber',   label: 'Serial' },
+    { key: 'size',           label: 'Size' },
+    { key: 'manufacturer',   label: 'Manufacturer' },
+    { key: 'manufacturerSn', label: 'Mfr SN' },
+    { key: 'partNo',         label: 'Part No' },
+    { key: 'country',        label: 'Country' },
+    { key: 'cooNumber',      label: 'COO No' },
+    { key: 'hsCode',         label: 'HS Code' },
+    { key: 'invoiceNumber',  label: 'Invoice' },
+    { key: 'poNumber',       label: 'PO No' },
+    { key: 'uom',            label: 'UOM' },
+    { key: 'status',         label: 'Status' },
+    { key: 'receivedDate',   label: 'Received' },
+  ];
+
+  const COL_LS_KEY = 'otec.inventory.cols.v1';
+  const defaultCols: Record<ColKey, boolean> = {
+    serialNumber: true, size: true, manufacturer: true, manufacturerSn: false,
+    partNo: true, country: true, status: true, receivedDate: true,
+    hsCode: false, cooNumber: false, invoiceNumber: false, poNumber: false, uom: false,
+  };
+  const [visibleCols, setVisibleCols] = useState<Record<ColKey, boolean>>(() => {
+    try {
+      const raw = localStorage.getItem(COL_LS_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        return { ...defaultCols, ...parsed };
+      }
+    } catch { /* ignore */ }
+    return defaultCols;
+  });
+  const [showColMenu, setShowColMenu] = useState(false);
+  useEffect(() => {
+    try { localStorage.setItem(COL_LS_KEY, JSON.stringify(visibleCols)); } catch { /* ignore */ }
+  }, [visibleCols]);
+  const toggleCol = (k: ColKey) => setVisibleCols((p) => ({ ...p, [k]: !p[k] }));
+
   const fetchTools = async () => {
     try {
       setLoading(true);
@@ -381,6 +425,40 @@ const OperationalInventory = () => {
                     placeholder="Search name, serial, mfr, part no..."
                     className="pl-9 pr-4 py-2.5 border border-slate-200/60 dark:border-white/5 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/30 bg-white/60 dark:bg-meta-4 dark:text-white w-full xl:w-72" />
                 </div>
+                <div className="relative">
+                  <button
+                    onClick={() => setShowColMenu(s => !s)}
+                    className="px-3 py-2.5 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-meta-4 transition-colors flex items-center gap-1.5"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+                    </svg>
+                    Columns
+                  </button>
+                  {showColMenu && (
+                    <>
+                      <div className="fixed inset-0 z-30" onClick={() => setShowColMenu(false)} />
+                      <div className="absolute top-full right-0 z-40 mt-2 w-56 bg-white dark:bg-boxdark border border-slate-200 dark:border-white/10 rounded-xl shadow-xl overflow-hidden">
+                        <div className="p-3 bg-slate-50 dark:bg-meta-4/40 border-b border-slate-100 dark:border-white/5 text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-300">
+                          Visible Columns
+                        </div>
+                        <div className="p-2 max-h-72 overflow-y-auto flex flex-col gap-0.5">
+                          {COLUMN_DEFS.map(({ key, label }) => (
+                            <label key={key} className="flex items-center gap-2.5 px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-meta-4 rounded-lg cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={visibleCols[key]}
+                                onChange={() => toggleCol(key)}
+                                className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4"
+                              />
+                              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
                 <Can module="inventory" action="add">
                   <button onClick={openCreate}
                     className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl text-sm font-bold hover:from-blue-500 hover:to-blue-400 shadow-md transition-all flex items-center gap-1.5 whitespace-nowrap">
@@ -399,36 +477,34 @@ const OperationalInventory = () => {
               <FilterChip label="Service"    count={statusCounts.maintenance}  active={statusFilter === 'maintenance'} onClick={() => setStatusFilter('maintenance')} accent="rose" />
             </div>
 
-          {/* Table */}
+          {/* Table — auto layout; columns shrink/grow to fit. Use the Columns
+              menu to hide rarely-needed fields. */}
           <div className="overflow-x-auto rounded-xl border border-slate-100 dark:border-white/5">
-            <table className="w-full text-sm table-fixed">
+            <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50 dark:bg-meta-4/40 border-b border-slate-100 dark:border-white/5">
-                  {([
-                    ['name',           'Name',          'w-[28%]'],
-                    ['serialNumber',   'Serial',        'w-[13%]'],
-                    ['size',           'Size',          'w-[18%]'],
-                    ['manufacturer',   'Manufacturer',  'w-[7%]'],
-                    ['partNo',         'Part No',       'w-[6%]'],
-                    ['country',        'Country',       'w-[5%]'],
-                    ['status',         'Status',        'w-[7%]'],
-                    ['receivedDate',   'Received',      'w-[8%]'],
-                  ] as const).map(([key, label, width]) => (
+                  <th
+                    onClick={() => onSort('name')}
+                    className="text-left px-3 py-2.5 text-[10px] font-black uppercase tracking-wider text-slate-400 cursor-pointer select-none hover:text-slate-700 dark:hover:text-white whitespace-nowrap"
+                  >
+                    <span className="inline-flex items-center gap-1">Name{sortKey === 'name' && (<span className="text-[8px]">{sortDir === 'asc' ? '▲' : '▼'}</span>)}</span>
+                  </th>
+                  {COLUMN_DEFS.filter(c => visibleCols[c.key]).map(({ key, label }) => (
                     <th key={key} onClick={() => onSort(key as keyof ToolRow)}
-                      className={`${width} text-left px-3 py-2.5 text-[10px] font-black uppercase tracking-wider text-slate-400 cursor-pointer select-none hover:text-slate-700 dark:hover:text-white overflow-hidden`}>
-                      <span className="inline-flex items-center gap-1 truncate max-w-full">
-                        <span className="truncate">{label}</span>
+                      className="text-left px-3 py-2.5 text-[10px] font-black uppercase tracking-wider text-slate-400 cursor-pointer select-none hover:text-slate-700 dark:hover:text-white whitespace-nowrap">
+                      <span className="inline-flex items-center gap-1">
+                        {label}
                         {sortKey === key && (<span className="text-[8px] flex-shrink-0">{sortDir === 'asc' ? '▲' : '▼'}</span>)}
                       </span>
                     </th>
                   ))}
-                  <th className="w-[10%] px-3 py-2.5 text-right text-[10px] font-black uppercase tracking-wider text-slate-400 whitespace-nowrap">Actions</th>
+                  <th className="px-3 py-2.5 text-right text-[10px] font-black uppercase tracking-wider text-slate-400 whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-white/5">
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-4 py-16 text-center">
+                    <td colSpan={2 + Object.values(visibleCols).filter(Boolean).length} className="px-4 py-16 text-center">
                       <div className="mb-3 opacity-40"><svg className="w-12 h-12 mx-auto text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg></div>
                       <p className="font-bold text-slate-400 text-base">No tools in this view</p>
                       <button onClick={openCreate} className="mt-3 text-blue-600 dark:text-blue-400 font-bold text-sm hover:underline">+ Add the first tool</button>
@@ -436,43 +512,75 @@ const OperationalInventory = () => {
                   </tr>
                 ) : filtered.map(t => {
                   const status = STATUS_BADGE[t.status];
+                  const sizes = parseToolSizes(t.size);
                   return (
                     <tr key={t.id} onClick={() => setDetailsTool(t)}
                       className="cursor-pointer transition-colors hover:bg-slate-50/80 dark:hover:bg-meta-4/30">
-                      <td className="px-3 py-3 max-w-0">
+                      <td className="px-3 py-3 max-w-[260px]">
                         <div className="font-bold text-slate-800 dark:text-white text-[15px] truncate" title={t.name}>{t.name}</div>
                         {t.description && t.description !== t.name && (
                           <div className="text-[10px] text-slate-400 truncate" title={t.description}>{t.description}</div>
                         )}
                       </td>
-                      <td className="px-3 py-2.5 font-mono text-[10px] text-slate-500 dark:text-slate-400 whitespace-nowrap">{t.serialNumber}</td>
-                      <td className="px-3 py-2.5 text-slate-600 dark:text-slate-300 font-semibold text-[12px] truncate max-w-0" title={t.size || ''}>
-                        {(() => {
-                          const sizes = parseToolSizes(t.size);
-                          if (!sizes || sizes.length === 0) return '—';
-                          if (sizes.length === 1) return sizes[0];
-                          return (
+                      {visibleCols.serialNumber && (
+                        <td className="px-3 py-2.5 font-mono text-[10px] text-slate-500 dark:text-slate-400 whitespace-nowrap">{t.serialNumber}</td>
+                      )}
+                      {visibleCols.size && (
+                        <td className="px-3 py-2.5 text-slate-600 dark:text-slate-300 font-semibold text-[12px] max-w-[220px] truncate" title={t.size || ''}>
+                          {!sizes || sizes.length === 0 ? (
+                            '—'
+                          ) : sizes.length === 1 ? (
+                            sizes[0]
+                          ) : (
                             <span className="inline-flex items-center gap-1.5">
                               <span className="truncate">{sizes[0]}</span>
                               <span className="shrink-0 text-[9px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-1.5 py-0.5 rounded">
                                 +{sizes.length - 1}
                               </span>
                             </span>
-                          );
-                        })()}
-                      </td>
-                      <td className="px-3 py-2.5 text-slate-600 dark:text-slate-300 text-[12px] truncate max-w-0" title={t.manufacturer || ''}>{t.manufacturer || '—'}</td>
-                      <td className="px-3 py-2.5 text-slate-500 dark:text-slate-400 font-mono text-[10px] truncate max-w-0" title={t.partNo || ''}>{t.partNo || '—'}</td>
-                      <td className="px-3 py-2.5 text-slate-500 dark:text-slate-400 text-[12px] whitespace-nowrap">{t.country || '—'}</td>
-                      <td className="px-3 py-2.5 whitespace-nowrap">
-                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${status.bg}`}>
-                          <span className={`w-1 h-1 rounded-full ${status.dot}`} />
-                          {status.label}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2.5 text-slate-500 dark:text-slate-400 text-[11px] tabular-nums whitespace-nowrap">
-                        {fmtKwDate(t.receivedDate)}
-                      </td>
+                          )}
+                        </td>
+                      )}
+                      {visibleCols.manufacturer && (
+                        <td className="px-3 py-2.5 text-slate-600 dark:text-slate-300 text-[12px] max-w-[160px] truncate" title={t.manufacturer || ''}>{t.manufacturer || '—'}</td>
+                      )}
+                      {visibleCols.manufacturerSn && (
+                        <td className="px-3 py-2.5 font-mono text-[10px] text-slate-500 dark:text-slate-400 max-w-[140px] truncate" title={t.manufacturerSn || ''}>{t.manufacturerSn || '—'}</td>
+                      )}
+                      {visibleCols.partNo && (
+                        <td className="px-3 py-2.5 text-slate-500 dark:text-slate-400 font-mono text-[10px] max-w-[120px] truncate" title={t.partNo || ''}>{t.partNo || '—'}</td>
+                      )}
+                      {visibleCols.country && (
+                        <td className="px-3 py-2.5 text-slate-500 dark:text-slate-400 text-[12px] whitespace-nowrap">{t.country || '—'}</td>
+                      )}
+                      {visibleCols.cooNumber && (
+                        <td className="px-3 py-2.5 font-mono text-[10px] text-slate-500 dark:text-slate-400 max-w-[120px] truncate" title={t.cooNumber || ''}>{t.cooNumber || '—'}</td>
+                      )}
+                      {visibleCols.hsCode && (
+                        <td className="px-3 py-2.5 font-mono text-[10px] text-slate-500 dark:text-slate-400 max-w-[140px] truncate" title={t.hsCode || ''}>{t.hsCode || '—'}</td>
+                      )}
+                      {visibleCols.invoiceNumber && (
+                        <td className="px-3 py-2.5 font-mono text-[10px] text-slate-500 dark:text-slate-400 max-w-[140px] truncate" title={t.invoiceNumber || ''}>{t.invoiceNumber || '—'}</td>
+                      )}
+                      {visibleCols.poNumber && (
+                        <td className="px-3 py-2.5 font-mono text-[10px] text-slate-500 dark:text-slate-400 max-w-[120px] truncate" title={t.poNumber || ''}>{t.poNumber || '—'}</td>
+                      )}
+                      {visibleCols.uom && (
+                        <td className="px-3 py-2.5 text-slate-500 dark:text-slate-400 text-[12px] whitespace-nowrap">{t.uom || '—'}</td>
+                      )}
+                      {visibleCols.status && (
+                        <td className="px-3 py-2.5 whitespace-nowrap">
+                          <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${status.bg}`}>
+                            <span className={`w-1 h-1 rounded-full ${status.dot}`} />
+                            {status.label}
+                          </span>
+                        </td>
+                      )}
+                      {visibleCols.receivedDate && (
+                        <td className="px-3 py-2.5 text-slate-500 dark:text-slate-400 text-[11px] tabular-nums whitespace-nowrap">
+                          {fmtKwDate(t.receivedDate)}
+                        </td>
+                      )}
                       <td className="px-3 py-2.5 text-right whitespace-nowrap" onClick={e => e.stopPropagation()}>
                         <Can module="inventory" action="edit">
                           <button onClick={() => openEdit(t)}
