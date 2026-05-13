@@ -51,6 +51,20 @@ function clean(v: any): string {
   return String(v).replace(/\s+/g, ' ').trim();
 }
 
+// Like clean() but preserves line breaks as comma boundaries so multi-line
+// SIZE cells (e.g. "9 5/8\" 40-53.5 PPF\r\n13 3/8\" 61-72 PPF") survive as
+// distinct, comma-separated entries when later split for display.
+function cleanWithLineBreaks(v: any): string {
+  if (v === null || v === undefined) return '';
+  return String(v)
+    .replace(/\r\n|\r|\n/g, ', ')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\s*,\s*/g, ', ')
+    .replace(/(?:, )+/g, ', ')
+    .replace(/^, |, $/g, '')
+    .trim();
+}
+
 function parseDate(v: any): Date | null {
   if (v === null || v === undefined || v === '') return null;
   if (v instanceof Date) return v;
@@ -165,7 +179,7 @@ function parseToolsSheet(ws: xlsx.WorkSheet): Partial<Tool>[] {
 
     const partNo = clean(r[3]);
     const description = clean(r[4]);
-    const size = clean(r[5]);
+    const size = cleanWithLineBreaks(r[5]);
     const sn = clean(r[6]);
     const receivedDate = parseDate(r[8]);
     const poNumber = clean(r[9]);

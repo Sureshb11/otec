@@ -36,11 +36,24 @@ export const getToolCategorySizes = (toolName: string): string[] | null => {
  */
 export const parseToolSizes = (sizeField: string | null | undefined): string[] | null => {
     if (!sizeField) return null;
+    // Accept commas, line breaks, or semicolons as boundaries. The master
+    // sheet uses commas inside cells and newlines between groups, and the
+    // importer normalises one to the other — be permissive on read.
     const parts = sizeField
-        .split(',')
-        .map((s) => s.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim())
+        .split(/[,;\r\n]+/)
+        .map((s) => s.replace(/\s+/g, ' ').trim())
         .filter((s) => s.length > 0);
-    return parts.length > 0 ? parts : null;
+    // De-dup while preserving order
+    const seen = new Set<string>();
+    const unique: string[] = [];
+    for (const p of parts) {
+        const k = p.toLowerCase();
+        if (!seen.has(k)) {
+            seen.add(k);
+            unique.push(p);
+        }
+    }
+    return unique.length > 0 ? unique : null;
 };
 
 /**
