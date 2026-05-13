@@ -63,7 +63,7 @@ const Dashboard = () => {
             name: t.name,
             group: t.type as 'TRS' | 'DHT',
             category: t.category || 'Other',
-            size: t.size || '',
+            size: t.deployedSize || t.size || '',
             serialNumber: t.serialNumber,
             status: t.status || 'available',
             operationalHours: Number(t.operationalHours) || 0,

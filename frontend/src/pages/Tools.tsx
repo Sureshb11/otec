@@ -106,7 +106,10 @@ const Tools = () => {
               name: t.name,
               groupType: t.type as 'TRS' | 'DHT',
               category: cat,
-              size: t.size || '',
+              // Show the size actually deployed (from order_items.size) when the
+              // tool is on an active order; otherwise fall back to the master
+              // compatibility list. Empty string if neither.
+              size: t.deployedSize || t.size || '',
               serialNumber: t.serialNumber,
               status: STATUS_MAP[t.status] || 'yard',
               operationalHours: Number(t.operationalHours) || 0,

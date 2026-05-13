@@ -9,6 +9,7 @@ import {
   CATEGORY_DISPLAY_MAP,
 } from '../constants/categories';
 import { fmtKwDate } from '../utils/kuwaitTime';
+import { parseToolSizes } from '../utils/toolCategorySizes';
 
 // ─── Consumables sub-section ──────────────────────────────────────────────────
 
@@ -404,11 +405,11 @@ const OperationalInventory = () => {
               <thead>
                 <tr className="bg-slate-50 dark:bg-meta-4/40 border-b border-slate-100 dark:border-white/5">
                   {([
-                    ['name',           'Name',          'w-[34%]'],
-                    ['serialNumber',   'Serial',        'w-[15%]'],
-                    ['size',           'Size',          'w-[6%]'],
-                    ['manufacturer',   'Manufacturer',  'w-[8%]'],
-                    ['partNo',         'Part No',       'w-[7%]'],
+                    ['name',           'Name',          'w-[28%]'],
+                    ['serialNumber',   'Serial',        'w-[13%]'],
+                    ['size',           'Size',          'w-[18%]'],
+                    ['manufacturer',   'Manufacturer',  'w-[7%]'],
+                    ['partNo',         'Part No',       'w-[6%]'],
                     ['country',        'Country',       'w-[5%]'],
                     ['status',         'Status',        'w-[7%]'],
                     ['receivedDate',   'Received',      'w-[8%]'],
@@ -445,7 +446,21 @@ const OperationalInventory = () => {
                         )}
                       </td>
                       <td className="px-3 py-2.5 font-mono text-[10px] text-slate-500 dark:text-slate-400 whitespace-nowrap">{t.serialNumber}</td>
-                      <td className="px-3 py-2.5 text-slate-600 dark:text-slate-300 font-semibold text-[12px] whitespace-nowrap">{t.size || '—'}</td>
+                      <td className="px-3 py-2.5 text-slate-600 dark:text-slate-300 font-semibold text-[12px] truncate max-w-0" title={t.size || ''}>
+                        {(() => {
+                          const sizes = parseToolSizes(t.size);
+                          if (!sizes || sizes.length === 0) return '—';
+                          if (sizes.length === 1) return sizes[0];
+                          return (
+                            <span className="inline-flex items-center gap-1.5">
+                              <span className="truncate">{sizes[0]}</span>
+                              <span className="shrink-0 text-[9px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-1.5 py-0.5 rounded">
+                                +{sizes.length - 1}
+                              </span>
+                            </span>
+                          );
+                        })()}
+                      </td>
                       <td className="px-3 py-2.5 text-slate-600 dark:text-slate-300 text-[12px] truncate max-w-0" title={t.manufacturer || ''}>{t.manufacturer || '—'}</td>
                       <td className="px-3 py-2.5 text-slate-500 dark:text-slate-400 font-mono text-[10px] truncate max-w-0" title={t.partNo || ''}>{t.partNo || '—'}</td>
                       <td className="px-3 py-2.5 text-slate-500 dark:text-slate-400 text-[12px] whitespace-nowrap">{t.country || '—'}</td>
@@ -651,7 +666,28 @@ const OperationalInventory = () => {
             <div className="px-7 py-5 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <DetailRow label="Type" value={detailsTool.type} />
               <DetailRow label="Category" value={detailsTool.category} />
-              <DetailRow label="Size" value={detailsTool.size} />
+              {(() => {
+                const sizes = parseToolSizes(detailsTool.size);
+                if (!sizes || sizes.length === 0) return <DetailRow label="Size" value={detailsTool.size} />;
+                if (sizes.length === 1) return <DetailRow label="Size" value={sizes[0]} />;
+                return (
+                  <div className="sm:col-span-2">
+                    <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                      Compatible Sizes ({sizes.length})
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {sizes.map((s) => (
+                        <span
+                          key={s}
+                          className="inline-flex items-center px-2 py-1 rounded-md bg-slate-100 dark:bg-meta-4 text-slate-700 dark:text-slate-200 text-[11px] font-semibold"
+                        >
+                          {s}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
               <DetailRow label="Manufacturer" value={detailsTool.manufacturer} />
               <DetailRow label="Manufacturer SN" value={detailsTool.manufacturerSn} mono />
               <DetailRow label="Part No" value={detailsTool.partNo} mono />
